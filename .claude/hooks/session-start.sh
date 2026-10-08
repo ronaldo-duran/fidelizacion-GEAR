@@ -44,7 +44,13 @@ sembrar_phpstan
 composer install --no-interaction --no-progress \
   || composer install --no-interaction --no-progress --prefer-source
 
+# npm install corre el script "prepare", que activa los hooks de git (Husky).
 npm install --no-audit --no-fund
+
+# Playwright: el contenedor trae Chromium en otra ruta; no descargar navegadores.
+if [ -x /opt/pw-browsers/chromium ]; then
+  echo 'export PLAYWRIGHT_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium' >> "${CLAUDE_ENV_FILE:-/dev/null}"
+fi
 
 # Servicios locales: PostgreSQL 16 (las pruebas corren sobre Postgres) y Redis.
 service postgresql start >/dev/null

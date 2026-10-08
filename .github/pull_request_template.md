@@ -8,12 +8,13 @@ Closes #
 
 ## Checklist
 
-- [ ] `./vendor/bin/pint` sin cambios pendientes
-- [ ] `./vendor/bin/phpstan analyse` en verde
-- [ ] `./vendor/bin/pest` en verde
+- [ ] `composer lint` y `npm run lint` en verde
+- [ ] `composer test` y `npm run test:e2e` en verde
+- [ ] Versión de `package.json` actualizada (o etiqueta `sin-version` si no aplica)
 - [ ] Menos de 400 líneas cambiadas
 - [ ] Los criterios de aceptación de la spec tienen prueba
 - [ ] Reglas de negocio con números en fixture, no en el código
+- [ ] Funciona en PostgreSQL y SQL Server (CLAUDE.md 3.13)
 
 ## Reglas duras tocadas
 

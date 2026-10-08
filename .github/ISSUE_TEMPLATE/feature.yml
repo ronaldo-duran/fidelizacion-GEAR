@@ -1,0 +1,50 @@
+name: Feature
+description: Una unidad de trabajo con spec
+labels: ["tipo:feature"]
+body:
+  - type: input
+    id: epica
+    attributes:
+      label: Épica
+      placeholder: "E3 — Motor de reglas y niveles"
+    validations: { required: true }
+  - type: input
+    id: spec
+    attributes:
+      label: Ruta de la spec
+      placeholder: "specs/E3-01-motor-reglas.md"
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Una frase. Qué debe poder hacer el usuario cuando esto exista.
+    validations: { required: true }
+  - type: dropdown
+    id: semana
+    attributes:
+      label: Semana del plan
+      description: Ver docs/plan-de-trabajo.md. Agregar también la etiqueta semana:N.
+      options: ["1", "2", "3", "4", "5", "6", "sin asignar"]
+  - type: input
+    id: horas
+    attributes:
+      label: Horas estimadas
+      placeholder: "8"
+    validations: { required: true }
+  - type: dropdown
+    id: riesgo
+    attributes:
+      label: Riesgo
+      description: Alto = dinero real o costoso de revertir. Lo toma el responsable del proyecto.
+      options: [alto, medio, bajo]
+    validations: { required: true }
+  - type: checkboxes
+    id: duras
+    attributes:
+      label: ¿Toca alguna regla dura de CLAUDE.md?
+      options:
+        - label: Versionado de reglas
+        - label: Snapshot en movimientos
+        - label: Inmutabilidad del libro de puntos
+        - label: Nivel efectivo
+        - label: Idempotencia de la API

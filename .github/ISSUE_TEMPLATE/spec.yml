@@ -1,0 +1,25 @@
+name: Spec
+description: Redactar la especificación de una feature
+labels: ["tipo:spec"]
+body:
+  - type: input
+    id: epica
+    attributes: { label: Épica, placeholder: "E3" }
+    validations: { required: true }
+  - type: textarea
+    id: alcance
+    attributes:
+      label: Qué debe cubrir la spec
+    validations: { required: true }
+  - type: checkboxes
+    id: pendientes
+    attributes:
+      label: ¿Depende de alguna decisión pendiente del cliente?
+      options:
+        - label: Tasas de acumulación
+        - label: Umbrales de nivel
+        - label: Vigencia de los puntos
+        - label: Precios de membresía
+        - label: Catálogo de beneficios
+        - label: Pasarela de pagos
+        - label: Acceso del cliente a la PWA

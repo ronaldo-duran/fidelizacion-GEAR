@@ -1,0 +1,17 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+@import '../../design/fuentes.css';
+@import '../../design/tokens.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/*
+ * En Filament solo se toman colores y fuentes de la marca. La escala de
+ * tamaños y radios de la PWA no se aplica aquí: rompería el layout del panel.
+ * Los colores primario/éxito/peligro se registran en AdminPanelProvider.
+ */
+.fi-header-heading,
+.fi-simple-header-heading,
+.fi-wi-stats-overview-stat-value {
+    font-family: var(--font-display);
+}

@@ -1,0 +1,76 @@
+/* Club Aponte Rivera: tokens de diseño (fuente de verdad) */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..800&display=swap');
+
+:root {
+  /* Base */
+  --color-ink: #231d18;          /* texto principal cliente/admin */
+  --color-ink-2: #5c534b;        /* texto secundario (AA sobre paper) */
+  --color-ink-3: #3d352e;        /* párrafos largos */
+  --color-paper: #faf7f2;        /* fondo app cliente/admin */
+  --color-surface: #ffffff;      /* tarjetas */
+  --color-sunken: #ece7df;       /* pistas de progreso, skeleton, segmentado */
+  --color-line: #e7e0d6;         /* bordes de tarjeta */
+  --color-line-2: #efe9e0;       /* divisores internos */
+  --color-field: #cfc6ba;        /* borde de input en reposo */
+
+  /* Marca (única variable a reteñir cuando llegue el logo) */
+  --color-brand: #1f5c4f;
+  --color-brand-strong: #163f37; /* hover / texto sobre brand-soft */
+  --color-brand-soft: #e2ede8;   /* fondo de icono de beneficio, avisos info */
+
+  /* Estado */
+  --color-success: #0f6b3a;      /* pantalla completa "registrada" / "válido" */
+  --color-success-ink: #1e7a46;  /* deltas positivos en texto */
+  --color-danger: #a31d15;       /* "ya usado", devoluciones, cerrar sesión */
+  --color-warn: #9a4f00;         /* borde cédula no encontrada */
+  --color-warn-ink: #7a3f00;
+  --color-warn-soft: #fff6e6;
+  --color-warn-line: #efd3a0;
+
+  /* Cajero (más contraste, tinta casi negra) */
+  --cashier-ink: #0f0d0b;
+  --cashier-ink-2: #4a433c;
+  --cashier-key: #f1ede7;        /* teclas del teclado numérico */
+  --cashier-placeholder: #b5ada3;
+
+  /* Niveles: jerarquía por contraste creciente, sin metalizados */
+  --tier-bronce-bg: #ecdcc8;  --tier-bronce-ink: #5a3a1e;
+  --tier-plata-bg: #dde3e6;   --tier-plata-ink: #2e3a42;
+  --tier-oro-bg: #f4c542;     --tier-oro-ink: #3d2a00;
+  --tier-diamante-bg: #1c1a36; --tier-diamante-ink: #f5f1ff; --tier-diamante-accent: #9d8cff;
+
+  /* Tipografía */
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif; /* títulos, cifras, nombres de nivel */
+  --font-ui: 'Figtree', system-ui, sans-serif;                  /* todo lo demás */
+  --font-mono: ui-monospace, Menlo, monospace;                  /* códigos de beneficio (BBC-4821) */
+
+  --text-hero: 800 128px/0.9 var(--font-display);  /* "+85" en confirmación de cajero, tracking -0.03em */
+  --text-3xl:  800 56px/1 var(--font-display);     /* "VÁLIDO" / "YA USADO" */
+  --text-2xl:  700 32px/1.1 var(--font-display);   /* título de pantalla */
+  --text-xl:   600 22px/1.2 var(--font-display);   /* saludo, subtítulos */
+  --text-lg:   700 17px/1.4 var(--font-ui);        /* botones, títulos de fila */
+  --text-md:   400 15px/1.45 var(--font-ui);       /* cuerpo */
+  --text-sm:   600 13px/1.4 var(--font-ui);        /* metadatos, comercio */
+  --text-overline: 700 12px/1 var(--font-ui);      /* MAYÚSCULAS, tracking .06em */
+
+  /* Espaciado (base 4) */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-7: 32px; --space-8: 48px;
+
+  /* Radios */
+  --radius-xs: 6px;    /* checkbox */
+  --radius-sm: 8px;    /* logo AR, item de sidebar */
+  --radius-md: 14px;   /* tarjetas, inputs grandes, teclas, botones */
+  --radius-lg: 20px;   /* tarjeta de nivel, contenedor QR */
+  --radius-xl: 24px;   /* bloque "listo para usar" */
+  --radius-pill: 999px;
+
+  /* Sombras (uso mínimo) */
+  --shadow-float: 0 8px 24px rgba(61, 42, 0, .18);
+
+  /* Toque */
+  --touch-min: 44px;      /* cliente y admin */
+  --touch-cashier: 64px;  /* cajero: teclas y CTA */
+  --input-h: 52px;
+  --btn-h: 56px;
+}

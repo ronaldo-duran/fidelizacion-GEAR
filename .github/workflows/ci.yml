@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Formato y análisis estático
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, intl, redis
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - name: Formato (Pint)
+        run: ./vendor/bin/pint --test
+      - name: Análisis estático (Larastan)
+        run: ./vendor/bin/phpstan analyse --no-progress
+      - name: Dependencias vulnerables
+        run: composer audit --no-interaction
+
+  pruebas:
+    name: Pruebas
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_DATABASE: testing
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: localhost
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, intl, redis
+          coverage: pcov
+      - uses: ramsey/composer-install@v3
+      - run: cp .env.example .env && php artisan key:generate
+      - name: Migraciones hacia arriba y hacia abajo
+        run: |
+          php artisan migrate --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
+      - name: Pest
+        run: ./vendor/bin/pest --coverage --min=60
+
+  frontend:
+    name: Compilación del frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  tamano-pr:
+    name: Tamaño del PR
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - name: Verificar que el PR no supere 400 líneas
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch origin "${{ github.base_ref }}" --depth=50
+          LINEAS=$(git diff --numstat "$BASE"...HEAD -- . \
+            ':(exclude)*.lock' ':(exclude)package-lock.json' \
+            | awk '{s+=$1+$2} END {print s+0}')
+          echo "Líneas cambiadas: $LINEAS"
+          if [ "$LINEAS" -gt 400 ]; then
+            echo "::error::PR de $LINEAS líneas. El límite del proyecto es 400. Pártelo."
+            exit 1
+          fi

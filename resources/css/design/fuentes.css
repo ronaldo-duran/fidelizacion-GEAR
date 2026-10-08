@@ -1,0 +1,6 @@
+/*
+ * Fuentes de la marca, auto-alojadas con Fontsource (sin CDN).
+ * Así la PWA funciona sin conexión y no se envían datos del cliente a terceros.
+ */
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/bricolage-grotesque/opsz.css';

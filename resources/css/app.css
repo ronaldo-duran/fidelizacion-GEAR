@@ -1,0 +1,67 @@
+/*
+ * PWA del cliente y pantalla del cajero. El panel Filament tiene su propio
+ * build en resources/css/filament/admin/theme.css.
+ */
+@import 'tailwindcss';
+@import './design/fuentes.css';
+@import './design/tokens.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Figtree Variable', system-ui, sans-serif;
+    --font-mono: ui-monospace, Menlo, monospace;
+
+    /* Escala tipográfica de docs/diseno/tokens */
+    --text-hero: 128px;
+    --text-hero--line-height: 0.9;
+    --text-hero--letter-spacing: -0.03em;
+    --text-hero--font-weight: 800;
+    --text-3xl: 56px;
+    --text-3xl--line-height: 1;
+    --text-3xl--font-weight: 800;
+    --text-2xl: 32px;
+    --text-2xl--line-height: 1.1;
+    --text-2xl--font-weight: 700;
+    --text-xl: 22px;
+    --text-xl--line-height: 1.2;
+    --text-xl--font-weight: 600;
+    --text-lg: 17px;
+    --text-lg--line-height: 1.4;
+    --text-lg--font-weight: 700;
+    --text-md: 15px;
+    --text-md--line-height: 1.45;
+    --text-sm: 13px;
+    --text-sm--line-height: 1.4;
+    --text-sm--font-weight: 600;
+    --text-overline: 12px;
+    --text-overline--line-height: 1;
+    --text-overline--letter-spacing: 0.06em;
+    --text-overline--font-weight: 700;
+
+    /* Radios (rounded-full para pastillas) */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+
+    /* Zonas táctiles y alturas: h-touch, h-touch-cashier, h-input, h-btn */
+    --spacing-touch: 44px;
+    --spacing-touch-cashier: 64px;
+    --spacing-input: 52px;
+    --spacing-btn: 56px;
+
+    --shadow-float: 0 8px 24px rgb(61 42 0 / 0.18);
+}
+
+@layer base {
+    html {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        @apply bg-paper font-sans text-md text-ink antialiased;
+    }
+}

@@ -1,0 +1,53 @@
+/*
+ * Club Aponte Rivera: tokens compartidos (PWA, cajero y panel Filament).
+ * Fuente de verdad: docs/diseno/tokens/tokens.css. Si cambia allá, cambia aquí.
+ *
+ * `static` emite todas las variables en :root aunque no se usen como clase,
+ * para poder pintar por nivel con style="background: var(--color-tier-oro-bg)".
+ */
+@theme static {
+    /* Base */
+    --color-ink: #231d18;
+    --color-ink-2: #5c534b;
+    --color-ink-3: #3d352e;
+    --color-paper: #faf7f2;
+    --color-surface: #ffffff;
+    --color-sunken: #ece7df;
+    --color-line: #e7e0d6;
+    --color-line-2: #efe9e0;
+    --color-field: #cfc6ba;
+
+    /* Marca: única variable a reteñir cuando llegue el logo */
+    --color-brand: #1f5c4f;
+    --color-brand-strong: #163f37;
+    --color-brand-soft: #e2ede8;
+
+    /* Estado */
+    --color-success: #0f6b3a;
+    --color-success-ink: #1e7a46;
+    --color-danger: #a31d15;
+    --color-warn: #9a4f00;
+    --color-warn-ink: #7a3f00;
+    --color-warn-soft: #fff6e6;
+    --color-warn-line: #efd3a0;
+
+    /* Cajero */
+    --color-cashier-ink: #0f0d0b;
+    --color-cashier-ink-2: #4a433c;
+    --color-cashier-key: #f1ede7;
+    --color-cashier-placeholder: #b5ada3;
+
+    /* Niveles: contraste creciente, sin metalizados ni degradados */
+    --color-tier-bronce-bg: #ecdcc8;
+    --color-tier-bronce-ink: #5a3a1e;
+    --color-tier-plata-bg: #dde3e6;
+    --color-tier-plata-ink: #2e3a42;
+    --color-tier-oro-bg: #f4c542;
+    --color-tier-oro-ink: #3d2a00;
+    --color-tier-diamante-bg: #1c1a36;
+    --color-tier-diamante-ink: #f5f1ff;
+    --color-tier-diamante-accent: #9d8cff;
+
+    /* Display: títulos, cifras y nombres de nivel */
+    --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+}

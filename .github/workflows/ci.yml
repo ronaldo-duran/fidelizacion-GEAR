@@ -1,101 +1,152 @@
 name: CI
 
+# Etapas:
+#   1. Calidad    → PHP (Pint, PHPCS, PHPMD, PHPStan, auditoría), frontend (ESLint, Prettier,
+#                   auditoría, build), versión, mensajes de commit y tamaño del PR.
+#   2. Pruebas    → Pest sobre PostgreSQL y SQL Server (solo si la etapa 1 pasa).
+#   3. E2E        → Playwright contra la app real (solo si las pruebas pasan).
+#   4. Revisión   → Claude revisa el PR (solo PRs y solo con todo lo anterior en verde).
+
 on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Con "shell: bash" explícito GitHub agrega pipefail: un fallo antes de "| cs2pr" rompe el paso.
+    shell: bash
+
+env:
+  HUSKY: 0
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '22'
+  PHP_EXTENSIONS: pdo_pgsql, pdo_sqlsrv, sqlsrv, intl, redis
+
 jobs:
-  calidad:
-    name: Formato y análisis estático
+  # ─────────────────────────────── Etapa 1: calidad ───────────────────────────────
+
+  calidad-php:
+    name: 1 · Calidad PHP
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: pdo_pgsql, intl, redis
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+          tools: cs2pr
+      - uses: ramsey/composer-install@v3
+      - name: composer.json válido
+        run: composer validate --strict
+      - name: Dependencias PHP sin vulnerabilidades
+        run: composer audit --no-interaction
+      - name: Formato (Pint)
+        run: ./vendor/bin/pint --test --format=checkstyle | cs2pr
+      - name: Estándar PSR-12 (PHPCS)
+        run: ./vendor/bin/phpcs -q --report=checkstyle | cs2pr
+      - name: Diseño y complejidad (PHPMD)
+        run: ./vendor/bin/phpmd analyze app config database routes --format github --ruleset phpmd.xml --no-progress
+      - name: Análisis estático, nivel máximo (PHPStan)
+        run: ./vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
+
+  calidad-front:
+    name: 1 · Calidad frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # El tema de Filament importa CSS desde vendor/: el build necesita las dependencias PHP.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
           coverage: none
       - uses: ramsey/composer-install@v3
-      - name: Formato (Pint)
-        run: ./vendor/bin/pint --test
-      - name: Análisis estático (Larastan)
-        run: ./vendor/bin/phpstan analyse --no-progress
-      - name: Dependencias vulnerables
-        run: composer audit --no-interaction
-
-  pruebas:
-    name: Pruebas
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: testing
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd pg_isready --health-interval 10s
-          --health-timeout 5s --health-retries 5
-      redis:
-        image: redis:7
-        ports: ['6379:6379']
-        options: >-
-          --health-cmd "redis-cli ping" --health-interval 10s
-          --health-timeout 5s --health-retries 5
-    env:
-      DB_CONNECTION: pgsql
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_DATABASE: testing
-      DB_USERNAME: postgres
-      DB_PASSWORD: postgres
-      REDIS_HOST: localhost
-    steps:
-      - uses: actions/checkout@v6
-      - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: pdo_pgsql, intl, redis
-          coverage: pcov
-      - uses: ramsey/composer-install@v3
-      - run: cp .env.example .env && php artisan key:generate
-      - name: Migraciones hacia arriba y hacia abajo
-        run: |
-          php artisan migrate --force
-          php artisan migrate:rollback --force
-          php artisan migrate --force
-      - name: Pest
-        run: ./vendor/bin/pest --coverage --min=60
-
-  frontend:
-    name: Compilación del frontend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+          composer-options: --no-scripts
+      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Dependencias npm sin vulnerabilidades
+        run: npm audit --audit-level=moderate
+      - name: ESLint
+        run: npx eslint .
+      - name: Formato (Prettier)
+        run: npx prettier --check .
+      - name: Build
+        run: npm run build
+
+  version:
+    name: 1 · Versión
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Las etiquetas se leen al momento: si agregas "sin-version" y re-ejecutas el job, la toma.
+      - name: ¿Etiqueta sin-version?
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
+              --json labels --jq '.labels[].name' | grep -qx 'sin-version'; then
+            echo "SIN_VERSION=1" >> "$GITHUB_ENV"
+          fi
+      - name: La versión sube cuando cambia código de producción
+        run: |
+          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          node scripts/ci/verificar-version.mjs "$BASE" HEAD
+
+  commits:
+    name: 1 · Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Mensajes de commit
+        run: |
+          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
+              || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            npx commitlint --last --verbose
+          else
+            npx commitlint --from "$BASE" --to HEAD --verbose
+          fi
 
   tamano-pr:
-    name: Tamaño del PR
+    name: 1 · Tamaño del PR
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with: { fetch-depth: 0 }
-      - name: Verificar que el PR no supere 400 líneas
+        with:
+          fetch-depth: 0
+      - name: El PR no supera 400 líneas
         run: |
           BASE="origin/${{ github.base_ref }}"
-          git fetch origin "${{ github.base_ref }}" --depth=50
           LINEAS=$(git diff --numstat "$BASE"...HEAD -- . \
             ':(exclude)*.lock' ':(exclude)package-lock.json' \
             | awk '{s+=$1+$2} END {print s+0}')
@@ -104,3 +155,197 @@ jobs:
             echo "::error::PR de $LINEAS líneas. El límite del proyecto es 400. Pártelo."
             exit 1
           fi
+
+  # ─────────────────────────────── Etapa 2: pruebas ───────────────────────────────
+
+  pruebas:
+    name: 2 · Pruebas (${{ matrix.db }})
+    needs: [calidad-php, calidad-front, version, commits, tamano-pr]
+    # tamano-pr se salta en push: se permite "skipped", no "failure" ni "cancelled".
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - db: pgsql
+            imagen: postgres:16
+            puerto: 5432
+            usuario: postgres
+            clave: postgres
+            cobertura: true
+            opciones: >-
+              --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          - db: sqlsrv
+            imagen: mcr.microsoft.com/mssql/server:2022-latest
+            puerto: 1433
+            usuario: sa
+            clave: FidelizacionTest2026
+            cobertura: false
+            opciones: >-
+              --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P FidelizacionTest2026 -Q 'SELECT 1' -b"
+              --health-interval 10s --health-timeout 10s --health-retries 15 --health-start-period 20s
+    services:
+      db:
+        image: ${{ matrix.imagen }}
+        env:
+          POSTGRES_DB: testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          ACCEPT_EULA: 'Y'
+          MSSQL_PID: Developer
+          MSSQL_SA_PASSWORD: FidelizacionTest2026
+        ports:
+          - ${{ matrix.puerto }}:${{ matrix.puerto }}
+        options: ${{ matrix.opciones }}
+    env:
+      DB_CONNECTION: ${{ matrix.db }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.puerto }}
+      DB_DATABASE: testing
+      DB_USERNAME: ${{ matrix.usuario }}
+      DB_PASSWORD: ${{ matrix.clave }}
+      DB_TRUST_SERVER_CERTIFICATE: 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: ${{ matrix.cobertura && 'pcov' || 'none' }}
+      - uses: ramsey/composer-install@v3
+      - name: Crear la base de pruebas en SQL Server
+        if: matrix.db == 'sqlsrv'
+        run: |
+          docker exec ${{ job.services.db.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost \
+            -U sa -P "$DB_PASSWORD" -Q "CREATE DATABASE testing"
+      - run: cp .env.example .env && php artisan key:generate
+      - name: Migraciones hacia arriba y hacia abajo
+        run: |
+          php artisan migrate --force
+          php artisan migrate:rollback --force
+          php artisan migrate --force
+      - name: Pest con cobertura mínima
+        if: matrix.cobertura
+        run: ./vendor/bin/pest --coverage --min=60
+      - name: Pest
+        if: ${{ !matrix.cobertura }}
+        run: ./vendor/bin/pest
+
+  # ───────────────────────────────── Etapa 3: E2E ─────────────────────────────────
+
+  e2e:
+    name: 3 · E2E (Playwright)
+    needs: [pruebas]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: e2e
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+      - uses: ramsey/composer-install@v3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Navegador
+        run: npx playwright install --with-deps chromium
+      # `artisan serve` no hereda las variables del job: todo va en .env.
+      - name: Entorno
+        run: |
+          cp .env.example .env
+          poner () { if grep -q "^$1=" .env; then sed -i "s#^$1=.*#$1=$2#" .env; else echo "$1=$2" >> .env; fi; }
+          # local: el panel deja entrar sin roles hasta E2-01.
+          poner APP_ENV local
+          poner APP_URL http://127.0.0.1:8000
+          poner DB_DATABASE e2e
+          poner CACHE_STORE file
+          poner QUEUE_CONNECTION sync
+          php artisan key:generate
+          php artisan migrate:fresh --seed --force
+      - name: Playwright
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: reporte-playwright
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ────────────────────────── Etapa 4: revisión con Claude ──────────────────────────
+
+  revision-claude:
+    name: 4 · Revisión de Claude
+    needs: [e2e]
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: ¿Hay credenciales y falta la revisión?
+        id: decidir
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIENE_CLAVE: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+        run: |
+          if [ "$TIENE_CLAVE" != "true" ]; then
+            echo "::notice::Sin ANTHROPIC_API_KEY ni CLAUDE_CODE_OAUTH_TOKEN: se omite la revisión."
+            echo "revisar=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Una revisión automática por PR. Para otra: comentar "@claude revisa" con el CI en verde.
+          PREVIAS=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
+            --json comments --jq '[.comments[].body | select(contains("<!-- revision-claude -->"))] | length')
+          if [ "$PREVIAS" -gt 0 ]; then
+            echo "::notice::El PR ya tiene revisión de Claude. Para otra, comenta \"@claude revisa\"."
+            echo "revisar=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          echo "revisar=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v6
+        if: steps.decidir.outputs.revisar == 'true'
+        with:
+          fetch-depth: 1
+      # Las instrucciones se leen de la rama base, no del PR: un PR no puede cambiar cómo se le revisa.
+      - name: Instrucciones de revisión
+        if: steps.decidir.outputs.revisar == 'true'
+        id: instrucciones
+        run: |
+          git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
+          {
+            echo 'texto<<FIN_INSTRUCCIONES'
+            git show ${{ github.event.pull_request.base.sha }}:.github/claude/revision.md
+            echo 'FIN_INSTRUCCIONES'
+          } >> "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@v1
+        if: steps.decidir.outputs.revisar == 'true'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Con el token del workflow no hace falta instalar la app de Claude en el repo.
+          github_token: ${{ github.token }}
+          prompt: |
+            REPOSITORIO: ${{ github.repository }}
+            PULL REQUEST: #${{ github.event.pull_request.number }}
+
+            ${{ steps.instrucciones.outputs.texto }}
+          claude_args: >-
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Read,Grep,Glob"
+            --max-turns 40

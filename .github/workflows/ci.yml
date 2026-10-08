@@ -249,6 +249,8 @@ jobs:
   e2e:
     name: 3 · E2E (Playwright)
     needs: [pruebas]
+    # Condición explícita: si no, el "skipped" de tamano-pr (en push) se propaga y salta esta etapa.
+    if: ${{ !cancelled() && needs.pruebas.result == 'success' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -305,7 +307,9 @@ jobs:
   revision-claude:
     name: 4 · Revisión de Claude
     needs: [e2e]
-    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    if: >-
+      ${{ !cancelled() && needs.e2e.result == 'success' &&
+      github.event_name == 'pull_request' && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

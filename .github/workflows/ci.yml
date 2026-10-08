@@ -214,6 +214,18 @@ jobs:
           extensions: ${{ env.PHP_EXTENSIONS }}
           coverage: ${{ matrix.cobertura && 'pcov' || 'none' }}
       - uses: ramsey/composer-install@v3
+      # pdo_sqlsrv necesita el driver ODBC de Microsoft, que el runner no trae.
+      - name: Driver ODBC de SQL Server
+        if: matrix.db == 'sqlsrv'
+        run: |
+          if ! grep -rqs "packages.microsoft.com/ubuntu" /etc/apt/sources.list /etc/apt/sources.list.d/; then
+            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+              | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
+            curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" \
+              | sudo tee /etc/apt/sources.list.d/mssql-release.list > /dev/null
+          fi
+          sudo apt-get update -q
+          sudo ACCEPT_EULA=Y apt-get install -y -q msodbcsql18
       - name: Crear la base de pruebas en SQL Server
         if: matrix.db == 'sqlsrv'
         run: |

@@ -1,10 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "ronaldo-duran/fidelizacion-gear",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
-    "license": "MIT",
+    "description": "Plataforma de fidelización del Grupo Aponte Rivera.",
+    "keywords": [
+        "fidelizacion",
+        "laravel",
+        "filament"
+    ],
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "filament/filament": "^5.10",
@@ -20,7 +24,11 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^4.7",
-        "pestphp/pest-plugin-laravel": "^4.1"
+        "pestphp/pest-plugin-laravel": "^4.1",
+        "phpmd/phpmd": "^3.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.1",
+        "squizlabs/php_codesniffer": "^4.0"
     },
     "autoload": {
         "psr-4": {
@@ -49,7 +57,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi @no_additional_args",
-            "@php artisan test"
+            "pest"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
@@ -69,6 +77,16 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "lint": [
+            "pint --test",
+            "phpcs -q",
+            "phpmd analyze app config database routes --format text --ruleset phpmd.xml --no-progress",
+            "phpstan analyse --no-progress --memory-limit=1G"
+        ],
+        "fix": [
+            "pint",
+            "phpcbf -q || true"
         ]
     },
     "extra": {

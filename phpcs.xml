@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<ruleset name="Fidelización">
+    <description>PSR-12 más funciones prohibidas. Pint formatea; phpcs verifica lo que Pint no cubre.</description>
+
+    <file>app</file>
+    <file>bootstrap/app.php</file>
+    <file>bootstrap/providers.php</file>
+    <file>config</file>
+    <file>database</file>
+    <file>routes</file>
+    <file>tests</file>
+
+    <!-- Front controller de Laravel: declara LARAVEL_START y arranca la app (PSR-1 lo objeta por diseño). -->
+    <exclude-pattern>public/index.php</exclude-pattern>
+    <!-- Vistas Blade: no son PHP puro. -->
+    <exclude-pattern>*.blade.php</exclude-pattern>
+
+    <arg name="extensions" value="php"/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- Límite duro de 120 columnas (PSR-12 solo lo recomienda). -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="120"/>
+        </properties>
+        <!-- Archivos de configuración de Laravel: se dejan como vienen para facilitar actualizaciones. -->
+        <exclude-pattern>config/*</exclude-pattern>
+    </rule>
+
+    <!-- Nada de depuración olvidada ni ejecución dinámica de código (CLAUDE.md 3.8). -->
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <element key="eval" value="null"/>
+                <element key="create_function" value="null"/>
+                <element key="dd" value="null"/>
+                <element key="dump" value="null"/>
+                <element key="ddd" value="null"/>
+                <element key="ray" value="null"/>
+                <element key="var_dump" value="null"/>
+                <element key="print_r" value="null"/>
+                <element key="error_log" value="null"/>
+                <element key="extract" value="null"/>
+            </property>
+        </properties>
+    </rule>
+    <rule ref="Generic.PHP.DeprecatedFunctions"/>
+    <rule ref="Generic.CodeAnalysis.EmptyStatement"/>
+    <rule ref="Generic.CodeAnalysis.UnconditionalIfStatement"/>
+    <rule ref="Generic.CodeAnalysis.UnusedFunctionParameter">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+    <rule ref="Squiz.PHP.CommentedOutCode">
+        <properties>
+            <property name="maxPercentage" value="50"/>
+        </properties>
+        <exclude-pattern>config/*</exclude-pattern>
+    </rule>
+</ruleset>

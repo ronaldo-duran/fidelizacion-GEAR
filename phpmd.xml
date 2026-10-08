@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<ruleset name="Fidelización"
+         xmlns="http://pmd.sf.net/ruleset/1.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sf.net/ruleset/1.0.0 http://pmd.sf.net/ruleset_xml_schema.xsd">
+    <description>
+        Todas las reglas de PHPMD, con los ajustes mínimos que exige Laravel.
+        Para silenciar un caso puntual: @SuppressWarnings("PHPMD.Regla") con un comentario del porqué.
+    </description>
+
+    <!-- Las fachadas y los enums de Laravel son acceso estático por diseño. -->
+    <rule ref="rulesets/cleancode.xml">
+        <exclude name="StaticAccess"/>
+    </rule>
+
+    <rule ref="rulesets/codesize.xml"/>
+    <rule ref="rulesets/controversial.xml"/>
+
+    <rule ref="rulesets/design.xml">
+        <exclude name="CouplingBetweenObjects"/>
+        <exclude name="DepthOfInheritance"/>
+    </rule>
+    <!-- Los PanelProvider de Filament importan muchos middleware. -->
+    <rule ref="rulesets/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="maximum" value="20"/>
+        </properties>
+    </rule>
+    <!-- Filament y Livewire heredan profundo (Resource, Page, Component). -->
+    <rule ref="rulesets/design.xml/DepthOfInheritance">
+        <properties>
+            <property name="maximum" value="8"/>
+        </properties>
+    </rule>
+
+    <rule ref="rulesets/naming.xml">
+        <exclude name="ShortVariable"/>
+        <exclude name="ShortMethodName"/>
+        <exclude name="LongVariable"/>
+    </rule>
+    <rule ref="rulesets/naming.xml/ShortVariable">
+        <properties>
+            <property name="exceptions" value="id,e,i,j,db,to"/>
+        </properties>
+    </rule>
+    <!-- up() y down() de las migraciones. -->
+    <rule ref="rulesets/naming.xml/ShortMethodName">
+        <properties>
+            <property name="exceptions" value="up"/>
+        </properties>
+    </rule>
+    <!-- El dominio en español produce nombres algo más largos. -->
+    <rule ref="rulesets/naming.xml/LongVariable">
+        <properties>
+            <property name="maximum" value="30"/>
+        </properties>
+    </rule>
+
+    <rule ref="rulesets/unusedcode.xml"/>
+</ruleset>

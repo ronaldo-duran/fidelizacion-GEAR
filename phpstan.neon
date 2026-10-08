@@ -1,11 +1,19 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+    - phar://phpstan.phar/conf/bleedingEdge.neon
 
 parameters:
-    level: 6
+    # Nivel máximo: sin "mixed" implícitos ni tipos a medias.
+    level: max
     paths:
         - app
+        - bootstrap/app.php
         - config
         - database
         - routes
     tmpDir: storage/framework/cache/phpstan
+    checkMissingCallableSignature: true
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: false

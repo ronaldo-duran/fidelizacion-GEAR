@@ -5,7 +5,7 @@
 // Excepciones:
 //   - Si solo cambian rutas que no llegan a producción (docs, specs, pruebas, CI...), no exige versión.
 //   - SIN_VERSION=1 (el CI lo pone cuando el PR tiene la etiqueta "sin-version").
-//   - Algún commit del rango contiene "[sin-version]" en su mensaje.
+//   - Algún commit del rango tiene "[sin-version]" en el título (primera línea).
 import { execFileSync } from 'node:child_process';
 
 const RUTAS_DE_PRODUCTO = [
@@ -77,8 +77,8 @@ if (deProducto.length === 0) {
     process.exit(0);
 }
 
-const mensajes = git('log', '--format=%B', `${desde}..${head}`);
-if (process.env.SIN_VERSION === '1' || mensajes.includes('[sin-version]')) {
+const titulos = git('log', '--format=%s', `${desde}..${head}`);
+if (process.env.SIN_VERSION === '1' || titulos.includes('[sin-version]')) {
     aviso('Excepción explícita ([sin-version] o etiqueta sin-version): no se exige versión.');
     process.exit(0);
 }
@@ -92,8 +92,9 @@ if (comparar(versionNueva, versionAnterior) <= 0) {
     );
 }
 
+const mensajes = git('log', '--format=%B', `${desde}..${head}`);
 const rompe = /^[a-z]+(\(.+\))?!:|BREAKING CHANGE/m.test(mensajes);
-const nueva = /^feat(\(.+\))?:/m.test(mensajes);
+const nueva = /^feat(\(.+\))?:/m.test(titulos);
 const sugerido = rompe ? 'major' : nueva ? 'minor' : 'patch';
 console.log(
     `Versión ${versionAnterior} → ${versionNueva}. Según los commits se esperaba al menos un cambio "${sugerido}".`,

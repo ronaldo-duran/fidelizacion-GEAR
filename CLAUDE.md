@@ -270,7 +270,7 @@ npm version major --no-git-tag-version   # cambio incompatible
 ```
 
 No exige versión si solo cambian docs, specs, pruebas, CI o configuración
-de herramientas. Para otra excepción: `[sin-version]` en el mensaje del
+de herramientas. Para otra excepción: `[sin-version]` en el título del
 commit, o la etiqueta `sin-version` en el PR.
 
 ### CI por etapas

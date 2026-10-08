@@ -8,6 +8,7 @@ description: Identidad visual y reglas de interfaz del Club Aponte Rivera (progr
 Antes de escribir UI, lee `docs/diseno/COMPONENTS.md`, `docs/diseno/README.md` y `docs/diseno/NOTAS.md` (puntos del diseño que chocan con el contrato). Los HTML en `docs/diseno/reference/` son la verdad visual (`npx serve docs/diseno/reference` y abrir en el navegador para comparar).
 
 ## Dónde viven los tokens en el código
+
 - `resources/css/design/tokens.css`: colores y fuente display, compartidos por la PWA, el cajero y Filament. Es la traducción a Tailwind v4 de `docs/diseno/tokens/tokens.css`; si uno cambia, el otro también.
 - `resources/css/app.css`: build de la PWA y el cajero. Agrega la escala tipográfica, radios y alturas táctiles (`text-2xl`, `rounded-md`, `h-touch`, `h-touch-cashier`, `h-input`, `h-btn`).
 - `resources/css/filament/admin/theme.css`: tema del panel. Solo toma colores y fuentes; **no** aplicar la escala de la PWA en Filament.
@@ -17,6 +18,7 @@ Antes de escribir UI, lee `docs/diseno/COMPONENTS.md`, `docs/diseno/README.md` y
 - Los umbrales de nivel de `tokens.json` son supuestos de diseño, no reglas: los números de negocio viven en `tests/Fixtures/`.
 
 ## Reglas duras
+
 1. **Nunca hardcodees colores, radios ni tamaños.** Usa las variables CSS o las clases del preset de Tailwind (`bg-brand`, `text-ink-2`, `rounded-md`, `bg-tier-oro-bg`…).
 2. **Solo dos familias:** Bricolage Grotesque (`font-display`) para títulos, cifras y nombres de nivel; Figtree (`font-sans`) para todo lo demás. Códigos de beneficio en mono.
 3. **Un solo color de marca:** `--color-brand`. Debe poder reteñirse cambiando solo esa variable (y `-strong` / `-soft`).
@@ -31,11 +33,13 @@ Antes de escribir UI, lee `docs/diseno/COMPONENTS.md`, `docs/diseno/README.md` y
 12. **Layout con flex/grid + gap**, no márgenes sueltos entre hermanos.
 
 ## Stack de la interfaz
+
 - PWA del cliente y cajero: Blade + Livewire 4 + Alpine + Tailwind v4 (build de `resources/css/app.css`).
 - Administración: Filament 5. Sin plugins de pago.
 - Iconos: Heroicons v2 con `blade-ui-kit/blade-heroicons` (Filament ya lo trae): `<x-heroicon-o-qr-code class="size-6" />`.
 
 ## Decisiones de producto ya cerradas (no reabrir)
+
 - Cajero: al abrir, selector "Registrar compra" / "Validar beneficio". Registrar = **monto primero** (teclado con 000), luego identificar: Cédula (por defecto) o Escanear QR. **No mostrar los puntos que suma** en esa pantalla.
 - Escáner de validar beneficio: solo "Digitar código" como alternativa. **Sin linterna.**
 - Inicio del cliente: bloque superior con el color del nivel, nombre del nivel enorme, puntos que faltan y "Para usar hoy" como lista. **Sin QR personal en el inicio por ahora.**
@@ -43,9 +47,11 @@ Antes de escribir UI, lee `docs/diseno/COMPONENTS.md`, `docs/diseno/README.md` y
 - Cliente no registrado en caja: el monto nunca se pierde. Opciones: guardar pendiente y seguir, registrar ahora, corregir cédula.
 
 ## Textos
+
 Español de Colombia, tuteo, frases cortas y concretas. Sin signos de exclamación en estados de sistema. Usa las cadenas exactas de `COMPONENTS.md` y los HTML de referencia.
 
 ## Checklist antes de entregar una vista
+
 - [ ] Solo tokens, sin hex sueltos
 - [ ] Zonas táctiles cumplen 44/64
 - [ ] Estados: cargando (skeleton en `sunken`), vacío, error con "Reintentar"

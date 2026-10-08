@@ -1,0 +1,13 @@
+# Generado o de terceros
+vendor/
+node_modules/
+public/
+storage/
+bootstrap/cache/
+composer.lock
+package-lock.json
+playwright-report/
+test-results/
+
+# Handoff del diseñador: se conserva tal como llegó
+docs/diseno/

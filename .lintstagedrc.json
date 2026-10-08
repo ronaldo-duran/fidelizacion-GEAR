@@ -1,0 +1,9 @@
+{
+    "**/!(*.blade).php": ["./vendor/bin/pint", "./vendor/bin/phpcs -q"],
+    "{app,config,database,routes}/**/!(*.blade).php": [
+        "./vendor/bin/phpmd analyze --format text --ruleset phpmd.xml --no-progress",
+        "./vendor/bin/phpstan analyse --no-progress --memory-limit=1G"
+    ],
+    "*.{js,mjs}": ["eslint --fix", "prettier --write"],
+    "*.{css,json,md,yml,yaml}": "prettier --write --ignore-unknown"
+}

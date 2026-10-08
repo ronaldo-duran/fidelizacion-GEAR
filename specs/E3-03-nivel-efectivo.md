@@ -3,13 +3,16 @@
 **Épica:** E3 · **Horas estimadas:** 10 · **Riesgo:** alto
 
 ## Objetivo
+
 Calcular el nivel de cada cliente a partir de sus tres fuentes posibles,
 con ascenso inmediato y descenso controlado.
 
 ## Fuera de alcance
+
 Notificaciones de cambio de nivel (E7).
 
 ## Reglas de negocio
+
 1. El nivel efectivo es el más alto entre `nivel_por_puntos`,
    `nivel_por_membresia` y `nivel_por_evento`, considerando solo los
    vigentes.
@@ -22,6 +25,7 @@ Notificaciones de cambio de nivel (E7).
    corresponda por sus otras fuentes vigentes, no al nivel de entrada.
 
 ## Criterios de aceptación
+
 - [ ] Dado un cliente Oro por puntos y Diamante por membresía vigente,
       cuando se consulta su nivel, entonces es Diamante.
 - [ ] Dado ese mismo cliente, cuando vence la membresía, entonces queda
@@ -35,8 +39,10 @@ Notificaciones de cambio de nivel (E7).
 - [ ] Ningún camino de código baja el nivel dentro de una petición HTTP.
 
 ## Fixtures
+
 `tests/Fixtures/niveles-escenarios.json`
 
 ## Reglas duras de CLAUDE.md que aplican
+
 - 3.5 Tres fuentes separadas
 - 3.6 Ascenso síncrono, descenso nocturno

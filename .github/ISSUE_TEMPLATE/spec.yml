@@ -1,10 +1,10 @@
 name: Spec
 description: Redactar la especificación de una feature
-labels: ["tipo:spec"]
+labels: ['tipo:spec']
 body:
   - type: input
     id: epica
-    attributes: { label: Épica, placeholder: "E3" }
+    attributes: { label: Épica, placeholder: 'E3' }
     validations: { required: true }
   - type: textarea
     id: alcance

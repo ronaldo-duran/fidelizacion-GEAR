@@ -3,13 +3,16 @@
 **Épica:** E3 · **Horas estimadas:** 16 · **Riesgo:** alto
 
 ## Objetivo
+
 Registrar todo movimiento de puntos de forma inmutable y auditable, con
 el saldo del cliente siempre consistente.
 
 ## Fuera de alcance
+
 Pantalla de cajero (E4-02). Caducidad nocturna (E3-05).
 
 ## Reglas de negocio
+
 1. `movimientos_puntos` es append-only: nunca UPDATE ni DELETE.
 2. Todo movimiento guarda `regla_id` y `regla_version` aplicadas.
 3. El saldo en `clientes` se actualiza dentro de la misma transacción de
@@ -21,6 +24,7 @@ Pantalla de cajero (E4-02). Caducidad nocturna (E3-05).
    materializado.
 
 ## Criterios de aceptación
+
 - [ ] Dado un movimiento insertado, cuando se intenta actualizarlo o
       borrarlo por el modelo, entonces la operación falla.
 - [ ] Dada una acumulación de N puntos, cuando se completa, entonces el
@@ -38,9 +42,11 @@ Pantalla de cajero (E4-02). Caducidad nocturna (E3-05).
       entonces no queda ni movimiento ni cambio de saldo.
 
 ## Fixtures
+
 `tests/Fixtures/movimientos-escenarios.json`
 
 ## Reglas duras de CLAUDE.md que aplican
+
 - 3.3 Snapshot de regla
 - 3.4 Libro inmutable
 - 3.9 Pesos enteros

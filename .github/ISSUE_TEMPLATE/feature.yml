@@ -1,18 +1,18 @@
 name: Feature
 description: Una unidad de trabajo con spec
-labels: ["tipo:feature"]
+labels: ['tipo:feature']
 body:
   - type: input
     id: epica
     attributes:
       label: Épica
-      placeholder: "E3 — Motor de reglas y niveles"
+      placeholder: 'E3 — Motor de reglas y niveles'
     validations: { required: true }
   - type: input
     id: spec
     attributes:
       label: Ruta de la spec
-      placeholder: "specs/E3-01-motor-reglas.md"
+      placeholder: 'specs/E3-01-motor-reglas.md'
   - type: textarea
     id: objetivo
     attributes:
@@ -24,12 +24,12 @@ body:
     attributes:
       label: Semana del plan
       description: Ver docs/plan-de-trabajo.md. Agregar también la etiqueta semana:N.
-      options: ["1", "2", "3", "4", "5", "6", "sin asignar"]
+      options: ['1', '2', '3', '4', '5', '6', 'sin asignar']
   - type: input
     id: horas
     attributes:
       label: Horas estimadas
-      placeholder: "8"
+      placeholder: '8'
     validations: { required: true }
   - type: dropdown
     id: riesgo

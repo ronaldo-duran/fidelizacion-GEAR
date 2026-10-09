@@ -1,8 +1,9 @@
 name: Claude a petición
 
-# Se activa escribiendo @claude en un comentario de issue o PR.
-#   - "@claude revisa" en un PR → repite la revisión de código con las instrucciones de .github/claude/revision.md.
-#   - Cualquier otro "@claude …" → Claude atiende el pedido del comentario.
+# Claude nunca corre solo: se invoca con un comentario.
+#   - "/revisar" (o "/pr-review" o "@claude revisa") en un PR → revisión de código con las
+#     instrucciones de .github/claude/revision.md.
+#   - "@claude <pedido>" en un PR o issue → Claude atiende el pedido.
 # En un PR, Claude solo trabaja si el CI del último commit está en verde.
 on:
   issue_comment:
@@ -12,10 +13,13 @@ on:
 
 jobs:
   claude:
-    # Solo personas con acceso de escritura al repositorio pueden invocarlo.
+    # Solo personas con acceso de escritura, y nunca comentarios de bots (evita bucles).
     if: >-
-      contains(github.event.comment.body, '@claude') &&
-      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      github.event.comment.user.type != 'Bot' &&
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association) &&
+      (contains(github.event.comment.body, '@claude') ||
+       contains(github.event.comment.body, '/revisar') ||
+       contains(github.event.comment.body, '/pr-review'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -28,41 +32,44 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.issue.pull_request && github.event.issue.number || github.event.pull_request.number }}
     steps:
+      - name: ¿Qué se pidió?
+        id: modo
+        env:
+          CUERPO: ${{ github.event.comment.body }}
+        run: |
+          if [ -n "$PR" ] && echo "$CUERPO" | grep -qiE '(^|[[:space:]])/(revisar|pr-review)([[:space:]]|$)|@claude[[:space:]]+revis'; then
+            echo "modo=revision" >> "$GITHUB_OUTPUT"
+          elif echo "$CUERPO" | grep -qi '@claude'; then
+            echo "modo=libre" >> "$GITHUB_OUTPUT"
+          else
+            echo "modo=nada" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: ¿El CI está en verde?
         id: ci
-        if: env.PR != ''
+        if: env.PR != '' && steps.modo.outputs.modo != 'nada'
         run: |
           ESTADOS=$(gh pr view "$PR" --repo ${{ github.repository }} --json statusCheckRollup \
-            --jq '[.statusCheckRollup[] | select(.workflowName == "CI" and (.name | startswith("4 ·") | not))
-                   | (.conclusion // .status)] | unique | join(",")')
+            --jq '[.statusCheckRollup[] | select(.workflowName == "CI")
+                   | (if (.conclusion // "") == "" then .status else .conclusion end)] | unique | join(",")')
           echo "Estados del CI: $ESTADOS"
           if [ -z "$ESTADOS" ] || echo "$ESTADOS" | grep -qvE '^(SUCCESS|SKIPPED|NEUTRAL)(,(SUCCESS|SKIPPED|NEUTRAL))*$'; then
             gh pr comment "$PR" --repo ${{ github.repository }} --body \
-              "El CI de este PR no está en verde (${ESTADOS:-sin ejecutar}). Claude se invoca cuando todas las etapas pasen."
+              "El CI de este PR no está en verde (${ESTADOS:-sin ejecutar}). Vuelve a pedirlo cuando todas las etapas pasen."
             echo "verde=false" >> "$GITHUB_OUTPUT"
           else
             echo "verde=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: ¿Pide una revisión?
-        id: modo
-        run: |
-          if [ -n "$PR" ] && echo "$CUERPO" | grep -qiE '@claude[[:space:]]+revis'; then
-            echo "revision=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "revision=false" >> "$GITHUB_OUTPUT"
-          fi
-        env:
-          CUERPO: ${{ github.event.comment.body }}
-
       - uses: actions/checkout@v6
-        if: env.PR == '' || steps.ci.outputs.verde == 'true'
+        if: steps.modo.outputs.modo != 'nada' && (env.PR == '' || steps.ci.outputs.verde == 'true')
         with:
           fetch-depth: 1
 
+      # Las instrucciones se leen de main, no del PR: un PR no puede cambiar cómo se le revisa.
       - name: Instrucciones de revisión (desde main)
         id: instrucciones
-        if: steps.modo.outputs.revision == 'true' && steps.ci.outputs.verde == 'true'
+        if: steps.modo.outputs.modo == 'revision' && steps.ci.outputs.verde == 'true'
         run: |
           git fetch --depth=1 origin main
           {
@@ -72,11 +79,12 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Revisión de código
-        if: steps.modo.outputs.revision == 'true' && steps.ci.outputs.verde == 'true'
+        if: steps.modo.outputs.modo == 'revision' && steps.ci.outputs.verde == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Con el token del workflow no hace falta instalar la app de Claude en el repo.
           github_token: ${{ github.token }}
           prompt: |
             REPOSITORIO: ${{ github.repository }}
@@ -88,7 +96,7 @@ jobs:
             --max-turns 40
 
       - name: Pedido libre
-        if: steps.modo.outputs.revision != 'true' && (env.PR == '' || steps.ci.outputs.verde == 'true')
+        if: steps.modo.outputs.modo == 'libre' && (env.PR == '' || steps.ci.outputs.verde == 'true')
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

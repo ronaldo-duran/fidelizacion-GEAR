@@ -122,5 +122,5 @@ Total: 460 horas del acuerdo (348 núcleo + 112 complementarias), más
 - Un issue = una rama `f/<ID>-<slug>` = uno o varios PRs de menos de
   400 líneas con `Closes #N` en el último.
 - Antes de pedir revisión: Pint, PHPStan y Pest en verde.
-- La revisión automática con Claude corre al abrir el PR; `@claude` en un
-  comentario lo invoca a demanda.
+- Para que Claude revise un PR: comentar `/revisar` con el CI en verde.
+  `@claude <pedido>` le pide cualquier otra cosa.

@@ -1,6 +1,7 @@
 <!--
-Instrucciones de la revisión de código que hace Claude en cada PR.
-El CI las lee desde la rama main (un PR no puede cambiar cómo se le revisa).
+Instrucciones de la revisión de código que hace Claude cuando alguien comenta
+/revisar (o /pr-review) en un PR. Se leen desde la rama main: un PR no puede
+cambiar cómo se le revisa.
 Para cambiarlas: editar este archivo y subirlo a main.
 -->
 

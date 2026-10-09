@@ -5,7 +5,8 @@ name: CI
 #                   auditoría, build), versión, mensajes de commit y tamaño del PR.
 #   2. Pruebas    → Pest sobre PostgreSQL y SQL Server (solo si la etapa 1 pasa).
 #   3. E2E        → Playwright contra la app real (solo si las pruebas pasan).
-#   4. Revisión   → Claude revisa el PR (solo PRs y solo con todo lo anterior en verde).
+#
+# La revisión de Claude no corre aquí: se pide con /revisar en un PR (ver claude-ondemand.yml).
 
 on:
   push:
@@ -301,67 +302,3 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
-
-  # ────────────────────────── Etapa 4: revisión con Claude ──────────────────────────
-
-  revision-claude:
-    name: 4 · Revisión de Claude
-    needs: [e2e]
-    if: >-
-      ${{ !cancelled() && needs.e2e.result == 'success' &&
-      github.event_name == 'pull_request' && !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-      id-token: write
-    steps:
-      - name: ¿Hay credenciales y falta la revisión?
-        id: decidir
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TIENE_CLAVE: ${{ secrets.ANTHROPIC_API_KEY != '' || secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
-        run: |
-          if [ "$TIENE_CLAVE" != "true" ]; then
-            echo "::notice::Sin ANTHROPIC_API_KEY ni CLAUDE_CODE_OAUTH_TOKEN: se omite la revisión."
-            echo "revisar=false" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          # Una revisión automática por PR. Para otra: comentar "@claude revisa" con el CI en verde.
-          PREVIAS=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
-            --json comments --jq '[.comments[].body | select(contains("<!-- revision-claude -->"))] | length')
-          if [ "$PREVIAS" -gt 0 ]; then
-            echo "::notice::El PR ya tiene revisión de Claude. Para otra, comenta \"@claude revisa\"."
-            echo "revisar=false" >> "$GITHUB_OUTPUT"; exit 0
-          fi
-          echo "revisar=true" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v6
-        if: steps.decidir.outputs.revisar == 'true'
-        with:
-          fetch-depth: 1
-      # Las instrucciones se leen de la rama base, no del PR: un PR no puede cambiar cómo se le revisa.
-      - name: Instrucciones de revisión
-        if: steps.decidir.outputs.revisar == 'true'
-        id: instrucciones
-        run: |
-          git fetch --depth=1 origin ${{ github.event.pull_request.base.sha }}
-          {
-            echo 'texto<<FIN_INSTRUCCIONES'
-            git show ${{ github.event.pull_request.base.sha }}:.github/claude/revision.md
-            echo 'FIN_INSTRUCCIONES'
-          } >> "$GITHUB_OUTPUT"
-      - uses: anthropics/claude-code-action@v1
-        if: steps.decidir.outputs.revisar == 'true'
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # Con el token del workflow no hace falta instalar la app de Claude en el repo.
-          github_token: ${{ github.token }}
-          prompt: |
-            REPOSITORIO: ${{ github.repository }}
-            PULL REQUEST: #${{ github.event.pull_request.number }}
-
-            ${{ steps.instrucciones.outputs.texto }}
-          claude_args: >-
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue view:*),Read,Grep,Glob"
-            --max-turns 40

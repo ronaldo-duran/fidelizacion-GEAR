@@ -283,21 +283,20 @@ Cada etapa corre solo si la anterior pasó:
 2. **Pruebas**: Pest en PostgreSQL (con cobertura mínima de 60 %) y en
    SQL Server.
 3. **E2E**: Playwright contra la app real, en celular y escritorio.
-4. **Revisión de Claude** (solo en PRs).
 
 ### Revisión de Claude
 
-- Corre sola una vez por PR, cuando las etapas 1 a 3 están en verde.
+- **Nunca corre sola.** Se pide comentando `/revisar` (o `/pr-review`)
+  en el PR, y solo responde si el CI de ese PR está en verde.
 - No repite lo que el CI ya verifica: revisa reglas duras, seguridad,
   concurrencia, calidad de las pruebas, N+1, arquitectura (controladores
   delgados, lógica en Actions, modelos que solo son modelos),
   sobreingeniería y alcance.
 - Sus instrucciones están en `.github/claude/revision.md` y se leen desde
   `main`.
-- `@claude revisa` en un comentario del PR la repite; `@claude <pedido>`
-  le pide otra cosa. En un PR, solo responde con el CI en verde.
-- Necesita el secreto `ANTHROPIC_API_KEY` o `CLAUDE_CODE_OAUTH_TOKEN`. Sin
-  secreto, la etapa se omite sin poner el CI en rojo.
+- `@claude <pedido>` en un PR o issue le pide otra cosa (en un PR, también
+  solo con el CI en verde). Solo responde a quien tiene acceso de escritura.
+- Necesita el secreto `ANTHROPIC_API_KEY` o `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ### Pull requests
 

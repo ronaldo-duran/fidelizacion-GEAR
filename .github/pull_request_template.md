@@ -11,7 +11,7 @@ Closes #
 - [ ] `composer lint` y `npm run lint` en verde
 - [ ] `composer test` y `npm run test:e2e` en verde
 - [ ] Versión de `package.json` actualizada (o etiqueta `sin-version` si no aplica)
-- [ ] Menos de 400 líneas cambiadas
+- [ ] Menos de 400 líneas de producción (o etiqueta `pr-grande` con la razón abajo)
 - [ ] Los criterios de aceptación de la spec tienen prueba
 - [ ] Reglas de negocio con números en fixture, no en el código
 - [ ] Funciona en PostgreSQL y SQL Server (CLAUDE.md 3.13)

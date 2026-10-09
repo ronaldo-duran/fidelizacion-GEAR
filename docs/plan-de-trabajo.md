@@ -119,8 +119,8 @@ Total: 460 horas del acuerdo (348 núcleo + 112 complementarias), más
   listos en sesiones en la nube.
 - Pedido típico: _"Toma el issue #N. Lee CLAUDE.md, la spec y las
   dependencias. Si no hay spec, escríbela primero y para."_
-- Un issue = una rama `f/<ID>-<slug>` = uno o varios PRs de menos de
-  400 líneas con `Closes #N` en el último.
+- Un issue = una rama `f/<ID>-<slug>` = uno o varios PRs, idealmente de
+  menos de 400 líneas de producción, con `Closes #N` en el último.
 - Antes de pedir revisión: Pint, PHPStan y Pest en verde.
 - Para que Claude revise un PR: comentar `/revisar` con el CI en verde.
   `@claude <pedido>` le pide cualquier otra cosa.

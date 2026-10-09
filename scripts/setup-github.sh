@@ -34,6 +34,8 @@ etiqueta "riesgo:medio" "E99695" "Requiere revisión cuidadosa"
 etiqueta "decision-cliente" "FBCA04" "Necesita una definición del cliente"
 etiqueta "bloqueado"    "000000" "Esperando decisión o insumo externo"
 etiqueta "obsequio"     "B08422" "Trabajo sin costo, fuera de las 460 horas"
+etiqueta "sin-version"  "BFD4F2" "El PR no necesita subir la versión"
+etiqueta "pr-grande"    "F9D0C4" "PR por encima de 800 líneas de producción, con razón explicada"
 
 # Milestones = hitos de pago, con las fechas del plan interno.
 # Si ya existe uno que empiece por "Hito N", se actualiza en lugar de duplicarlo.

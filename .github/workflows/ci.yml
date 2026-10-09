@@ -141,21 +141,28 @@ jobs:
     name: 1 · Tamaño del PR
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: El PR no supera 400 líneas
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Las etiquetas se leen al momento: si agregas "pr-grande" y re-ejecutas el job, la toma.
+      - name: ¿Etiqueta pr-grande?
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          BASE="origin/${{ github.base_ref }}"
-          LINEAS=$(git diff --numstat "$BASE"...HEAD -- . \
-            ':(exclude)*.lock' ':(exclude)package-lock.json' \
-            | awk '{s+=$1+$2} END {print s+0}')
-          echo "Líneas cambiadas: $LINEAS"
-          if [ "$LINEAS" -gt 400 ]; then
-            echo "::error::PR de $LINEAS líneas. El límite del proyecto es 400. Pártelo."
-            exit 1
+          if gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} \
+              --json labels --jq '.labels[].name' | grep -qx 'pr-grande'; then
+            echo "PR_GRANDE=1" >> "$GITHUB_ENV"
           fi
+      # Solo cuenta código de producción: aviso desde 400 líneas, falla desde 800.
+      - name: Tamaño del código de producción
+        run: node scripts/ci/verificar-tamano.mjs ${{ github.event.pull_request.base.sha }} HEAD
 
   # ─────────────────────────────── Etapa 2: pruebas ───────────────────────────────
 

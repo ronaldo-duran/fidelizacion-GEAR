@@ -303,7 +303,11 @@ Cada etapa corre solo si la anterior pasó:
 Por ahora se trabaja directo sobre `main`. Cuando se active la protección
 de la rama:
 
-- **Máximo 400 líneas cambiadas** (sin contar locks). Un PR más grande se parte.
+- **Tamaño:** se cuentan solo las líneas de producción (`app/`, `config/`,
+  `database/`, `resources/`, `routes/`); pruebas, specs, docs y locks no
+  cuentan. Desde 400 líneas el CI avisa; desde 800 falla. Si un PR grande
+  tiene razón de ser (p. ej. un recurso de Filament completo), etiqueta
+  `pr-grande` y explicar el porqué en la descripción.
 - Trunk-based: ramas cortas desde `main`, merge diario.
 - Nombre de rama: `f/E3-01-motor-reglas`
 - El cuerpo del PR debe incluir `Closes #N`

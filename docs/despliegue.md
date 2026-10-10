@@ -81,6 +81,46 @@ Fuera del repo, en Coolify (sección _Environment Variables_). Partir de
   tablero). Los jobs nocturnos de descenso de nivel y caducidad se registran
   en E4.
 
+## Estrategia de dos fases (optimizar costo)
+
+Redis + Horizon es el objetivo, pero la cola de Laravel es una abstracción:
+el código despacha jobs igual sea cual sea el motor. Eso permite arrancar más
+barato y escalar sin reescribir nada.
+
+### Fase 1 — arranque económico (sin Redis)
+
+Para abaratar el primer servidor se puede empezar con la cola en la base de
+datos y sin Horizon:
+
+- `QUEUE_CONNECTION=database` y `CACHE_STORE=database` (o `file`) en el entorno.
+- Un proceso de trabajo con `php artisan queue:work --tries=1` en lugar del
+  contenedor `horizon` (el servicio `horizon` del compose se reemplaza por
+  este comando).
+- El `scheduler` sigue igual; los jobs nocturnos (descenso, caducidad) y los
+  correos funcionan desde el día uno.
+- Sin tablero de Horizon, el monitoreo de colas atascadas / jobs que no
+  corrieron se cubre con un heartbeat liviano (ver E1-03).
+
+Costo de esto: la cola mete escrituras y bloqueos a la misma PostgreSQL, que
+es justo lo que Redis descarga al crecer.
+
+### Fase 2 — escalar a Redis + Horizon
+
+Cuando el volumen lo pida, la migración es de configuración, no de código:
+
+1. Provisionar Redis (recurso de Coolify o externo) y fijar `REDIS_*`.
+2. Cambiar `QUEUE_CONNECTION=redis` y `CACHE_STORE=redis`.
+3. Volver a usar el contenedor `horizon` (`php artisan horizon`) en lugar del
+   `queue:work`.
+4. Desplegar. Horizon ya está instalado y configurado en el repo; no hay
+   cambios en los jobs.
+
+Recomendación: el único ahorro real es Redis, y un VPS pequeño lo corre por
+muy poco, así que el salto de costo de incluirlo desde el inicio es mínimo
+frente a la observabilidad que da. La fase 1 existe para quien necesite el
+servidor más barato posible al arrancar, con la certeza de que escalar luego
+es reversible y barato.
+
 ## Comprobación (criterios de aceptación)
 
 1. **Merge a `main` aparece en staging sin pasos manuales**: hacer un cambio

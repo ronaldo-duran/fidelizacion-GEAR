@@ -1,0 +1,81 @@
+{
+    "_nota": "Reglas que DEBEN validar contra schema-regla.json. Cada entrada es una regla de ejemplo con los supuestos del cliente (issue #1). `_supuesto: true` marca los números que el cliente aún no confirma; cuando confirme, se cambia aquí y el CI dice qué se rompió. Las categorías coinciden con el seeder de E2-02.",
+    "casos": [
+        {
+            "_descripcion": "Acumulación base: 1 punto por cada $1.000, igual en todas las categorías, puntos a 12 meses, sin topes.",
+            "_supuesto": true,
+            "tipo": "acumulacion",
+            "definicion": {
+                "moneda_por_punto": 1000,
+                "tasas_por_categoria": [
+                    { "categoria_slug": "restaurante", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "heladeria", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "cerveceria", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "colegio", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "inmobiliaria", "puntos_por_unidad": 1 }
+                ],
+                "topes": {
+                    "puntos_por_transaccion": null,
+                    "puntos_por_dia": null,
+                    "puntos_por_mes": null
+                },
+                "vigencia_puntos_meses": 12
+            }
+        },
+        {
+            "_descripcion": "Acumulación con tasas distintas por categoría y tope diario. Sirve para probar que el motor respeta la tasa de cada categoría y los topes.",
+            "_supuesto": true,
+            "tipo": "acumulacion",
+            "definicion": {
+                "moneda_por_punto": 1000,
+                "tasas_por_categoria": [
+                    { "categoria_slug": "restaurante", "puntos_por_unidad": 2 },
+                    { "categoria_slug": "heladeria", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "inmobiliaria", "puntos_por_unidad": 0 }
+                ],
+                "topes": {
+                    "puntos_por_transaccion": 500,
+                    "puntos_por_dia": 1000,
+                    "puntos_por_mes": null
+                },
+                "vigencia_puntos_meses": 12
+            }
+        },
+        {
+            "_descripcion": "Umbrales de nivel con 3 meses de protección y aviso a 30 días.",
+            "_supuesto": true,
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "plata", "umbral_puntos": 500 },
+                    { "nivel": "oro", "umbral_puntos": 1500 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 3,
+                "aviso_dias_antes": 30
+            }
+        },
+        {
+            "_descripcion": "Bonificación: puntos dobles en restaurante para compras de $50.000 o más. Condición estructurada, sin expresiones libres.",
+            "_supuesto": false,
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [
+                    { "campo": "categoria_slug", "operador": "igual", "valor": "restaurante" },
+                    { "campo": "monto", "operador": "mayor_igual", "valor": 50000 }
+                ]
+            }
+        },
+        {
+            "_descripcion": "Bonificación con operador `en`: triple de puntos los fines de semana (sábado=6, domingo=7).",
+            "_supuesto": false,
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 3,
+                "condiciones": [{ "campo": "dia_semana", "operador": "en", "valor": [6, 7] }]
+            }
+        }
+    ]
+}

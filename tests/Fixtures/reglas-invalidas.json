@@ -1,0 +1,89 @@
+{
+    "_nota": "Reglas que DEBEN ser rechazadas por el validador de E3-01. Cada caso trae `_motivo` legible y `_criterio_e3_01` apuntando al criterio de aceptación de la spec que cubre. El objetivo es blindar la regla dura 3.8 (esquema cerrado, sin ejecución dinámica).",
+    "casos": [
+        {
+            "_motivo": "Clave fuera de la lista blanca (`descuento_pesos`) en una definición de acumulación.",
+            "_criterio_e3_01": "clave fuera de la lista blanca se rechaza",
+            "tipo": "acumulacion",
+            "definicion": {
+                "moneda_por_punto": 1000,
+                "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }],
+                "vigencia_puntos_meses": 12,
+                "descuento_pesos": 5000
+            }
+        },
+        {
+            "_motivo": "Expresión libre como string en lugar de condición estructurada. Esto es exactamente lo que la regla 3.8 prohíbe (ejecución remota de código).",
+            "_criterio_e3_01": "ninguna expresión libre ni string evaluable",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": "monto > 50000 && categoria == 'restaurante'"
+            }
+        },
+        {
+            "_motivo": "Operador fuera de la lista blanca (`regex`).",
+            "_criterio_e3_01": "operador fuera de la lista blanca se rechaza",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [{ "campo": "categoria_slug", "operador": "regex", "valor": "resta.*" }]
+            }
+        },
+        {
+            "_motivo": "Campo fuera de la lista blanca (`cliente_email`).",
+            "_criterio_e3_01": "campo fuera de la lista blanca se rechaza",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [{ "campo": "cliente_email", "operador": "igual", "valor": "x@y.co" }]
+            }
+        },
+        {
+            "_motivo": "Monto como decimal/float. La regla dura 3.9 exige pesos enteros.",
+            "_criterio_e3_01": "montos en pesos enteros",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [{ "campo": "monto", "operador": "mayor_igual", "valor": 49999.99 }]
+            }
+        },
+        {
+            "_motivo": "Umbrales incompletos: faltan niveles (solo 2 de 4).",
+            "_criterio_e3_01": "definición de niveles completa",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 3,
+                "aviso_dias_antes": 30
+            }
+        },
+        {
+            "_motivo": "Multiplicador 1 (no bonifica nada) viola el mínimo del esquema; una bonificación sin efecto no debe guardarse.",
+            "_criterio_e3_01": "bonificación con multiplicador válido",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 1,
+                "condiciones": [{ "campo": "monto", "operador": "mayor", "valor": 0 }]
+            }
+        },
+        {
+            "_motivo": "Tipo de regla desconocido.",
+            "_criterio_e3_01": "tipo dentro del enum",
+            "tipo": "canje_puntos",
+            "definicion": {}
+        },
+        {
+            "_motivo": "Falta una clave requerida (`vigencia_puntos_meses`) en acumulación.",
+            "_criterio_e3_01": "claves requeridas presentes",
+            "tipo": "acumulacion",
+            "definicion": {
+                "moneda_por_punto": 1000,
+                "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }]
+            }
+        }
+    ]
+}

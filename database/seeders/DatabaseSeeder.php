@@ -25,13 +25,13 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->sembrarCategorias();
-        $this->sembrarComerciosDeMuestra();
+        $this->sembrarComercios();
         $this->sembrarUsuarios();
     }
 
     /**
-     * Las cinco categorías base. Los slugs coinciden con los fixtures de
-     * reglas (tests/Fixtures/reglas-validas.json).
+     * Categorías del grupo. Los slugs coinciden con los fixtures
+     * (tests/Fixtures/reglas-validas.json y beneficios-catalogo.json).
      */
     private function sembrarCategorias(): void
     {
@@ -41,6 +41,8 @@ class DatabaseSeeder extends Seeder
             'cerveceria' => 'Cervecería',
             'colegio' => 'Colegio',
             'inmobiliaria' => 'Inmobiliaria',
+            'peluqueria' => 'Peluquería',
+            'alquiler-recreacional' => 'Alquiler recreacional',
         ];
 
         foreach ($categorias as $slug => $nombre) {
@@ -49,19 +51,34 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Muestra de 3 o 4 comercios de ejemplo del diseño. Los 15 reales se
-     * cargan desde el panel cuando el cliente entregue los datos (issue #1).
+     * Los 15 comercios del grupo. Los NIT son inventados y provisionales: el
+     * catálogo real lo administra el cliente por base de datos más adelante
+     * (issue #1). Se conservan los NIT 800100100–800400400 porque de ellos
+     * cuelgan los usuarios de prueba y los fixtures del diseño.
+     *
+     * @var list<array{0: string, 1: string, 2: string}>
      */
-    private function sembrarComerciosDeMuestra(): void
-    {
-        $muestra = [
-            ['El Rancho de Javi', '800100100', 'restaurante'],
-            ['Cervecería BBC', '800200200', 'cerveceria'],
-            ['Colegio Semillitas del Futuro', '800300300', 'colegio'],
-            ['Inmobiliaria Laura Rivera', '800400400', 'inmobiliaria'],
-        ];
+    private const COMERCIOS = [
+        ['El Rancho de Javi', '800100100', 'restaurante'],
+        ['Cervecería BBC', '800200200', 'cerveceria'],
+        ['Colegio Semillitas del Futuro', '800300300', 'colegio'],
+        ['Constructora Inmobiliaria Laura Rivera', '800400400', 'inmobiliaria'],
+        ['Peluquería Monarca', '800500500', 'peluqueria'],
+        ['Hubble Alquileres Recreacionales', '800600600', 'alquiler-recreacional'],
+        ['Heladería Los Alpes', '800700700', 'heladeria'],
+        ['Heladería Polo Norte', '800800800', 'heladeria'],
+        ['Restaurante La Parrilla del Río', '800900900', 'restaurante'],
+        ['Restaurante Sabor Caribe', '801001001', 'restaurante'],
+        ['Cervecería El Barril', '801101101', 'cerveceria'],
+        ['Barbería Don Carlos', '801201201', 'peluqueria'],
+        ['Inmobiliaria Rivera Propiedades', '801301301', 'inmobiliaria'],
+        ['Colegio Bilingüe Los Andes', '801401401', 'colegio'],
+        ['Hubble Cabañas del Lago', '801501501', 'alquiler-recreacional'],
+    ];
 
-        foreach ($muestra as [$razonSocial, $nit, $slug]) {
+    private function sembrarComercios(): void
+    {
+        foreach (self::COMERCIOS as [$razonSocial, $nit, $slug]) {
             $categoria = Categoria::query()->where('slug', $slug)->sole();
 
             $comercio = Comercio::query()->firstOrCreate(
@@ -78,7 +95,7 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Un usuario de cada rol para probar el acceso al panel (E2-01), colgados
-     * del primer comercio de muestra.
+     * del primer comercio sembrado.
      */
     private function sembrarUsuarios(): void
     {

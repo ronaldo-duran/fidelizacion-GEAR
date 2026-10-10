@@ -1,0 +1,112 @@
+{
+    "_nota": "Catálogo inicial de beneficios confirmado por el cliente el 2026-10-10 (issue #19 / E5-01). Los números son la fuente de verdad de negocio: cuando el cliente cambie un valor se toca este fixture y el CI dice qué se rompe. Los valores de tipo 'porcentaje' son enteros de 0 a 100; los de 'monto_fijo' serían pesos enteros (regla 3.9). 'comercio_nit' referencia los comercios del seeder (database/seeders/DatabaseSeeder.php).",
+    "_whitelist_condiciones": "Las condiciones 'es_cumpleanos' y 'fin_de_semana' aún no están en la lista blanca del motor de reglas (E3-01, campoCondicion: monto, categoria_slug, comercio_id, sede_id, dia_semana, hora). Al implementar E5-01/E3-01 hay que extender la lista blanca de forma cerrada (regla dura 3.8) o darle a los beneficios su propio sub-esquema de condiciones.",
+    "_niveles": ["bronce", "plata", "oro", "diamante"],
+    "beneficios": [
+        {
+            "nombre": "Descuento de cumpleaños en Peluquería Monarca",
+            "comercio_nit": "800500500",
+            "comercio": "Peluquería Monarca",
+            "categoria_slug": "peluqueria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": {
+                "bronce": 30,
+                "plata": 50,
+                "oro": 70,
+                "diamante": 100
+            },
+            "condiciones": {
+                "es_cumpleanos": true
+            },
+            "max_por_cliente": {
+                "ventana": "anio",
+                "cantidad": 1
+            },
+            "cupo_global": null,
+            "requiere_soporte": false
+        },
+        {
+            "nombre": "Martes de cerveza de línea básica en Cervecería BBC",
+            "comercio_nit": "800200200",
+            "comercio": "Cervecería BBC",
+            "categoria_slug": "cerveceria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": {
+                "bronce": 10,
+                "plata": 20,
+                "oro": 40,
+                "diamante": 50
+            },
+            "condiciones": {
+                "dia_semana": ["martes"]
+            },
+            "max_por_cliente": null,
+            "cupo_global": null,
+            "requiere_soporte": false
+        },
+        {
+            "nombre": "Kilo de carne en El Rancho de Javi",
+            "comercio_nit": "800100100",
+            "comercio": "El Rancho de Javi",
+            "categoria_slug": "restaurante",
+            "tipo": "porcentaje",
+            "valores_por_nivel": {
+                "bronce": 10,
+                "plata": 20,
+                "oro": 40,
+                "diamante": 50
+            },
+            "condiciones": {},
+            "max_por_cliente": {
+                "ventana": "vida",
+                "cantidad": 1
+            },
+            "cupo_global": 50,
+            "requiere_soporte": false
+        },
+        {
+            "nombre": "Descuento en cuota inicial o administración con Constructora Inmobiliaria Laura Rivera",
+            "comercio_nit": "800400400",
+            "comercio": "Constructora Inmobiliaria Laura Rivera",
+            "categoria_slug": "inmobiliaria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": {
+                "bronce": 1,
+                "plata": 2,
+                "oro": 3,
+                "diamante": 5
+            },
+            "condiciones": {},
+            "max_por_cliente": {
+                "ventana": "anio",
+                "cantidad": 1
+            },
+            "cupo_global": null,
+            "requiere_soporte": true,
+            "_todo_cliente": "Confirmar si hay cupo global y su valor; el cliente aprobó los porcentajes 1/2/3/5 % y '1 vez al año con soporte'."
+        },
+        {
+            "nombre": "Descuento de alquiler de fin de semana en Hubble",
+            "comercio_nit": "800600600",
+            "comercio": "Hubble Alquileres Recreacionales",
+            "categoria_slug": "alquiler-recreacional",
+            "tipo": "porcentaje",
+            "valores_por_nivel": {
+                "bronce": 10,
+                "plata": 15,
+                "oro": 20,
+                "diamante": 30
+            },
+            "condiciones": {
+                "fin_de_semana": true
+            },
+            "max_por_cliente": {
+                "ventana": "mes",
+                "cantidad": 1
+            },
+            "cupo_global": null,
+            "requiere_soporte": false,
+            "_todo_cliente": "Definir el cupo global por temporada (el cliente lo aprobó con cupo global, sin fijar el número)."
+        }
+    ]
+}

@@ -14,7 +14,7 @@ it('deja entrar al panel al administrador del grupo', function (): void {
 });
 
 it('niega el panel a un cajero', function (): void {
-    $cajero = User::factory()->cajero(1, 1)->create();
+    $cajero = User::factory()->cajero()->create();
 
     $this->actingAs($cajero)->get('/admin')->assertForbidden();
 });
@@ -28,7 +28,7 @@ it('niega el panel a un usuario desactivado aunque tenga rol de acceso', functio
 
 it('solo el administrador del grupo gestiona usuarios', function (): void {
     $grupo = User::factory()->administradorDelGrupo()->create();
-    $comercio = User::factory()->administradorDeComercio(1)->create();
+    $comercio = User::factory()->administradorDeComercio()->create();
 
     $this->actingAs($grupo);
     expect(UserResource::canAccess())->toBeTrue();
@@ -38,19 +38,22 @@ it('solo el administrador del grupo gestiona usuarios', function (): void {
 });
 
 it('el alcance por comercio limita a su propio comercio', function (): void {
-    $grupo = User::factory()->administradorDelGrupo()->create();
-    $comercio = User::factory()->administradorDeComercio(5)->create();
+    $propio = App\Models\Comercio::factory()->create();
+    $ajeno = App\Models\Comercio::factory()->create();
 
-    expect($grupo->alcanzaComercio(99))->toBeTrue()
-        ->and($comercio->alcanzaComercio(5))->toBeTrue()
-        ->and($comercio->alcanzaComercio(6))->toBeFalse();
+    $grupo = User::factory()->administradorDelGrupo()->create();
+    $comercio = User::factory()->administradorDeComercio($propio->id)->create();
+
+    expect($grupo->alcanzaComercio($ajeno->id))->toBeTrue()
+        ->and($comercio->alcanzaComercio($propio->id))->toBeTrue()
+        ->and($comercio->alcanzaComercio($ajeno->id))->toBeFalse();
 });
 
 it('audita la creación de un usuario con el autor y sin la contraseña', function (): void {
     $autor = User::factory()->administradorDelGrupo()->create();
 
     $this->actingAs($autor);
-    $nuevo = User::factory()->cajero(1, 1)->create();
+    $nuevo = User::factory()->cajero()->create();
 
     $registro = Auditoria::query()
         ->where('modelo', User::class)
@@ -64,7 +67,7 @@ it('audita la creación de un usuario con el autor y sin la contraseña', functi
 });
 
 it('audita una actualización guardando el antes y el después del cambio', function (): void {
-    $usuario = User::factory()->cajero(1, 1)->create(['rol' => RolUsuario::Cajero]);
+    $usuario = User::factory()->cajero()->create(['rol' => RolUsuario::Cajero]);
 
     $usuario->update(['rol' => RolUsuario::AdministradorComercio]);
 

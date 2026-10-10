@@ -3,7 +3,7 @@ name: CI
 # Etapas:
 #   1. Calidad    → PHP (Pint, PHPCS, PHPMD, PHPStan, auditoría), frontend (ESLint, Prettier,
 #                   auditoría, build), versión, mensajes de commit y tamaño del PR.
-#   2. Pruebas    → Pest sobre PostgreSQL y SQL Server (solo si la etapa 1 pasa).
+#   2. Pruebas    → Pest sobre PostgreSQL y MySQL (solo si la etapa 1 pasa).
 #   3. E2E        → Playwright contra la app real (solo si las pruebas pasan).
 #
 # La revisión de Claude no corre aquí: se pide con /revisar en un PR (ver claude-ondemand.yml).
@@ -30,7 +30,7 @@ env:
   HUSKY: 0
   PHP_VERSION: '8.3'
   NODE_VERSION: '22'
-  PHP_EXTENSIONS: pdo_pgsql, pdo_sqlsrv, sqlsrv, intl, redis
+  PHP_EXTENSIONS: pdo_pgsql, pdo_mysql, intl, redis
 
 jobs:
   # ─────────────────────────────── Etapa 1: calidad ───────────────────────────────
@@ -184,15 +184,16 @@ jobs:
             cobertura: true
             opciones: >-
               --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
-          - db: sqlsrv
-            imagen: mcr.microsoft.com/mssql/server:2022-latest
-            puerto: 1433
-            usuario: sa
-            clave: FidelizacionTest2026
+          - db: mysql
+            imagen: mysql:8
+            puerto: 3306
+            usuario: root
+            # Base de pruebas efímera: root sin contraseña, no se expone ningún secreto.
+            clave: ''
             cobertura: false
             opciones: >-
-              --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P FidelizacionTest2026 -Q 'SELECT 1' -b"
-              --health-interval 10s --health-timeout 10s --health-retries 15 --health-start-period 20s
+              --health-cmd "mysqladmin ping -h 127.0.0.1 --silent"
+              --health-interval 10s --health-timeout 5s --health-retries 15 --health-start-period 20s
     services:
       db:
         image: ${{ matrix.imagen }}
@@ -200,9 +201,8 @@ jobs:
           POSTGRES_DB: testing
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          ACCEPT_EULA: 'Y'
-          MSSQL_PID: Developer
-          MSSQL_SA_PASSWORD: FidelizacionTest2026
+          MYSQL_DATABASE: testing
+          MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         ports:
           - ${{ matrix.puerto }}:${{ matrix.puerto }}
         options: ${{ matrix.opciones }}
@@ -213,7 +213,6 @@ jobs:
       DB_DATABASE: testing
       DB_USERNAME: ${{ matrix.usuario }}
       DB_PASSWORD: ${{ matrix.clave }}
-      DB_TRUST_SERVER_CERTIFICATE: 'true'
     steps:
       - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
@@ -222,23 +221,6 @@ jobs:
           extensions: ${{ env.PHP_EXTENSIONS }}
           coverage: ${{ matrix.cobertura && 'pcov' || 'none' }}
       - uses: ramsey/composer-install@v3
-      # pdo_sqlsrv necesita el driver ODBC de Microsoft, que el runner no trae.
-      - name: Driver ODBC de SQL Server
-        if: matrix.db == 'sqlsrv'
-        run: |
-          if ! grep -rqs "packages.microsoft.com/ubuntu" /etc/apt/sources.list /etc/apt/sources.list.d/; then
-            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-              | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-            curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" \
-              | sudo tee /etc/apt/sources.list.d/mssql-release.list > /dev/null
-          fi
-          sudo apt-get update -q
-          sudo ACCEPT_EULA=Y apt-get install -y -q msodbcsql18
-      - name: Crear la base de pruebas en SQL Server
-        if: matrix.db == 'sqlsrv'
-        run: |
-          docker exec ${{ job.services.db.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost \
-            -U sa -P "$DB_PASSWORD" -Q "CREATE DATABASE testing"
       - run: cp .env.example .env && php artisan key:generate
       - name: Migraciones hacia arriba y hacia abajo
         run: |

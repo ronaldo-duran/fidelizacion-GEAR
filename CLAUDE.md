@@ -300,9 +300,11 @@ Cada etapa corre solo si la anterior pasó:
 
 ### Pull requests
 
-Todo cambio de código entra por PR y lo aprueba Ronaldo (`.github/CODEOWNERS`
-lo pide como revisor automáticamente). Solo docs y ajustes menores de
-configuración pueden ir directo a `main` mientras no se active la protección.
+Todo cambio de código entra por PR y lo aprueba **el otro**:
+Ronaldo aprueba los PRs de Neyder y Neyder los de Ronaldo
+(`.github/CODEOWNERS` pide la revisión automáticamente). Solo docs y
+ajustes menores de configuración pueden ir directo a `main` mientras no se
+active la protección.
 
 - **Tamaño:** se cuentan solo las líneas de producción (`app/`, `config/`,
   `database/`, `resources/`, `routes/`); pruebas, specs, docs y locks no
@@ -325,7 +327,9 @@ configuración pueden ir directo a `main` mientras no se active la protección.
   procesos nocturnos, membresías, API pública, salida a producción): son
   las áreas donde un error cuesta dinero real. Antes del código, la spec
   se aprueba en un PR propio; después, el PR del código lleva `/revisar` de
-  Claude y la aprobación de Ronaldo. Cobertura obligatoria (sección 7).
+  Claude y la aprobación del otro. Cobertura obligatoria (sección 7).
+- **Reasignar un issue:** quien lo toma se lo asigna en GitHub y cambia la
+  línea `**Quién:**` del cuerpo del issue, que es la que lee Claude.
 - Fuera del libro de puntos nadie escribe en `movimientos_puntos`: todo
   movimiento pasa por las Actions de E3-02 y E4-01.
 

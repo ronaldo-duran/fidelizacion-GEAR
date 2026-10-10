@@ -133,6 +133,7 @@ complementarios que no son condición de hito (E3-04, E4-03, E9-02).
 - Un issue = una rama `f/<ID>-<slug>` = uno o varios PRs, idealmente de
   menos de 400 líneas de producción, con `Closes #N` en el último.
 - Antes de pedir revisión: Pint, PHPStan y Pest en verde. El PR le pide
-  revisión a Ronaldo automáticamente (`.github/CODEOWNERS`).
+  revisión al otro automáticamente (`.github/CODEOWNERS`): Ronaldo revisa
+  lo de Neyder y Neyder lo de Ronaldo.
 - Para que Claude revise un PR: comentar `/revisar` con el CI en verde.
   `@claude <pedido>` le pide cualquier otra cosa.

@@ -1,3 +1,5 @@
-# Ronaldo revisa todos los cambios. Con la protección de main activa y
-# "Require review from Code Owners", su aprobación es obligatoria.
-* @ronaldo-duran
+# Los dos son dueños de todo el código. Como nadie puede aprobar su propio PR,
+# en la práctica Ronaldo aprueba los PRs de Neyder y Neyder los de Ronaldo.
+# Con la protección de main y "Require review from Code Owners" activos, la
+# aprobación del otro es obligatoria y ningún PR queda sin quién lo apruebe.
+* @ronaldo-duran @NeyderJavier

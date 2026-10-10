@@ -51,6 +51,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->rol === RolUsuario::AdministradorGrupo;
     }
 
+    public function esAdministradorDeComercio(): bool
+    {
+        return $this->rol === RolUsuario::AdministradorComercio;
+    }
+
     /**
      * El correo se guarda en minúsculas y sin espacios: SQL Server compara
      * sin distinguir mayúsculas, así que normalizarlo evita duplicados que

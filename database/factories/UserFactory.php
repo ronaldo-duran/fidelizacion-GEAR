@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Enums\RolUsuario;
+use App\Models\Comercio;
+use App\Models\Sede;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -55,20 +57,20 @@ class UserFactory extends Factory
         return $this->state(['rol' => RolUsuario::AdministradorGrupo]);
     }
 
-    public function administradorDeComercio(int $comercioId): static
+    public function administradorDeComercio(Comercio|int|null $comercio = null): static
     {
-        return $this->state([
+        return $this->state(fn (): array => [
             'rol' => RolUsuario::AdministradorComercio,
-            'comercio_id' => $comercioId,
+            'comercio_id' => $comercio ?? Comercio::factory(),
         ]);
     }
 
-    public function cajero(int $comercioId, ?int $sedeId = null): static
+    public function cajero(Comercio|int|null $comercio = null, Sede|int|null $sede = null): static
     {
-        return $this->state([
+        return $this->state(fn (): array => [
             'rol' => RolUsuario::Cajero,
-            'comercio_id' => $comercioId,
-            'sede_id' => $sedeId,
+            'comercio_id' => $comercio ?? Comercio::factory(),
+            'sede_id' => $sede,
         ]);
     }
 

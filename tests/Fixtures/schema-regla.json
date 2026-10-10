@@ -1,0 +1,148 @@
+{
+    "_nota": "JSON Schema (draft 2020-12) de la columna `definicion` de `reglas`, por tipo. Esquema CERRADO: additionalProperties=false en todos los niveles, lista blanca de claves y de operadores. Implementa la regla dura 3.8 de CLAUDE.md. Ninguna expresión libre ni string evaluable: una condición es un objeto {campo, operador, valor}, nunca una cadena como \"monto > 50000\". El validador de E3-01 debe aplicar el sub-esquema que corresponda al `tipo` de la regla.",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://clubaponterivera.co/schema/regla.json",
+    "title": "Definición de regla",
+    "type": "object",
+    "unevaluatedProperties": false,
+    "required": ["tipo", "definicion"],
+    "properties": {
+        "tipo": { "enum": ["acumulacion", "niveles", "bonificacion"] },
+        "definicion": { "type": "object" }
+    },
+    "allOf": [
+        {
+            "if": { "properties": { "tipo": { "const": "acumulacion" } } },
+            "then": { "properties": { "definicion": { "$ref": "#/$defs/defAcumulacion" } } }
+        },
+        {
+            "if": { "properties": { "tipo": { "const": "niveles" } } },
+            "then": { "properties": { "definicion": { "$ref": "#/$defs/defNiveles" } } }
+        },
+        {
+            "if": { "properties": { "tipo": { "const": "bonificacion" } } },
+            "then": { "properties": { "definicion": { "$ref": "#/$defs/defBonificacion" } } }
+        }
+    ],
+    "$defs": {
+        "nivel": { "enum": ["bronce", "plata", "oro", "diamante"] },
+        "enteroPositivo": { "type": "integer", "minimum": 0 },
+        "operador": {
+            "_nota": "Lista blanca de operadores. Solo comparaciones estructuradas. Prohibido cualquier operador fuera de esta lista.",
+            "enum": ["igual", "distinto", "mayor", "mayor_igual", "menor", "menor_igual", "en"]
+        },
+        "campoCondicion": {
+            "_nota": "Lista blanca de campos sobre los que se puede condicionar. Prohibido cualquier campo fuera de esta lista.",
+            "enum": ["monto", "categoria_slug", "comercio_id", "sede_id", "dia_semana", "hora"]
+        },
+        "condicion": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["campo", "operador", "valor"],
+            "properties": {
+                "campo": { "$ref": "#/$defs/campoCondicion" },
+                "operador": { "$ref": "#/$defs/operador" },
+                "valor": {
+                    "_nota": "Entero (pesos o id), cadena (slug), o arreglo de esos para el operador `en`. Nunca un objeto ni una expresión.",
+                    "type": ["integer", "string", "array"],
+                    "items": { "type": ["integer", "string"] }
+                }
+            }
+        },
+        "defAcumulacion": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["moneda_por_punto", "tasas_por_categoria", "vigencia_puntos_meses"],
+            "properties": {
+                "moneda_por_punto": {
+                    "_nota": "Pesos enteros que equivalen a 1 punto base. Supuesto del cliente: $1.000.",
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "tasas_por_categoria": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["categoria_slug", "puntos_por_unidad"],
+                        "properties": {
+                            "categoria_slug": { "type": "string", "minLength": 1 },
+                            "puntos_por_unidad": {
+                                "_nota": "Puntos otorgados por cada `moneda_por_punto` gastado en esa categoría.",
+                                "type": "integer",
+                                "minimum": 0
+                            }
+                        }
+                    }
+                },
+                "topes": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "puntos_por_transaccion": { "type": ["integer", "null"], "minimum": 1 },
+                        "puntos_por_dia": { "type": ["integer", "null"], "minimum": 1 },
+                        "puntos_por_mes": { "type": ["integer", "null"], "minimum": 1 }
+                    }
+                },
+                "vigencia_puntos_meses": {
+                    "_nota": "Meses que viven los puntos antes de caducar. Supuesto del cliente: 12.",
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "defNiveles": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["umbrales", "proteccion_meses", "aviso_dias_antes"],
+            "properties": {
+                "umbrales": {
+                    "_nota": "Puntos mínimos de cada nivel. Bronce siempre 0. Deben ser estrictamente crecientes. Supuesto: Plata 500, Oro 1.500, Diamante 3.000.",
+                    "type": "array",
+                    "minItems": 4,
+                    "maxItems": 4,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["nivel", "umbral_puntos"],
+                        "properties": {
+                            "nivel": { "$ref": "#/$defs/nivel" },
+                            "umbral_puntos": { "$ref": "#/$defs/enteroPositivo" }
+                        }
+                    }
+                },
+                "proteccion_meses": {
+                    "_nota": "Meses de gracia antes de bajar de nivel. Supuesto: 3.",
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "aviso_dias_antes": {
+                    "_nota": "Días de anticipación del aviso de descenso. Supuesto: 30.",
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "defBonificacion": {
+            "_nota": "Regla opcional de puntos extra cuando se cumplen condiciones estructuradas. Todas las condiciones deben cumplirse (AND). El multiplicador aplica sobre los puntos base de la transacción.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["multiplicador", "condiciones"],
+            "properties": {
+                "multiplicador": {
+                    "_nota": "Factor entero sobre los puntos base. 2 = doble. Entero para no introducir decimales (regla dura 3.9).",
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 10
+                },
+                "condiciones": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "items": { "$ref": "#/$defs/condicion" }
+                }
+            }
+        }
+    }
+}

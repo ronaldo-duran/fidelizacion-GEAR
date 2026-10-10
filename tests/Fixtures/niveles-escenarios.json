@@ -1,0 +1,81 @@
+{
+    "_nota": "Escenarios para E3-03 (nivel efectivo). Verifican las reglas duras 3.5 (tres fuentes separadas, nivel_efectivo = máximo de las vigentes) y 3.6 (ascenso síncrono, descenso nocturno). Las fechas son relativas a `hoy`. Umbrales según el fixture de reglas (Plata 500, Oro 1.500, Diamante 3.000 — supuestos del cliente).",
+    "casos": [
+        {
+            "_descripcion": "Cliente Oro por puntos y Diamante por membresía vigente: el nivel efectivo es Diamante.",
+            "_criterio_e3_03": "oro por puntos + diamante por membresía vigente = diamante",
+            "fuentes": {
+                "nivel_por_puntos": "oro",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "hoy+2m",
+                "nivel_por_evento": null,
+                "evento_vigente_hasta": null
+            },
+            "nivel_efectivo_esperado": "diamante"
+        },
+        {
+            "_descripcion": "Al vencer la membresía, el mismo cliente cae a Oro (su nivel por puntos), no a Bronce.",
+            "_criterio_e3_03": "al vencer la membresía cae a oro, no a bronce",
+            "fuentes": {
+                "nivel_por_puntos": "oro",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "hoy-1d",
+                "nivel_por_evento": null
+            },
+            "nivel_efectivo_esperado": "oro"
+        },
+        {
+            "_descripcion": "Ascenso síncrono: el cliente cruza el umbral de Oro (1.500) con una compra; al terminar la petición su nivel efectivo ya es Oro.",
+            "_criterio_e3_03": "ascenso síncrono en la misma petición",
+            "saldo_antes": 1450,
+            "nivel_antes": "plata",
+            "compra_puntos": 85,
+            "saldo_despues": 1535,
+            "nivel_efectivo_esperado": "oro",
+            "momento": "misma_peticion"
+        },
+        {
+            "_descripcion": "Protección: el saldo cae bajo el umbral de Oro, pero dentro de la ventana de protección el job nocturno NO baja.",
+            "_criterio_e3_03": "dentro de protección el job no baja",
+            "fuentes": {
+                "nivel_por_puntos": "oro",
+                "nivel_efectivo": "oro",
+                "saldo_actual": 1200,
+                "proteccion_hasta": "hoy+20d"
+            },
+            "accion": "job_nocturno",
+            "nivel_efectivo_esperado": "oro"
+        },
+        {
+            "_descripcion": "Descenso: pasada la protección, el job nocturno baja al nivel que corresponde al saldo y registra el cambio con su fecha.",
+            "_criterio_e3_03": "pasada la protección el job baja y registra el cambio",
+            "fuentes": {
+                "nivel_por_puntos": "oro",
+                "nivel_efectivo": "oro",
+                "saldo_actual": 1200,
+                "proteccion_hasta": "hoy-1d"
+            },
+            "accion": "job_nocturno",
+            "nivel_efectivo_esperado": "plata",
+            "registra_cambio": true
+        },
+        {
+            "_descripcion": "Evento calificado: compra de inmueble otorga Diamante por un año; mientras esté vigente, el nivel efectivo es Diamante aunque los puntos digan Bronce.",
+            "_criterio_e3_03": "evento vigente manda sobre puntos",
+            "fuentes": {
+                "nivel_por_puntos": "bronce",
+                "nivel_por_membresia": null,
+                "nivel_por_evento": "diamante",
+                "evento_vigente_hasta": "hoy+11m"
+            },
+            "nivel_efectivo_esperado": "diamante"
+        },
+        {
+            "_descripcion": "Barrera 3.6: ningún camino de código baja el nivel dentro de una petición HTTP (solo sube o se mantiene).",
+            "_criterio_e3_03": "ninguna petición HTTP baja el nivel",
+            "escenario": "cualquier_peticion",
+            "regla": "nivel_efectivo_despues >= nivel_efectivo_antes",
+            "excepcion": "solo el job nocturno puede bajar"
+        }
+    ]
+}

@@ -12,4 +12,5 @@ Artisan::command('inspire', function (): void {
 
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()
-    ->onOneServer();
+    ->onOneServer()
+    ->when(static fn (): bool => config('queue.default') === 'redis');

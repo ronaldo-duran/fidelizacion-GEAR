@@ -55,10 +55,14 @@ RUN apk add --no-cache \
     bcmath \
     zip \
     opcache \
+    pcntl \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del $PHPIZE_DEPS \
-    && rm -rf /tmp/pear
+    && rm -rf /tmp/pear \
+    && php -m | grep -qx pcntl \
+    && php -m | grep -qx posix \
+    && php -m | grep -qx redis
 
 WORKDIR /var/www/html
 

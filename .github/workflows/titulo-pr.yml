@@ -1,0 +1,30 @@
+name: Título del PR
+
+# Los PRs se fusionan con squash: el título del PR es el commit que queda en main,
+# así que debe cumplir Conventional Commits igual que cualquier commit.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  titulo:
+    name: Título del PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+        env:
+          HUSKY: 0
+      - name: Conventional Commits en el título
+        env:
+          TITULO: ${{ github.event.pull_request.title }}
+        run: |
+          echo "Título: $TITULO"
+          echo "$TITULO" | npx commitlint --verbose

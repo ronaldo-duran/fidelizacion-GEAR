@@ -312,6 +312,9 @@ active la protección.
   tiene razón de ser (p. ej. un recurso de Filament completo), etiqueta
   `pr-grande` y explicar el porqué en la descripción.
 - Trunk-based: ramas cortas desde `main`, merge diario.
+- **Merge solo con squash.** El título del PR se vuelve el commit en `main`,
+  así que debe cumplir Conventional Commits (lo valida el check
+  "Título del PR"), por ejemplo `feat(reglas): versiona la regla al guardar`.
 - Nombre de rama: `f/E3-01-motor-reglas`
 - El cuerpo del PR debe incluir `Closes #N`
 - Si el CI está rojo, el PR no se revisa.

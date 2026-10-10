@@ -21,10 +21,19 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        // Usuario para entrar al panel. Los roles y permisos llegan con E2-01.
-        User::factory()->create([
-            'name' => 'Administrador',
+        User::factory()->administradorDelGrupo()->create([
+            'name' => 'Administrador del grupo',
             'email' => 'admin@example.com',
+        ]);
+
+        User::factory()->administradorDeComercio(1)->create([
+            'name' => 'Administrador de comercio',
+            'email' => 'comercio@clubaponterivera.co',
+        ]);
+
+        User::factory()->cajero(1, 1)->create([
+            'name' => 'Cajero',
+            'email' => 'cajero@clubaponterivera.co',
         ]);
     }
 }

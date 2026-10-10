@@ -1,7 +1,7 @@
 name: Título del PR
 
-# Los PRs se fusionan con squash: el título del PR es el commit que queda en main,
-# así que debe cumplir Conventional Commits igual que cualquier commit.
+# El título del PR queda en el commit de merge y en el historial de PRs:
+# debe cumplir Conventional Commits igual que cualquier commit.
 on:
   pull_request:
     types: [opened, edited, reopened, synchronize]

@@ -312,9 +312,16 @@ active la protección.
   tiene razón de ser (p. ej. un recurso de Filament completo), etiqueta
   `pr-grande` y explicar el porqué en la descripción.
 - Trunk-based: ramas cortas desde `main`, merge diario.
-- **Merge solo con squash.** El título del PR se vuelve el commit en `main`,
-  así que debe cumplir Conventional Commits (lo valida el check
-  "Título del PR"), por ejemplo `feat(reglas): versiona la regla al guardar`.
+- **Merge con commit de merge**, sin squash ni rebase: `main` conserva
+  todos los commits del PR con sus mismos SHA, así las ramas apiladas siguen
+  funcionando después de fusionar la de abajo. Cada commit ya pasó
+  commitlint; el título del PR también debe cumplir Conventional Commits
+  (check "Título del PR") porque queda en el commit de merge, por ejemplo
+  `feat(reglas): versiona la regla al guardar`.
+- **Ramas apiladas:** si `f/E3-02-libro` depende de `f/E3-01-motor-reglas`,
+  se crea desde ella y su PR apunta a esa rama. Al fusionar la de abajo y
+  borrar su rama, GitHub redirige el PR de arriba a `main` solo. Cada PR de
+  la pila que toque código de producción sube la versión respecto a su base.
 - Nombre de rama: `f/E3-01-motor-reglas`
 - El cuerpo del PR debe incluir `Closes #N`
 - Si el CI está rojo, el PR no se revisa.

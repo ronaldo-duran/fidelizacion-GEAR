@@ -35,7 +35,7 @@ body:
     id: riesgo
     attributes:
       label: Riesgo
-      description: Alto = dinero real o costoso de revertir. Lo toma el responsable del proyecto.
+      description: Alto = dinero real o costoso de revertir. Spec y PR con revisión obligatoria de Ronaldo.
       options: [alto, medio, bajo]
     validations: { required: true }
   - type: checkboxes

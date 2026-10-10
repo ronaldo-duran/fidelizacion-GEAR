@@ -218,7 +218,7 @@ elimina del enum antes de crear la migración.
 - Cada feature es un **issue** en GitHub con su ID de spec en el título:
   `[E3-01] Motor de reglas configurable`.
 - Etiquetas: `epica:E1`…`epica:E10`, `semana:1`…`semana:6`,
-  `riesgo:alto` (lo toma el responsable del proyecto), `decision-cliente`,
+  `riesgo:alto` (spec y PR con revisión obligatoria de Ronaldo), `decision-cliente`,
   `bloqueado`.
 - Milestones = hitos de pago (Hito 2, 3 y 4).
 - Tablero: GitHub Project del repositorio (usuario ronaldo-duran, proyecto 6).
@@ -300,8 +300,9 @@ Cada etapa corre solo si la anterior pasó:
 
 ### Pull requests
 
-Por ahora se trabaja directo sobre `main`. Cuando se active la protección
-de la rama:
+Todo cambio de código entra por PR y lo aprueba Ronaldo (`.github/CODEOWNERS`
+lo pide como revisor automáticamente). Solo docs y ajustes menores de
+configuración pueden ir directo a `main` mientras no se active la protección.
 
 - **Tamaño:** se cuentan solo las líneas de producción (`app/`, `config/`,
   `database/`, `resources/`, `routes/`); pruebas, specs, docs y locks no
@@ -315,12 +316,18 @@ de la rama:
 
 ### Reparto
 
-El motor de reglas, el libro de puntos, las membresías y la idempotencia
-de la API los implementa el responsable del proyecto, no el desarrollador
-auxiliar. Son las áreas donde un error cuesta dinero real. Esos issues
-llevan `riesgo:alto`. Si un issue sin esa etiqueta necesita tocar el libro
-de puntos, debe hacerlo **a través de las Actions** del responsable, nunca
-escribiendo en `movimientos_puntos` directamente.
+- **Neyder** (`@NeyderJavier`) implementa todos los issues técnicos.
+- **Ronaldo** (`@ronaldo-duran`), responsable del proyecto: relación con
+  el cliente y sus decisiones, cuentas a nombre del cliente, aceptación de
+  hitos, capacitación y **revisión de todos los PRs**. No implementa salvo
+  que haga falta.
+- Issues `riesgo:alto` (motor de reglas, libro de puntos, nivel efectivo,
+  procesos nocturnos, membresías, API pública, salida a producción): son
+  las áreas donde un error cuesta dinero real. Antes del código, la spec
+  se aprueba en un PR propio; después, el PR del código lleva `/revisar` de
+  Claude y la aprobación de Ronaldo. Cobertura obligatoria (sección 7).
+- Fuera del libro de puntos nadie escribe en `movimientos_puntos`: todo
+  movimiento pasa por las Actions de E3-02 y E4-01.
 
 ### Decisiones pendientes del cliente
 

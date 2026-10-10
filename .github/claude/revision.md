@@ -62,7 +62,7 @@ ciclomática, nombres cortos, mensajes de commit, versión. Tampoco gustos perso
    configuración para casos que no existen, código "por si acaso", genéricos donde basta lo concreto. Y lo contrario:
    duplicación evidente que pide una Action compartida.
 8. **Alcance.** El PR hace lo que dice su issue y nada de `CLAUDE.md` §8 (fuera de alcance). Si toca un área de
-   `riesgo:alto` y no viene del responsable del proyecto, señálalo. Si un número de negocio pendiente del cliente
+   `riesgo:alto`, verifica que la spec exista en `specs/` y que las pruebas cubran todos sus criterios. Si un número de negocio pendiente del cliente
    aparece inventado en vez de un placeholder con `// TODO(cliente):`, señálalo.
 
 ## Cómo reportar

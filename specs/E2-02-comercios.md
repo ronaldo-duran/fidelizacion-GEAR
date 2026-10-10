@@ -46,11 +46,12 @@ de compras (E4-01).
 
 - Categorías iniciales (slugs): `restaurante`, `heladeria`, `cerveceria`,
   `colegio`, `inmobiliaria`. Coinciden con los fixtures de reglas.
-- Seeder con los 15 comercios reales cuando el cliente entregue los datos
-  (issue #1, decisión de insumos). Mientras tanto, datos de ejemplo del
-  diseño (p. ej. El Rancho de Javi, Cervecería BBC, Colegio Semillitas
-  del Futuro, Inmobiliaria Laura Rivera) marcados como provisionales con
-  `// TODO(cliente):`.
+- Seeder de muestra con 3 o 4 comercios de ejemplo del diseño (p. ej. El
+  Rancho de Javi, Cervecería BBC, Colegio Semillitas del Futuro,
+  Inmobiliaria Laura Rivera), marcados como provisionales con
+  `// TODO(cliente):`. Basta para staging y pruebas; los 15 comercios
+  reales no llegan de una, se cargan desde el panel a medida que el
+  cliente entregue los datos (issue #1, decisión de insumos).
 
 ## Reglas duras de CLAUDE.md que aplican
 

@@ -3,16 +3,16 @@ version: 2
 updates:
   # Dependencias de PHP (Composer)
   - package-ecosystem: composer
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
       day: monday
-      time: "06:00"
+      time: '06:00'
       timezone: America/Bogota
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
     groups:
       php-menores:
         update-types:
@@ -21,16 +21,16 @@ updates:
 
   # Dependencias de frontend (npm)
   - package-ecosystem: npm
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
       day: monday
-      time: "06:00"
+      time: '06:00'
       timezone: America/Bogota
     open-pull-requests-limit: 5
     commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
     groups:
       npm-menores:
         update-types:
@@ -39,11 +39,11 @@ updates:
 
   # Acciones de GitHub usadas en los workflows del CI
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: '/'
     schedule:
       interval: weekly
       day: monday
-      time: "06:00"
+      time: '06:00'
       timezone: America/Bogota
     commit-message:
-      prefix: "ci(deps)"
+      prefix: 'ci(deps)'

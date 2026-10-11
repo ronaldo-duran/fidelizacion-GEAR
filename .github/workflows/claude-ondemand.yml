@@ -61,7 +61,7 @@ jobs:
             echo "verde=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: steps.modo.outputs.modo != 'nada' && (env.PR == '' || steps.ci.outputs.verde == 'true')
         with:
           fetch-depth: 1

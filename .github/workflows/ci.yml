@@ -46,7 +46,7 @@ jobs:
           extensions: ${{ env.PHP_EXTENSIONS }}
           coverage: none
           tools: cs2pr
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
       - name: composer.json válido
         run: composer validate --strict
       - name: Dependencias PHP sin vulnerabilidades
@@ -70,7 +70,7 @@ jobs:
         with:
           php-version: ${{ env.PHP_VERSION }}
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
         with:
           composer-options: --no-scripts
       - uses: actions/setup-node@v5
@@ -220,7 +220,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: ${{ env.PHP_EXTENSIONS }}
           coverage: ${{ matrix.cobertura && 'pcov' || 'none' }}
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
       - run: cp .env.example .env && php artisan key:generate
       - name: Migraciones hacia arriba y hacia abajo
         run: |
@@ -259,7 +259,7 @@ jobs:
           php-version: ${{ env.PHP_VERSION }}
           extensions: ${{ env.PHP_EXTENSIONS }}
           coverage: none
-      - uses: ramsey/composer-install@v3
+      - uses: ramsey/composer-install@v4
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}

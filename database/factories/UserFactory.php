@@ -39,6 +39,7 @@ class UserFactory extends Factory
             'comercio_id' => null,
             'sede_id' => null,
             'activo' => true,
+            'puede_editar_json_reglas' => false,
         ];
     }
 
@@ -72,6 +73,11 @@ class UserFactory extends Factory
             'comercio_id' => $comercio ?? Comercio::factory(),
             'sede_id' => $sede,
         ]);
+    }
+
+    public function jsonReglaEditor(): static
+    {
+        return $this->state(['puede_editar_json_reglas' => true]);
     }
 
     public function inactivo(): static

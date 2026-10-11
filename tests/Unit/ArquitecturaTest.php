@@ -47,7 +47,6 @@ arch('la configuración se lee con config(), no con env()')
     ->expect('env')
     ->toOnlyBeUsedIn(['config']);
 
-// Cuando exista la primera clase en app/Actions, activar:
-// arch('las acciones de dominio son invocables')
-//     ->expect('App\Actions')
-//     ->toBeInvokable();
+arch('las acciones de dominio son invocables')
+    ->expect('App\Actions')
+    ->toBeInvokable();

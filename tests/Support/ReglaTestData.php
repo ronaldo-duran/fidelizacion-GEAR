@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Actions\Reglas\CreateRegla;
 use App\Enums\TipoRegla;
 use App\Models\Regla;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 
 /**
@@ -22,6 +24,11 @@ final class ReglaTestData
             'multiplicador' => $multiplicador,
             'condiciones' => [['campo' => 'monto', 'operador' => 'mayor_igual', 'valor' => 50000]],
         ];
+    }
+
+    public static function createBonificacion(User $admin, string $codigo = 'doble-fin-de-semana'): Regla
+    {
+        return app(CreateRegla::class)($admin, $codigo, TipoRegla::Bonificacion, self::bonificacion());
     }
 
     /**

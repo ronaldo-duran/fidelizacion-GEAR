@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Actions\Reglas\CreateRegla;
+use App\Enums\TipoRegla;
 use App\Models\Categoria;
 use App\Models\Comercio;
 use App\Models\Sede;
@@ -27,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->sembrarCategorias();
         $this->sembrarComercios();
         $this->sembrarUsuarios();
+        $this->seedReglas();
     }
 
     /**
@@ -118,6 +121,43 @@ class DatabaseSeeder extends Seeder
         User::factory()->cajero($comercio->id, $sede->id)->create([
             'name' => 'Cajero',
             'email' => 'cajero@clubaponterivera.co',
+        ]);
+    }
+
+    /**
+     * Base engine rules (E3-01) with the values the client confirmed on
+     * 2026-10-10 (issue #7): 1 point per $1.000 in every category, points
+     * last 12 months, thresholds 500/1.500/3.000, no protection and notices
+     * 30, 7 and 1 day before. Same values as tests/Fixtures/reglas-validas.json.
+     */
+    private function seedReglas(): void
+    {
+        $admin = User::query()->where('email', 'admin@example.com')->sole();
+        $createRegla = app(CreateRegla::class);
+
+        $tasas = Categoria::query()->get()
+            ->map(static fn (Categoria $categoria): array => [
+                'categoria_slug' => $categoria->slug,
+                'puntos_por_unidad' => 1,
+            ])
+            ->all();
+
+        $createRegla($admin, 'acumulacion-base', TipoRegla::Acumulacion, [
+            'moneda_por_punto' => 1000,
+            'tasas_por_categoria' => $tasas,
+            'topes' => ['puntos_por_transaccion' => null, 'puntos_por_dia' => null, 'puntos_por_mes' => null],
+            'vigencia_puntos_meses' => 12,
+        ]);
+
+        $createRegla($admin, 'niveles', TipoRegla::Niveles, [
+            'umbrales' => [
+                ['nivel' => 'bronce', 'umbral_puntos' => 0],
+                ['nivel' => 'plata', 'umbral_puntos' => 500],
+                ['nivel' => 'oro', 'umbral_puntos' => 1500],
+                ['nivel' => 'diamante', 'umbral_puntos' => 3000],
+            ],
+            'proteccion_meses' => 0,
+            'avisos_dias_antes' => [30, 7, 1],
         ]);
     }
 }

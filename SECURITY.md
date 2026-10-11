@@ -17,7 +17,7 @@ para cualquiera y expondría el problema antes de poder corregirlo.
 En su lugar, usa el reporte privado de GitHub:
 
 1. Entra a la pestaña **Security** del repositorio.
-2. Abre **Report a vulnerability** (en *Private vulnerability reporting*).
+2. Abre **Report a vulnerability** (en _Private vulnerability reporting_).
 3. Describe el problema, los pasos para reproducirlo y, si lo tienes, un
    ejemplo mínimo.
 

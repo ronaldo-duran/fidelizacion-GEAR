@@ -1,9 +1,9 @@
 {
-    "_nota": "Reglas que DEBEN validar contra schema-regla.json. Cada entrada es una regla de ejemplo con los supuestos del cliente (issue #1). `_supuesto: true` marca los números que el cliente aún no confirma; cuando confirme, se cambia aquí y el CI dice qué se rompió. Las categorías coinciden con el seeder de E2-02.",
+    "_nota": "Reglas que DEBEN validar contra schema-regla.json. Cada entrada es una regla de ejemplo con los supuestos del cliente (issue #1). `_supuesto: true` marca los números que el cliente aún no confirma (la acumulación 1/$1.000, la vigencia de 12 meses y los umbrales 500/1.500/3.000 quedaron confirmados el 2026-10-10); cuando confirme, se cambia aquí y el CI dice qué se rompió. Las categorías coinciden con el seeder de E2-02.",
     "casos": [
         {
-            "_descripcion": "Acumulación base: 1 punto por cada $1.000, igual en todas las categorías, puntos a 12 meses, sin topes.",
-            "_supuesto": true,
+            "_descripcion": "Acumulación base: 1 punto por cada $1.000, igual en todas las categorías, puntos a 12 meses, sin topes. Confirmado por el cliente el 2026-10-10 (issue #7).",
+            "_supuesto": false,
             "tipo": "acumulacion",
             "definicion": {
                 "moneda_por_punto": 1000,
@@ -42,8 +42,8 @@
             }
         },
         {
-            "_descripcion": "Umbrales de nivel con 3 meses de protección y aviso a 30 días.",
-            "_supuesto": true,
+            "_descripcion": "Umbrales de nivel sin protección y avisos de descenso a 30, 7 y 1 día. Confirmado por el cliente el 2026-10-10 (issue #7).",
+            "_supuesto": false,
             "tipo": "niveles",
             "definicion": {
                 "umbrales": [
@@ -52,8 +52,8 @@
                     { "nivel": "oro", "umbral_puntos": 1500 },
                     { "nivel": "diamante", "umbral_puntos": 3000 }
                 ],
-                "proteccion_meses": 3,
-                "aviso_dias_antes": 30
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 1]
             }
         },
         {

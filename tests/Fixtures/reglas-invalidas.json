@@ -57,8 +57,8 @@
                     { "nivel": "bronce", "umbral_puntos": 0 },
                     { "nivel": "diamante", "umbral_puntos": 3000 }
                 ],
-                "proteccion_meses": 3,
-                "aviso_dias_antes": 30
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 1]
             }
         },
         {
@@ -83,6 +83,75 @@
             "definicion": {
                 "moneda_por_punto": 1000,
                 "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }]
+            }
+        },
+        {
+            "_motivo": "Forma vieja: `aviso_dias_antes` como entero en lugar de la lista `avisos_dias_antes` (issue #7).",
+            "_criterio_e3_01": "avisos de descenso como arreglo",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "plata", "umbral_puntos": 500 },
+                    { "nivel": "oro", "umbral_puntos": 1500 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 0,
+                "aviso_dias_antes": 30
+            }
+        },
+        {
+            "_motivo": "Avisos repetidos: la lista debe tener días únicos (issue #7).",
+            "_criterio_e3_01": "avisos únicos y decrecientes",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "plata", "umbral_puntos": 500 },
+                    { "nivel": "oro", "umbral_puntos": 1500 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 7]
+            }
+        },
+        {
+            "_motivo": "Avisos no decrecientes: la lista va del aviso más lejano al más cercano (issue #7).",
+            "_criterio_e3_01": "avisos únicos y decrecientes",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "plata", "umbral_puntos": 500 },
+                    { "nivel": "oro", "umbral_puntos": 1500 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [7, 30, 1]
+            }
+        },
+        {
+            "_motivo": "Umbrales que no crecen: Oro por debajo de Plata.",
+            "_criterio_e3_01": "umbrales estrictamente crecientes",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    { "nivel": "bronce", "umbral_puntos": 0 },
+                    { "nivel": "plata", "umbral_puntos": 1500 },
+                    { "nivel": "oro", "umbral_puntos": 500 },
+                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 1]
+            }
+        },
+        {
+            "_motivo": "Operador `en` con un valor simple en lugar de una lista.",
+            "_criterio_e3_01": "operador coherente con su valor",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [{ "campo": "dia_semana", "operador": "en", "valor": 6 }]
             }
         }
     ]

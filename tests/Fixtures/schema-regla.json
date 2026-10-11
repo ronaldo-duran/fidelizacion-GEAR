@@ -55,7 +55,7 @@
             "required": ["moneda_por_punto", "tasas_por_categoria", "vigencia_puntos_meses"],
             "properties": {
                 "moneda_por_punto": {
-                    "_nota": "Pesos enteros que equivalen a 1 punto base. Supuesto del cliente: $1.000.",
+                    "_nota": "Pesos enteros que equivalen a 1 punto base. Confirmado por el cliente: $1.000.",
                     "type": "integer",
                     "minimum": 1
                 },
@@ -86,7 +86,7 @@
                     }
                 },
                 "vigencia_puntos_meses": {
-                    "_nota": "Meses que viven los puntos antes de caducar. Supuesto del cliente: 12.",
+                    "_nota": "Meses que viven los puntos antes de caducar. Confirmado por el cliente: 12.",
                     "type": "integer",
                     "minimum": 1
                 }
@@ -95,10 +95,10 @@
         "defNiveles": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["umbrales", "proteccion_meses", "aviso_dias_antes"],
+            "required": ["umbrales", "proteccion_meses", "avisos_dias_antes"],
             "properties": {
                 "umbrales": {
-                    "_nota": "Puntos mínimos de cada nivel. Bronce siempre 0. Deben ser estrictamente crecientes. Supuesto: Plata 500, Oro 1.500, Diamante 3.000.",
+                    "_nota": "Puntos mínimos de cada nivel. Bronce siempre 0. Deben ser estrictamente crecientes. Confirmado por el cliente: Plata 500, Oro 1.500, Diamante 3.000.",
                     "type": "array",
                     "minItems": 4,
                     "maxItems": 4,
@@ -113,14 +113,16 @@
                     }
                 },
                 "proteccion_meses": {
-                    "_nota": "Meses de gracia antes de bajar de nivel. Supuesto: 3.",
+                    "_nota": "Meses de gracia antes de bajar de nivel. Confirmado por el cliente: 0 (sin protección).",
                     "type": "integer",
                     "minimum": 0
                 },
-                "aviso_dias_antes": {
-                    "_nota": "Días de anticipación del aviso de descenso. Supuesto: 30.",
-                    "type": "integer",
-                    "minimum": 0
+                "avisos_dias_antes": {
+                    "_nota": "Días de anticipación de cada aviso de descenso. Confirmado por el cliente: [30, 7, 1]. Enteros únicos; el orden estrictamente decreciente lo verifica el validador de E3-01 porque JSON Schema no lo expresa.",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": { "type": "integer", "minimum": 0 }
                 }
             }
         },

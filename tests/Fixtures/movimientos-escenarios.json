@@ -1,6 +1,7 @@
 {
     "_nota": "Escenarios para E3-02 (libro de puntos). Cada caso describe una secuencia de movimientos y el saldo esperado, para verificar las reglas duras 3.3 (snapshot), 3.4 (libro inmutable) y 3.9 (pesos enteros). Las fechas son relativas a `hoy` para que las pruebas no dependan del calendario: el runner resuelve `hoy-30d` con Carbon en zona America/Bogota. Los puntos son enteros con signo. `regla_id`/`regla_version` son el snapshot obligatorio.",
-    "_decision_pendiente": "El tipo `redencion` NO aparece en estos escenarios: según la regla 3.1 usar un beneficio no descuenta puntos y la redención vive en su propia tabla. Confirmar en la spec E3-02 si se elimina del enum de `movimientos_puntos` antes de crear la migración (issue #8).",
+    "_decision": "El tipo `redencion` se elimina del enum de `movimientos_puntos` (spec E3-02, issue #8): según la regla 3.1 usar un beneficio no descuenta puntos y la redención vive en su propia tabla.",
+    "plazo_reversa_dias": 30,
     "casos": [
         {
             "_descripcion": "Acumulación simple. El saldo sube exactamente los puntos del movimiento, dentro de la misma transacción.",
@@ -57,6 +58,33 @@
             "saldo_esperado": 85
         },
         {
+            "_descripcion": "Reversa justo en el límite del plazo (transacción de hace 30 días). El plazo es inclusivo: se acepta.",
+            "_criterio_e3_02": "reversa en el último día del plazo: aceptada",
+            "saldo_inicial": 85,
+            "transaccion": {
+                "id": 1003,
+                "puntos_otorgados": 85,
+                "created_at": "hoy-30d"
+            },
+            "accion": "reversa",
+            "resultado_esperado": "aceptada",
+            "saldo_esperado": 0
+        },
+        {
+            "_descripcion": "Doble reversa de la misma transacción. La segunda se rechaza y no inserta nada.",
+            "_criterio_e3_02": "transacción ya revertida: segunda reversa rechazada",
+            "saldo_inicial": 0,
+            "transaccion": {
+                "id": 1004,
+                "puntos_otorgados": 85,
+                "created_at": "hoy-5d",
+                "ya_revertida": true
+            },
+            "accion": "reversa",
+            "resultado_esperado": "rechazada",
+            "saldo_esperado": 0
+        },
+        {
             "_descripcion": "Ajuste manual con motivo y usuario. Corrige un error sin tocar movimientos previos.",
             "_criterio_e3_02": "ajuste manual registra motivo y usuario",
             "saldo_inicial": 500,
@@ -71,6 +99,40 @@
                 }
             ],
             "saldo_esperado": 460
+        },
+        {
+            "_descripcion": "Ajuste manual sin motivo. Se rechaza: todo ajuste debe explicar por qué se hizo.",
+            "_criterio_e3_02": "ajuste manual sin motivo: rechazado",
+            "saldo_inicial": 500,
+            "movimientos": [
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": -40,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": null,
+                    "usuario_id": 7
+                }
+            ],
+            "resultado_esperado": "rechazada",
+            "saldo_esperado": 500
+        },
+        {
+            "_descripcion": "Movimiento que dejaría el saldo bajo cero. Se rechaza: el saldo nunca es negativo.",
+            "_criterio_e3_02": "movimiento que deja saldo negativo: rechazado",
+            "saldo_inicial": 30,
+            "movimientos": [
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": -40,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": "Corrección",
+                    "usuario_id": 7
+                }
+            ],
+            "resultado_esperado": "rechazada",
+            "saldo_esperado": 30
         },
         {
             "_descripcion": "Caducidad: puntos que vencieron salen con un movimiento negativo de tipo `caducidad`. (El job es E3-05; aquí solo se prueba que el libro lo soporta.)",
@@ -92,9 +154,24 @@
             "_criterio_e3_02": "saldo recalculado == saldo materializado",
             "saldo_inicial": 0,
             "movimientos": [
-                { "tipo": "acumulacion", "puntos": 85, "regla_id": 1, "regla_version": 1 },
-                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 2 },
-                { "tipo": "reversa", "puntos": -85, "regla_id": 1, "regla_version": 1 },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1
+                },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 200,
+                    "regla_id": 1,
+                    "regla_version": 2
+                },
+                {
+                    "tipo": "reversa",
+                    "puntos": -85,
+                    "regla_id": 1,
+                    "regla_version": 1
+                },
                 {
                     "tipo": "ajuste_manual",
                     "puntos": 30,
@@ -102,7 +179,12 @@
                     "regla_version": null,
                     "motivo": "Cortesía"
                 },
-                { "tipo": "caducidad", "puntos": -50, "regla_id": 1, "regla_version": 1 }
+                {
+                    "tipo": "caducidad",
+                    "puntos": -50,
+                    "regla_id": 1,
+                    "regla_version": 1
+                }
             ],
             "saldo_esperado": 180
         },

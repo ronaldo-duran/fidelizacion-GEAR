@@ -61,11 +61,12 @@ customer's balance always consistent.
 
 ## Fixtures
 
-`tests/Fixtures/movimientos-escenarios.json` — to be updated in this spec
-PR: drop `_decision_pendiente`, add `plazo_reversa_dias`, a case exactly at
-the window limit (accepted), a double reversal (rejected), an adjustment
-without a reason (rejected) and a movement that would go negative
-(rejected).
+`tests/Fixtures/movimientos-escenarios.json` — updated in this spec PR:
+keys and prose in English (movement fields keep their column names), the
+pending `redencion` note replaced by the decision, `reversal_window_days`,
+and new cases for a reversal exactly at the window limit (accepted), a
+double reversal, an adjustment without a reason and a movement that would
+go negative (all rejected).
 
 ## Data and migrations (technical decisions, pending review)
 
@@ -119,9 +120,10 @@ without a reason (rejected) and a movement that would go negative
   administrator of the transaction's merchant. `acumulacion` and
   `caducidad` are system operations, authorized by their callers
   (E4-01, E3-05).
-- **Reversal window** in `config/puntos.php` (`plazo_reversa_dias`), with a
-  test asserting it equals the fixture value. The window is inclusive:
-  allowed while `now() <= original.created_at + plazo_reversa_dias`, in
+- **Reversal window** in `config/puntos.php` (`reversal_window_days`), with
+  a test asserting it equals the fixture's `reversal_window_days`. The
+  window is inclusive: allowed while
+  `now() <= original.created_at + reversal_window_days`, in
   `America/Bogota`.
 
 ## Decisions to confirm in review

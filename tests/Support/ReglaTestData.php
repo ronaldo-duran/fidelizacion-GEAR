@@ -56,8 +56,8 @@ final class ReglaTestData
         $contents = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         $cases = [];
 
-        foreach ($contents['casos'] as $index => $case) {
-            $name = ($index + 1) . '. ' . ($case['_descripcion'] ?? $case['_motivo']);
+        foreach ($contents['cases'] as $index => $case) {
+            $name = ($index + 1) . '. ' . ($case['_description'] ?? $case['_reason']);
             $cases[$name] = [$case['tipo'], $case['definicion']];
         }
 

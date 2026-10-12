@@ -1,5 +1,5 @@
 {
-    "_nota": "JSON Schema (draft 2020-12) de la columna `definicion` de `reglas`, por tipo. Esquema CERRADO: additionalProperties=false en todos los niveles, lista blanca de claves y de operadores. Implementa la regla dura 3.8 de CLAUDE.md. Ninguna expresión libre ni string evaluable: una condición es un objeto {campo, operador, valor}, nunca una cadena como \"monto > 50000\". El validador de E3-01 debe aplicar el sub-esquema que corresponda al `tipo` de la regla.",
+    "_note": "JSON Schema (draft 2020-12) for the `definicion` column of `reglas`, per type. CLOSED schema: additionalProperties=false at every level, whitelist of keys and operators. Implements hard rule 3.8 of CLAUDE.md. No free-form expressions or evaluable strings: a condition is an object {campo, operador, valor}, never a string like \"monto > 50000\". The E3-01 validator applies the sub-schema that matches the rule `tipo`.",
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://clubaponterivera.co/schema/regla.json",
     "title": "Definición de regla",
@@ -7,32 +7,77 @@
     "unevaluatedProperties": false,
     "required": ["tipo", "definicion"],
     "properties": {
-        "tipo": { "enum": ["acumulacion", "niveles", "bonificacion"] },
-        "definicion": { "type": "object" }
+        "tipo": {
+            "enum": ["acumulacion", "niveles", "bonificacion"]
+        },
+        "definicion": {
+            "type": "object"
+        }
     },
     "allOf": [
         {
-            "if": { "properties": { "tipo": { "const": "acumulacion" } } },
-            "then": { "properties": { "definicion": { "$ref": "#/$defs/defAcumulacion" } } }
+            "if": {
+                "properties": {
+                    "tipo": {
+                        "const": "acumulacion"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "definicion": {
+                        "$ref": "#/$defs/defAcumulacion"
+                    }
+                }
+            }
         },
         {
-            "if": { "properties": { "tipo": { "const": "niveles" } } },
-            "then": { "properties": { "definicion": { "$ref": "#/$defs/defNiveles" } } }
+            "if": {
+                "properties": {
+                    "tipo": {
+                        "const": "niveles"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "definicion": {
+                        "$ref": "#/$defs/defNiveles"
+                    }
+                }
+            }
         },
         {
-            "if": { "properties": { "tipo": { "const": "bonificacion" } } },
-            "then": { "properties": { "definicion": { "$ref": "#/$defs/defBonificacion" } } }
+            "if": {
+                "properties": {
+                    "tipo": {
+                        "const": "bonificacion"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "definicion": {
+                        "$ref": "#/$defs/defBonificacion"
+                    }
+                }
+            }
         }
     ],
     "$defs": {
-        "nivel": { "enum": ["bronce", "plata", "oro", "diamante"] },
-        "enteroPositivo": { "type": "integer", "minimum": 0 },
+        "nivel": {
+            "enum": ["bronce", "plata", "oro", "diamante"]
+        },
+        "enteroPositivo": {
+            "type": "integer",
+            "minimum": 0
+        },
         "operador": {
-            "_nota": "Lista blanca de operadores. Solo comparaciones estructuradas. Prohibido cualquier operador fuera de esta lista.",
+            "_note": "Operator whitelist. Structured comparisons only. Any operator outside this list is forbidden.",
             "enum": ["igual", "distinto", "mayor", "mayor_igual", "menor", "menor_igual", "en"]
         },
         "campoCondicion": {
-            "_nota": "Lista blanca de campos sobre los que se puede condicionar. Prohibido cualquier campo fuera de esta lista.",
+            "_note": "Whitelist of fields a condition can use. Any field outside this list is forbidden.",
             "enum": ["monto", "categoria_slug", "comercio_id", "sede_id", "dia_semana", "hora"]
         },
         "condicion": {
@@ -40,12 +85,18 @@
             "additionalProperties": false,
             "required": ["campo", "operador", "valor"],
             "properties": {
-                "campo": { "$ref": "#/$defs/campoCondicion" },
-                "operador": { "$ref": "#/$defs/operador" },
+                "campo": {
+                    "$ref": "#/$defs/campoCondicion"
+                },
+                "operador": {
+                    "$ref": "#/$defs/operador"
+                },
                 "valor": {
-                    "_nota": "Entero (pesos o id), cadena (slug), o arreglo de esos para el operador `en`. Nunca un objeto ni una expresión.",
+                    "_note": "Integer (pesos or id), string (slug), or an array of those for the `en` operator. Never an object or an expression.",
                     "type": ["integer", "string", "array"],
-                    "items": { "type": ["integer", "string"] }
+                    "items": {
+                        "type": ["integer", "string"]
+                    }
                 }
             }
         },
@@ -55,7 +106,7 @@
             "required": ["moneda_por_punto", "tasas_por_categoria", "vigencia_puntos_meses"],
             "properties": {
                 "moneda_por_punto": {
-                    "_nota": "Pesos enteros que equivalen a 1 punto base. Confirmado por el cliente: $1.000.",
+                    "_note": "Integer pesos worth 1 base point. Confirmed by the client: $1.000.",
                     "type": "integer",
                     "minimum": 1
                 },
@@ -67,9 +118,12 @@
                         "additionalProperties": false,
                         "required": ["categoria_slug", "puntos_por_unidad"],
                         "properties": {
-                            "categoria_slug": { "type": "string", "minLength": 1 },
+                            "categoria_slug": {
+                                "type": "string",
+                                "minLength": 1
+                            },
                             "puntos_por_unidad": {
-                                "_nota": "Puntos otorgados por cada `moneda_por_punto` gastado en esa categoría.",
+                                "_note": "Points awarded for every `moneda_por_punto` spent in that category.",
                                 "type": "integer",
                                 "minimum": 0
                             }
@@ -80,13 +134,22 @@
                     "type": "object",
                     "additionalProperties": false,
                     "properties": {
-                        "puntos_por_transaccion": { "type": ["integer", "null"], "minimum": 1 },
-                        "puntos_por_dia": { "type": ["integer", "null"], "minimum": 1 },
-                        "puntos_por_mes": { "type": ["integer", "null"], "minimum": 1 }
+                        "puntos_por_transaccion": {
+                            "type": ["integer", "null"],
+                            "minimum": 1
+                        },
+                        "puntos_por_dia": {
+                            "type": ["integer", "null"],
+                            "minimum": 1
+                        },
+                        "puntos_por_mes": {
+                            "type": ["integer", "null"],
+                            "minimum": 1
+                        }
                     }
                 },
                 "vigencia_puntos_meses": {
-                    "_nota": "Meses que viven los puntos antes de caducar. Confirmado por el cliente: 12.",
+                    "_note": "Months points live before expiring. Confirmed by the client: 12.",
                     "type": "integer",
                     "minimum": 1
                 }
@@ -98,7 +161,7 @@
             "required": ["umbrales", "proteccion_meses", "avisos_dias_antes"],
             "properties": {
                 "umbrales": {
-                    "_nota": "Puntos mínimos de cada nivel. Bronce siempre 0. Deben ser estrictamente crecientes. Confirmado por el cliente: Plata 500, Oro 1.500, Diamante 3.000.",
+                    "_note": "Minimum points for each level. Bronce is always 0. They must be strictly increasing. Confirmed by the client: Plata 500, Oro 1.500, Diamante 3.000.",
                     "type": "array",
                     "minItems": 4,
                     "maxItems": 4,
@@ -107,33 +170,40 @@
                         "additionalProperties": false,
                         "required": ["nivel", "umbral_puntos"],
                         "properties": {
-                            "nivel": { "$ref": "#/$defs/nivel" },
-                            "umbral_puntos": { "$ref": "#/$defs/enteroPositivo" }
+                            "nivel": {
+                                "$ref": "#/$defs/nivel"
+                            },
+                            "umbral_puntos": {
+                                "$ref": "#/$defs/enteroPositivo"
+                            }
                         }
                     }
                 },
                 "proteccion_meses": {
-                    "_nota": "Meses de gracia antes de bajar de nivel. Confirmado por el cliente: 0 (sin protección).",
+                    "_note": "Grace months before dropping a level. Confirmed by the client: 0 (no protection).",
                     "type": "integer",
                     "minimum": 0
                 },
                 "avisos_dias_antes": {
-                    "_nota": "Días de anticipación de cada aviso de descenso. Confirmado por el cliente: [30, 7, 1]. Enteros únicos; el orden estrictamente decreciente lo verifica el validador de E3-01 porque JSON Schema no lo expresa.",
+                    "_note": "Days in advance of each demotion notice. Confirmed by the client: [30, 7, 1]. Unique integers; the E3-01 validator checks the strictly decreasing order because JSON Schema cannot express it.",
                     "type": "array",
                     "minItems": 1,
                     "uniqueItems": true,
-                    "items": { "type": "integer", "minimum": 0 }
+                    "items": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
                 }
             }
         },
         "defBonificacion": {
-            "_nota": "Regla opcional de puntos extra cuando se cumplen condiciones estructuradas. Todas las condiciones deben cumplirse (AND). El multiplicador aplica sobre los puntos base de la transacción.",
+            "_note": "Optional rule for extra points when structured conditions are met. Every condition must hold (AND). The multiplier applies to the transaction's base points.",
             "type": "object",
             "additionalProperties": false,
             "required": ["multiplicador", "condiciones"],
             "properties": {
                 "multiplicador": {
-                    "_nota": "Factor entero sobre los puntos base. 2 = doble. Entero para no introducir decimales (regla dura 3.9).",
+                    "_note": "Integer factor on the base points. 2 = double. Integer so no decimals are introduced (hard rule 3.9).",
                     "type": "integer",
                     "minimum": 2,
                     "maximum": 10
@@ -142,7 +212,9 @@
                     "type": "array",
                     "minItems": 1,
                     "maxItems": 5,
-                    "items": { "$ref": "#/$defs/condicion" }
+                    "items": {
+                        "$ref": "#/$defs/condicion"
+                    }
                 }
             }
         }

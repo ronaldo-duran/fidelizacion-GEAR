@@ -25,7 +25,9 @@ class CreateRegla extends CreateRecord
      */
     protected function handleRecordCreation(array $data): Model
     {
-        $tipo = TipoRegla::from(is_string($data['tipo'] ?? null) ? $data['tipo'] : '');
+        // The enum-backed select dehydrates to a TipoRegla instance.
+        $tipo = $data['tipo'] ?? null;
+        $tipo = $tipo instanceof TipoRegla ? $tipo : TipoRegla::from(is_string($tipo) ? $tipo : '');
         $codigo = is_string($data['codigo'] ?? null) ? $data['codigo'] : '';
 
         return $this->saveThroughActions(function (User $user) use ($data, $tipo, $codigo): Regla {

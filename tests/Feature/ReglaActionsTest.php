@@ -100,6 +100,7 @@ it('forbids creating or versioning rules to anyone but the group administrator',
 
 it('audits every save with the author, the date and the previous and new definition', function (): void {
     $v1 = ReglaTestData::createBonificacion($this->admin);
+    $this->travel(1)->minutes();
     $v2 = app(VersionRegla::class)($this->admin, $v1, ReglaTestData::bonificacion(3));
 
     $creation = Auditoria::query()->where('evento', 'regla_creada')->sole();
@@ -110,7 +111,7 @@ it('audits every save with the author, the date and the previous and new definit
         ->and($creation->despues['definicion'] ?? null)->toEqual(ReglaTestData::bonificacion())
         ->and($versioning->usuario_id)->toBe($this->admin->id)
         ->and($versioning->modelo_id)->toBe($v2->id)
-        ->and($versioning->created_at?->toDateTimeString())->toBe('2026-10-12 09:00:00')
+        ->and($versioning->created_at?->toDateTimeString())->toBe('2026-10-12 09:01:00')
         ->and($versioning->antes['definicion'] ?? null)->toEqual(ReglaTestData::bonificacion())
         ->and($versioning->despues['definicion'] ?? null)->toEqual(ReglaTestData::bonificacion(3))
         ->and($versioning->despues['version'] ?? null)->toBe(2);
@@ -119,6 +120,7 @@ it('audits every save with the author, the date and the previous and new definit
 it('rejects saving on top of a version that is no longer the latest', function (): void {
     $v1 = ReglaTestData::createBonificacion($this->admin);
     $otherAdmin = User::factory()->administradorDelGrupo()->create();
+    $this->travel(1)->minutes();
 
     app(VersionRegla::class)($otherAdmin, $v1, ReglaTestData::bonificacion(3));
 

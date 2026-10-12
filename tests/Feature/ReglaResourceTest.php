@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Reglas\VersionRegla;
 use App\Filament\Resources\Reglas\Pages\CreateRegla;
 use App\Filament\Resources\Reglas\Pages\NewReglaVersion;
 use App\Filament\Resources\Reglas\Pages\ViewRegla;
 use App\Filament\Resources\Reglas\ReglaResource;
+use App\Filament\Resources\Reglas\RelationManagers\VersionsRelationManager;
 use App\Models\Regla;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -24,8 +26,20 @@ it('shows the list, the detail and the new version page to the group administrat
     $this->actingAs($this->admin);
 
     $this->get('/admin/reglas')->assertSuccessful()->assertSee($regla->codigo);
-    $this->get("/admin/reglas/{$regla->id}")->assertSuccessful()->assertSee('Historial de versiones');
+    $this->get("/admin/reglas/{$regla->id}")->assertSuccessful()->assertSee($regla->codigo);
     $this->get("/admin/reglas/{$regla->id}/nueva-version")->assertSuccessful();
+});
+
+it('lists every version in the read-only history', function (): void {
+    $v1 = ReglaTestData::createBonificacion($this->admin);
+    $this->travel(1)->days();
+    $v2 = app(VersionRegla::class)($this->admin, $v1, ReglaTestData::bonificacion(3));
+    $this->actingAs($this->admin);
+
+    // Relation managers load lazily, so the history is tested as its own component.
+    Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $v2, 'pageClass' => ViewRegla::class])
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$v1, $v2]);
 });
 
 it('returns 403 to a merchant administrator who tries to edit a rule', function (): void {
@@ -60,7 +74,8 @@ it('creates a niveles rule with the guided form', function (): void {
                     ['nivel' => 'diamante', 'umbral_puntos' => '3000'],
                 ],
                 'proteccion_meses' => '0',
-                'avisos_dias_antes' => ['30', '7', '1'],
+                // Raw state of a simple repeater: one item per value, keyed by the field name.
+                'avisos_dias_antes' => [['dias' => '30'], ['dias' => '7'], ['dias' => '1']],
             ],
         ])
         ->call('create')

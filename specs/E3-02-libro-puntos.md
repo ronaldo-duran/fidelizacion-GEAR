@@ -57,16 +57,38 @@ customer's balance always consistent.
 - [ ] Given a failure halfway through the operation, when it rolls back,
       then neither the movement nor the balance change remain.
 - [ ] Given a movement that would leave the balance below zero, when it is
-      recorded, then it is rejected.
+      recorded, then it is rejected — except a reversal, which is capped at
+      the current balance (see Reversal).
+- [ ] Given a reversal of a purchase whose points were partly consumed by a
+      later negative movement, when it is processed, then it subtracts only
+      the current balance, leaves the balance at zero and records the capped
+      amount with its reason.
+- [ ] Given two reversals of the same transaction processed at the same
+      time, when both finish, then only one reversal movement exists and the
+      balance was subtracted once.
+- [ ] Given two accruals for the same customer processed at the same time,
+      when both finish, then the balance equals the sum of both.
+- [ ] Given a manual adjustment by a merchant administrator or a cashier,
+      when it is recorded, then it is rejected with 403 and nothing is
+      inserted.
+- [ ] Given a reversal by the merchant administrator of the transaction's
+      merchant, then it is accepted; by the merchant administrator of
+      another merchant or by a cashier, then it is rejected with 403.
+- [ ] Given a movement whose sign or fields do not match its type (an
+      `acumulacion` with negative points, an `acumulacion` without
+      `comercio_id` or rule snapshot, a `reversa` without `motivo`, zero
+      points), when it is recorded, then it is rejected.
 
 ## Fixtures
 
 `tests/Fixtures/movimientos-escenarios.json` — updated in this spec PR:
 keys and prose in English (movement fields keep their column names), the
 pending `redencion` note replaced by the decision, `reversal_window_days`,
-and new cases for a reversal exactly at the window limit (accepted), a
-double reversal, an adjustment without a reason and a movement that would
-go negative (all rejected).
+and cases for: a reversal on the last day of the window (accepted), a
+double reversal, an adjustment without a reason, a movement that would go
+negative, a reversal capped at the balance, simultaneous reversals and
+accruals, authorization by role and merchant, and movements whose sign or
+fields do not match their type.
 
 ## Data and migrations (technical decisions, pending review)
 
@@ -75,7 +97,9 @@ go negative (all rejected).
   `celular`, `email` (nullable, stored lowercase — 3.13), `saldo_puntos`
   (integer, default 0), timestamps. The `nivel_*` columns are added by
   E3-03; registration and login fields by E8-02.
-- **`movimientos_puntos`**: `id`, `cliente_id`, `comercio_id` (nullable),
+- **`movimientos_puntos`**: `id`, `cliente_id`, `comercio_id` (required
+  for `acumulacion` and `reversa`, which copies it from the original;
+  null for the other types),
   `transaccion_id` (nullable), `tipo`, `puntos` (signed integer, never 0),
   `regla_id` (nullable, FK to `reglas`), `regla_version` (nullable),
   `vigencia_hasta` (nullable), `motivo` (nullable), `usuario_id`
@@ -87,16 +111,20 @@ go negative (all rejected).
   and uses that movement's `created_at` as the purchase date.
 - **Sign and fields by type** (checked by the actions and by the model):
 
-  | `tipo`          | `puntos` | `regla_*`                | `transaccion_id` | `motivo` / `usuario_id`                  |
-  | --------------- | -------- | ------------------------ | ---------------- | ---------------------------------------- |
-  | `acumulacion`   | > 0      | required                 | required         | optional                                 |
-  | `reversa`       | < 0      | copied from the original | required         | `motivo` required, `usuario_id` required |
-  | `caducidad`     | < 0      | required                 | —                | optional                                 |
-  | `ajuste_manual` | ≠ 0      | null                     | —                | both required                            |
+  | `tipo`          | `puntos` | `regla_*`                | `comercio_id`            | `transaccion_id` | `motivo` / `usuario_id`                  |
+  | --------------- | -------- | ------------------------ | ------------------------ | ---------------- | ---------------------------------------- |
+  | `acumulacion`   | > 0      | required                 | required                 | required         | optional                                 |
+  | `reversa`       | < 0      | copied from the original | copied from the original | required         | `motivo` required, `usuario_id` required |
+  | `caducidad`     | < 0      | required                 | —                        | —                | optional                                 |
+  | `ajuste_manual` | ≠ 0      | null                     | —                        | —                | both required                            |
 
-- **Reversal**: reverses the full net points of the transaction (the sum of
-  its accruals). Partial reversals are not supported. A second reversal of
-  the same transaction is rejected.
+- **Reversal**: reverses the net points of the transaction (the sum of its
+  accruals), once; a second reversal is rejected. If a later negative
+  movement (an adjustment or an expiry) already took part of those points,
+  the reversal is capped at the current balance: it subtracts only what is
+  left, the balance ends at zero, and the movement records the capped
+  amount with a reason saying so. A voided purchase never leaves points
+  behind and the balance never goes negative.
 - **`vigencia_hasta`** on an accrual = movement date + the rule's
   `vigencia_puntos_meses` (per-point validity, as CLAUDE.md §9 is drafted).
   E3-05 decides whether the cut is daily or monthly; it does not change
@@ -108,7 +136,8 @@ go negative (all rejected).
   it is not portable (3.13).
 - **Balance**: updated with an atomic increment inside the transaction,
   never read-modify-write without the lock. The balance cannot go below
-  zero.
+  zero: any movement that would take it there is rejected, except a
+  reversal, which is capped (see Reversal).
 - **Recalculation**: an action returns the sum of `puntos` for a customer
   and whether it matches `saldo_puntos`. The nightly consistency check
   that uses it belongs to E3-05.
@@ -120,11 +149,13 @@ go negative (all rejected).
   administrator of the transaction's merchant. `acumulacion` and
   `caducidad` are system operations, authorized by their callers
   (E4-01, E3-05).
-- **Reversal window** in `config/puntos.php` (`reversal_window_days`), with
-  a test asserting it equals the fixture's `reversal_window_days`. The
-  window is inclusive: allowed while
-  `now() <= original.created_at + reversal_window_days`, in
-  `America/Bogota`.
+- **Reversal window** in `config/puntos.php` (`reversal_window_days`): the
+  application needs it at runtime and production does not ship `tests/`, so
+  a test asserts it equals the fixture's value. The window counts calendar
+  days in `America/Bogota`, not instants: a reversal is allowed while
+  today's date is on or before the purchase date plus
+  `reversal_window_days`. A purchase from 30 days ago is accepted at any
+  hour; one from 31 days ago is rejected.
 
 ## Decisions to confirm in review
 
@@ -137,7 +168,7 @@ this spec.
 2. `transacciones` stays in E4-01; E3-02 keeps `transaccion_id` without a
    foreign key until then.
 3. The balance can never go below zero: movements that would do so are
-   rejected.
+   rejected, and a reversal is capped at the current balance instead.
 4. Manual adjustments: group administrator only. Reversals: group
    administrator or the merchant administrator of the transaction's
    merchant.

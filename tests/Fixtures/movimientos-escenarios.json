@@ -1,5 +1,5 @@
 {
-    "_note": "Scenarios for E3-02 (points ledger). Each case describes a sequence of movements and the expected balance, to verify hard rules 3.3 (snapshot), 3.4 (immutable ledger) and 3.9 (integer pesos). Dates are relative to `hoy` (today) so tests do not depend on the calendar: the runner resolves `hoy-30d` with Carbon in America/Bogota. Points are signed integers. `regla_id`/`regla_version` are the mandatory snapshot. Movement fields use the database column names (Spanish domain names).",
+    "_note": "Scenarios for E3-02 (points ledger). Each case describes a sequence of movements and the expected balance, to verify hard rules 3.3 (snapshot), 3.4 (immutable ledger) and 3.9 (integer pesos). Dates are relative to `hoy` (today) so tests do not depend on the calendar: the runner resolves `hoy-30d` with Carbon in America/Bogota. The reversal window counts calendar days in America/Bogota, so `hoy-30d` is accepted at any hour of the day. Points are signed integers. `regla_id`/`regla_version` are the mandatory snapshot. Movement fields use the database column names (Spanish domain names).",
     "_decision": "The `redencion` type is removed from the `movimientos_puntos` enum (E3-02 spec, issue #8): under hard rule 3.1 using a benefit never costs points, and redemptions live in their own table.",
     "reversal_window_days": 30,
     "cases": [
@@ -135,6 +135,25 @@
             "expected_saldo": 30
         },
         {
+            "_description": "Reversal capped at the balance: a manual adjustment already took 35 of the purchase's 85 points. The reversal subtracts only the 50 left, the balance ends at zero and the movement says it was capped.",
+            "_e3_02_criterion": "reversal capped at the current balance",
+            "initial_saldo": 50,
+            "transaccion": {
+                "id": 1005,
+                "awarded_puntos": 85,
+                "created_at": "hoy-5d"
+            },
+            "action": "reversa",
+            "expected_result": "accepted",
+            "expected_movimiento": {
+                "tipo": "reversa",
+                "puntos": -50,
+                "transaccion_id": 1005,
+                "capped": true
+            },
+            "expected_saldo": 0
+        },
+        {
             "_description": "Expiry: points that expired leave through a negative `caducidad` movement. (The job is E3-05; here we only check the ledger supports it.)",
             "_e3_02_criterion": "expiry subtracts from the balance with its own movement",
             "initial_saldo": 300,
@@ -154,9 +173,24 @@
             "_e3_02_criterion": "recalculated balance == materialized balance",
             "initial_saldo": 0,
             "movimientos": [
-                { "tipo": "acumulacion", "puntos": 85, "regla_id": 1, "regla_version": 1 },
-                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 2 },
-                { "tipo": "reversa", "puntos": -85, "regla_id": 1, "regla_version": 1 },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1
+                },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 200,
+                    "regla_id": 1,
+                    "regla_version": 2
+                },
+                {
+                    "tipo": "reversa",
+                    "puntos": -85,
+                    "regla_id": 1,
+                    "regla_version": 1
+                },
                 {
                     "tipo": "ajuste_manual",
                     "puntos": 30,
@@ -164,7 +198,12 @@
                     "regla_version": null,
                     "motivo": "Cortesía"
                 },
-                { "tipo": "caducidad", "puntos": -50, "regla_id": 1, "regla_version": 1 }
+                {
+                    "tipo": "caducidad",
+                    "puntos": -50,
+                    "regla_id": 1,
+                    "regla_version": 1
+                }
             ],
             "expected_saldo": 180
         },
@@ -188,6 +227,150 @@
             "simulate_failure_after_insert": true,
             "expected_saldo": 100,
             "expected_movimientos_after_rollback": 0
+        },
+        {
+            "_description": "Two reversals of the same transaction at the same time. Only one is inserted and the balance is subtracted once.",
+            "_e3_02_criterion": "simultaneous reversals: only one is inserted",
+            "initial_saldo": 85,
+            "transaccion": {
+                "id": 1006,
+                "awarded_puntos": 85,
+                "created_at": "hoy-2d"
+            },
+            "concurrent_actions": ["reversa", "reversa"],
+            "expected_reversa_movimientos": 1,
+            "expected_saldo": 0
+        },
+        {
+            "_description": "Two accruals for the same customer at the same time. The balance equals the sum of both.",
+            "_e3_02_criterion": "simultaneous accruals: balance equals the sum",
+            "initial_saldo": 0,
+            "concurrent_movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "comercio_id": 1,
+                    "transaccion_id": 1007
+                },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 200,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "comercio_id": 2,
+                    "transaccion_id": 1008
+                }
+            ],
+            "expected_saldo": 285
+        },
+        {
+            "_description": "Who can record each manual operation. `transaccion_comercio` is the merchant of the reversed purchase; `own` means the user belongs to that merchant.",
+            "_e3_02_criterion": "authorization by role and merchant",
+            "transaccion_comercio": 1,
+            "authorization": [
+                {
+                    "action": "ajuste_manual",
+                    "rol": "administrador_grupo",
+                    "expected_result": "accepted"
+                },
+                {
+                    "action": "ajuste_manual",
+                    "rol": "administrador_comercio",
+                    "comercio": "own",
+                    "expected_result": "forbidden"
+                },
+                {
+                    "action": "ajuste_manual",
+                    "rol": "cajero",
+                    "comercio": "own",
+                    "expected_result": "forbidden"
+                },
+                {
+                    "action": "reversa",
+                    "rol": "administrador_grupo",
+                    "expected_result": "accepted"
+                },
+                {
+                    "action": "reversa",
+                    "rol": "administrador_comercio",
+                    "comercio": "own",
+                    "expected_result": "accepted"
+                },
+                {
+                    "action": "reversa",
+                    "rol": "administrador_comercio",
+                    "comercio": "other",
+                    "expected_result": "forbidden"
+                },
+                {
+                    "action": "reversa",
+                    "rol": "cajero",
+                    "comercio": "own",
+                    "expected_result": "forbidden"
+                }
+            ]
+        },
+        {
+            "_description": "Movements whose sign or fields do not match their type. Each one is rejected and nothing is inserted.",
+            "_e3_02_criterion": "sign and fields must match the type",
+            "initial_saldo": 100,
+            "invalid_movimientos": [
+                {
+                    "_reason": "accrual with negative points",
+                    "tipo": "acumulacion",
+                    "puntos": -10,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "comercio_id": 1,
+                    "transaccion_id": 1009
+                },
+                {
+                    "_reason": "accrual without comercio_id",
+                    "tipo": "acumulacion",
+                    "puntos": 10,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "comercio_id": null,
+                    "transaccion_id": 1010
+                },
+                {
+                    "_reason": "accrual without the rule snapshot",
+                    "tipo": "acumulacion",
+                    "puntos": 10,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "comercio_id": 1,
+                    "transaccion_id": 1011
+                },
+                {
+                    "_reason": "reversal without motivo",
+                    "tipo": "reversa",
+                    "puntos": -10,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "comercio_id": 1,
+                    "transaccion_id": 1009,
+                    "motivo": null
+                },
+                {
+                    "_reason": "expiry with positive points",
+                    "tipo": "caducidad",
+                    "puntos": 10,
+                    "regla_id": 1,
+                    "regla_version": 1
+                },
+                {
+                    "_reason": "manual adjustment of zero points",
+                    "tipo": "ajuste_manual",
+                    "puntos": 0,
+                    "motivo": "Prueba",
+                    "usuario_id": 7
+                }
+            ],
+            "expected_result": "rejected",
+            "expected_saldo": 100
         }
     ]
 }

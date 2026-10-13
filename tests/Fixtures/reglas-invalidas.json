@@ -1,20 +1,25 @@
 {
-    "_nota": "Reglas que DEBEN ser rechazadas por el validador de E3-01. Cada caso trae `_motivo` legible y `_criterio_e3_01` apuntando al criterio de aceptación de la spec que cubre. El objetivo es blindar la regla dura 3.8 (esquema cerrado, sin ejecución dinámica).",
-    "casos": [
+    "_note": "Rules that MUST be rejected by the E3-01 validator. Each case has a readable `_reason` and an `_e3_01_criterion` pointing to the spec acceptance criterion it covers. The goal is to lock down hard rule 3.8 (closed schema, no dynamic execution).",
+    "cases": [
         {
-            "_motivo": "Clave fuera de la lista blanca (`descuento_pesos`) en una definición de acumulación.",
-            "_criterio_e3_01": "clave fuera de la lista blanca se rechaza",
+            "_reason": "Key outside the whitelist (`descuento_pesos`) in an accrual definition.",
+            "_e3_01_criterion": "a key outside the whitelist is rejected",
             "tipo": "acumulacion",
             "definicion": {
                 "moneda_por_punto": 1000,
-                "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }],
+                "tasas_por_categoria": [
+                    {
+                        "categoria_slug": "restaurante",
+                        "puntos_por_unidad": 1
+                    }
+                ],
                 "vigencia_puntos_meses": 12,
                 "descuento_pesos": 5000
             }
         },
         {
-            "_motivo": "Expresión libre como string en lugar de condición estructurada. Esto es exactamente lo que la regla 3.8 prohíbe (ejecución remota de código).",
-            "_criterio_e3_01": "ninguna expresión libre ni string evaluable",
+            "_reason": "Free-form expression as a string instead of a structured condition. This is exactly what hard rule 3.8 forbids (remote code execution).",
+            "_e3_01_criterion": "no free-form expression or evaluable string",
             "tipo": "bonificacion",
             "definicion": {
                 "multiplicador": 2,
@@ -22,67 +27,225 @@
             }
         },
         {
-            "_motivo": "Operador fuera de la lista blanca (`regex`).",
-            "_criterio_e3_01": "operador fuera de la lista blanca se rechaza",
+            "_reason": "Operator outside the whitelist (`regex`).",
+            "_e3_01_criterion": "an operator outside the whitelist is rejected",
             "tipo": "bonificacion",
             "definicion": {
                 "multiplicador": 2,
-                "condiciones": [{ "campo": "categoria_slug", "operador": "regex", "valor": "resta.*" }]
+                "condiciones": [
+                    {
+                        "campo": "categoria_slug",
+                        "operador": "regex",
+                        "valor": "resta.*"
+                    }
+                ]
             }
         },
         {
-            "_motivo": "Campo fuera de la lista blanca (`cliente_email`).",
-            "_criterio_e3_01": "campo fuera de la lista blanca se rechaza",
+            "_reason": "Field outside the whitelist (`cliente_email`).",
+            "_e3_01_criterion": "a field outside the whitelist is rejected",
             "tipo": "bonificacion",
             "definicion": {
                 "multiplicador": 2,
-                "condiciones": [{ "campo": "cliente_email", "operador": "igual", "valor": "x@y.co" }]
+                "condiciones": [
+                    {
+                        "campo": "cliente_email",
+                        "operador": "igual",
+                        "valor": "x@y.co"
+                    }
+                ]
             }
         },
         {
-            "_motivo": "Monto como decimal/float. La regla dura 3.9 exige pesos enteros.",
-            "_criterio_e3_01": "montos en pesos enteros",
+            "_reason": "Amount as a decimal/float. Hard rule 3.9 requires integer pesos.",
+            "_e3_01_criterion": "amounts in integer pesos",
             "tipo": "bonificacion",
             "definicion": {
                 "multiplicador": 2,
-                "condiciones": [{ "campo": "monto", "operador": "mayor_igual", "valor": 49999.99 }]
+                "condiciones": [
+                    {
+                        "campo": "monto",
+                        "operador": "mayor_igual",
+                        "valor": 49999.99
+                    }
+                ]
             }
         },
         {
-            "_motivo": "Umbrales incompletos: faltan niveles (solo 2 de 4).",
-            "_criterio_e3_01": "definición de niveles completa",
+            "_reason": "Incomplete thresholds: levels are missing (only 2 of 4).",
+            "_e3_01_criterion": "complete levels definition",
             "tipo": "niveles",
             "definicion": {
                 "umbrales": [
-                    { "nivel": "bronce", "umbral_puntos": 0 },
-                    { "nivel": "diamante", "umbral_puntos": 3000 }
+                    {
+                        "nivel": "bronce",
+                        "umbral_puntos": 0
+                    },
+                    {
+                        "nivel": "diamante",
+                        "umbral_puntos": 3000
+                    }
                 ],
-                "proteccion_meses": 3,
-                "aviso_dias_antes": 30
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 1]
             }
         },
         {
-            "_motivo": "Multiplicador 1 (no bonifica nada) viola el mínimo del esquema; una bonificación sin efecto no debe guardarse.",
-            "_criterio_e3_01": "bonificación con multiplicador válido",
+            "_reason": "Multiplier 1 (no bonus at all) breaks the schema minimum; a bonus with no effect must not be saved.",
+            "_e3_01_criterion": "bonus with a valid multiplier",
             "tipo": "bonificacion",
             "definicion": {
                 "multiplicador": 1,
-                "condiciones": [{ "campo": "monto", "operador": "mayor", "valor": 0 }]
+                "condiciones": [
+                    {
+                        "campo": "monto",
+                        "operador": "mayor",
+                        "valor": 0
+                    }
+                ]
             }
         },
         {
-            "_motivo": "Tipo de regla desconocido.",
-            "_criterio_e3_01": "tipo dentro del enum",
+            "_reason": "Unknown rule type.",
+            "_e3_01_criterion": "type within the enum",
             "tipo": "canje_puntos",
             "definicion": {}
         },
         {
-            "_motivo": "Falta una clave requerida (`vigencia_puntos_meses`) en acumulación.",
-            "_criterio_e3_01": "claves requeridas presentes",
+            "_reason": "A required key (`vigencia_puntos_meses`) is missing in an accrual.",
+            "_e3_01_criterion": "required keys present",
             "tipo": "acumulacion",
             "definicion": {
                 "moneda_por_punto": 1000,
-                "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }]
+                "tasas_por_categoria": [
+                    {
+                        "categoria_slug": "restaurante",
+                        "puntos_por_unidad": 1
+                    }
+                ]
+            }
+        },
+        {
+            "_reason": "Old shape: `aviso_dias_antes` as an integer instead of the `avisos_dias_antes` list (issue #7).",
+            "_e3_01_criterion": "demotion notices as an array",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    {
+                        "nivel": "bronce",
+                        "umbral_puntos": 0
+                    },
+                    {
+                        "nivel": "plata",
+                        "umbral_puntos": 500
+                    },
+                    {
+                        "nivel": "oro",
+                        "umbral_puntos": 1500
+                    },
+                    {
+                        "nivel": "diamante",
+                        "umbral_puntos": 3000
+                    }
+                ],
+                "proteccion_meses": 0,
+                "aviso_dias_antes": 30
+            }
+        },
+        {
+            "_reason": "Repeated notices: the list must have unique days (issue #7).",
+            "_e3_01_criterion": "unique and decreasing notices",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    {
+                        "nivel": "bronce",
+                        "umbral_puntos": 0
+                    },
+                    {
+                        "nivel": "plata",
+                        "umbral_puntos": 500
+                    },
+                    {
+                        "nivel": "oro",
+                        "umbral_puntos": 1500
+                    },
+                    {
+                        "nivel": "diamante",
+                        "umbral_puntos": 3000
+                    }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 7]
+            }
+        },
+        {
+            "_reason": "Non-decreasing notices: the list goes from the farthest notice to the closest (issue #7).",
+            "_e3_01_criterion": "unique and decreasing notices",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    {
+                        "nivel": "bronce",
+                        "umbral_puntos": 0
+                    },
+                    {
+                        "nivel": "plata",
+                        "umbral_puntos": 500
+                    },
+                    {
+                        "nivel": "oro",
+                        "umbral_puntos": 1500
+                    },
+                    {
+                        "nivel": "diamante",
+                        "umbral_puntos": 3000
+                    }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [7, 30, 1]
+            }
+        },
+        {
+            "_reason": "Thresholds that do not grow: Oro below Plata.",
+            "_e3_01_criterion": "strictly increasing thresholds",
+            "tipo": "niveles",
+            "definicion": {
+                "umbrales": [
+                    {
+                        "nivel": "bronce",
+                        "umbral_puntos": 0
+                    },
+                    {
+                        "nivel": "plata",
+                        "umbral_puntos": 1500
+                    },
+                    {
+                        "nivel": "oro",
+                        "umbral_puntos": 500
+                    },
+                    {
+                        "nivel": "diamante",
+                        "umbral_puntos": 3000
+                    }
+                ],
+                "proteccion_meses": 0,
+                "avisos_dias_antes": [30, 7, 1]
+            }
+        },
+        {
+            "_reason": "`en` operator with a single value instead of a list.",
+            "_e3_01_criterion": "operator consistent with its value",
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [
+                    {
+                        "campo": "dia_semana",
+                        "operador": "en",
+                        "valor": 6
+                    }
+                ]
             }
         }
     ]

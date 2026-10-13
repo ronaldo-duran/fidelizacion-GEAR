@@ -1,167 +1,170 @@
-# E3-03 · Customer effective level
+# E3-03 · Nivel efectivo del cliente
 
-**Epic:** E3 · **Estimated hours:** 10 · **Risk:** high
+**Épica:** E3 · **Horas estimadas:** 10 · **Riesgo:** alto
 
-## Goal
+## Objetivo
 
-Compute each customer's level from its three possible sources (points,
-membership, qualifying event), with immediate promotion and controlled
-demotion.
+Calcular el nivel de cada cliente a partir de sus tres fuentes posibles
+(puntos, membresía, evento calificado), con ascenso inmediato y descenso
+controlado.
 
-## Out of scope
+## Fuera de alcance
 
-- Level change notifications and demotion notices (E7-01).
-- The nightly job itself, its schedule and points expiry (E3-05). This
-  feature provides the action the job calls.
-- Buying or renewing a membership (E6-01). This feature only reads
-  `nivel_por_membresia` and `membresia_vigente_hasta`.
-- Customer screens that show the level (E8-03).
+- Notificaciones de cambio de nivel y avisos de descenso (E7-01).
+- El job nocturno en sí, su programación y la caducidad de puntos (E3-05).
+  Esta feature entrega la Action que el job llama.
+- Comprar o renovar una membresía (E6-01). Aquí solo se leen
+  `nivel_por_membresia` y `membresia_vigente_hasta`.
+- Pantallas del cliente que muestran el nivel (E8-03).
 
-## Business rules
+## Reglas de negocio
 
-1. The effective level is the highest of `nivel_por_puntos`,
-   `nivel_por_membresia` and `nivel_por_evento`, counting only the sources
-   that are still valid.
-2. The three sources are stored in separate columns. They are never
-   collapsed.
-3. Promotion is evaluated synchronously in the request that records the
-   purchase, registers an event or activates a membership. The customer
-   sees the new level immediately.
-4. Demotion only happens in the nightly job, never in a user request.
-5. Protection: when the points level falls below the current effective
-   level, `proteccion_hasta` is set to today plus the `proteccion_meses` of
-   the current `niveles` rule, and the customer does not drop before that
-   date. The client confirmed 0 months (issue #1, decision 4; E3-01), so
-   today the drop happens on the same night; the mechanism stays so the
-   value can change without code.
-6. When a membership or an event expires, the customer falls to the level
-   of their other valid sources, not to the entry level.
-7. `nivel_por_puntos` comes from `saldo_puntos` and the thresholds of the
-   current `niveles` rule (E3-01). Points expire through the ledger (E3-02,
-   E3-05); a drop only happens if losing those points lowers the level
-   (issue #1, decision 4).
-8. Qualifying events (issue #9, client decisions of 2026-10-10):
-   - Each event is its own row in `eventos_calificados`, with its support
-     document and its own end date (`vigente_hasta`).
-   - **Property purchase** → Diamante while the event is valid. Its default
-     validity is set by configuration (client: 12 months) and does not
-     award points.
-   - **School enrollment** → depends on how many valid enrollments the
-     customer has: the count-to-level mapping is configuration (client: 1
-     or 2 children → Oro, 3 or more → Diamante). Each enrollment's end
-     date is entered when it is registered, because the school defines it.
-   - Several events of the same kind do not add up levels.
-     `nivel_por_evento` is the highest level the valid events give, and
-     `evento_vigente_hasta` is the date until which that level is
-     guaranteed: for properties, the latest end date; for enrollments, the
-     date the count would fall below the level's minimum (with three
-     enrollments, Diamante lasts until the third-latest end date). The
-     nightly evaluation recomputes both.
-   - When a child leaves the school, the event is closed: its end date
-     moves to the closing date, with a reason, and the change is audited.
-9. Every change of `nivel_efectivo` is recorded with its date, previous and
-   new level, and the reason.
+1. El nivel efectivo es el más alto entre `nivel_por_puntos`,
+   `nivel_por_membresia` y `nivel_por_evento`, considerando solo los
+   vigentes.
+2. Las tres fuentes se guardan en campos separados. Nunca se colapsan.
+3. El ascenso se evalúa de forma síncrona en la petición que registra la
+   compra, registra un evento o activa una membresía. El cliente ve su
+   nivel nuevo al instante.
+4. El descenso solo ocurre en el job nocturno, nunca en una petición de
+   usuario.
+5. Protección: cuando el nivel por puntos cae por debajo del nivel efectivo
+   actual, `proteccion_hasta` queda en hoy más los `proteccion_meses` de la
+   regla `niveles` vigente, y el cliente no baja antes de esa fecha. El
+   cliente confirmó 0 meses (issue #1, decisión 4; E3-01), así que hoy la
+   bajada ocurre esa misma noche; el mecanismo se mantiene para que el
+   valor pueda cambiar sin tocar código.
+6. Al vencerse una membresía o un evento, el cliente cae al nivel que le
+   corresponda por sus otras fuentes vigentes, no al nivel de entrada.
+7. `nivel_por_puntos` sale de `saldo_puntos` y de los umbrales de la regla
+   `niveles` vigente (E3-01). Los puntos vencen a través del libro (E3-02,
+   E3-05); solo se baja si perder esos puntos baja de categoría (issue #1,
+   decisión 4).
+8. Eventos calificados (issue #9, decisiones del cliente del 2026-10-10):
+   - Cada evento es su propia fila en `eventos_calificados`, con su
+     soporte y su propia fecha de fin (`vigente_hasta`).
+   - **Compra de inmueble** → Diamante mientras el evento esté vigente. Su
+     vigencia por defecto la define la configuración (cliente: 12 meses) y
+     no otorga puntos.
+   - **Matrícula en el colegio** → depende de cuántas matrículas vigentes
+     tenga el cliente: la relación entre cantidad y nivel es configuración
+     (cliente: 1 o 2 hijos → Oro, 3 o más → Diamante). La fecha de fin de
+     cada matrícula se captura al registrarla, porque la define el colegio.
+   - Varios eventos del mismo tipo no suman niveles. `nivel_por_evento` es
+     el nivel más alto que dan los eventos vigentes, y
+     `evento_vigente_hasta` es la fecha hasta la que ese nivel está
+     garantizado: en inmuebles, la fecha de fin más lejana; en matrículas,
+     la fecha en que la cantidad bajaría del mínimo del nivel (con tres
+     matrículas, el Diamante dura hasta la tercera fecha de fin más
+     lejana). La evaluación nocturna recalcula ambos.
+   - Si un niño se retira del colegio, el evento se cierra: su fecha de fin
+     pasa a la fecha de cierre, con un motivo, y el cambio queda en
+     auditoría.
+9. Todo cambio de `nivel_efectivo` queda registrado con su fecha, el nivel
+   anterior, el nuevo y el motivo.
 
-## Acceptance criteria
+## Criterios de aceptación
 
-- [ ] Given a customer who is Oro by points and Diamante by a valid
-      membership, when their level is queried, then it is Diamante.
-- [ ] Given that same customer, when the membership expires and the
-      nightly evaluation runs, then they are Oro, not Bronce.
-- [ ] Given a customer who crosses the Oro threshold with a purchase, when
-      the request ends, then their effective level is already Oro.
-- [ ] Given a customer whose balance falls below the threshold, when the
-      nightly evaluation runs inside the protection period, then they do
-      not drop.
-- [ ] Given that same customer after the protection period, when the
-      nightly evaluation runs, then they drop and the change is recorded
-      with its date.
-- [ ] Given `proteccion_meses: 0`, when the balance falls below the
-      threshold, then the customer drops on the next nightly evaluation.
-- [ ] Given a valid property purchase, when the level is computed, then it
-      is Diamante even if the points say Bronce.
-- [ ] Given two valid school enrollments, then `nivel_por_evento` is Oro;
-      given three, it is Diamante; when one of the three is closed, it goes
-      back to Oro on the next evaluation.
-- [ ] No code path lowers the level inside an HTTP request.
+- [ ] Dado un cliente Oro por puntos y Diamante por membresía vigente,
+      cuando se consulta su nivel, entonces es Diamante.
+- [ ] Dado ese mismo cliente, cuando vence la membresía y corre la
+      evaluación nocturna, entonces queda en Oro, no en Bronce.
+- [ ] Dado un cliente que cruza el umbral de Oro con una compra, cuando
+      termina la petición, entonces su nivel efectivo ya es Oro.
+- [ ] Dado un cliente cuyo saldo cae bajo el umbral, cuando corre la
+      evaluación nocturna dentro del periodo de protección, entonces no
+      baja.
+- [ ] Dado ese mismo cliente pasada la protección, cuando corre la
+      evaluación nocturna, entonces baja y queda registrado el cambio con su
+      fecha.
+- [ ] Dado `proteccion_meses: 0`, cuando el saldo cae bajo el umbral,
+      entonces el cliente baja en la siguiente evaluación nocturna.
+- [ ] Dada una compra de inmueble vigente, cuando se calcula el nivel,
+      entonces es Diamante aunque los puntos digan Bronce.
+- [ ] Dadas dos matrículas vigentes, entonces `nivel_por_evento` es Oro;
+      dadas tres, es Diamante; cuando se cierra una de las tres, vuelve a
+      Oro en la siguiente evaluación.
+- [ ] Ningún camino de código baja el nivel dentro de una petición HTTP.
 
 ## Fixtures
 
-`tests/Fixtures/niveles-escenarios.json` — updated in this spec PR: keys
-and prose in English, protection taken from the rule, the event
-configuration (`event_rules`), and new cases for school enrollments,
-closing an enrollment, several properties and zero-month protection.
+`tests/Fixtures/niveles-escenarios.json` — se actualiza en este PR de
+spec: claves y textos en inglés, la protección tomada de la regla, la
+configuración de eventos (`event_rules`) y casos nuevos para matrículas,
+cierre de una matrícula, varios inmuebles y protección de cero meses.
 
-## Data and migrations (technical decisions, pending review)
+## Datos y migraciones (decisiones técnicas, pendientes de revisión)
 
-- **`clientes`** gets: `nivel_por_puntos` (default `bronce`),
-  `nivel_por_membresia` + `membresia_vigente_hasta` (nullable, written by
+- **`clientes`** suma: `nivel_por_puntos` (por defecto `bronce`),
+  `nivel_por_membresia` + `membresia_vigente_hasta` (nullable, los escribe
   E6-01), `nivel_por_evento` + `evento_vigente_hasta` (nullable),
-  `nivel_efectivo` (default `bronce`), `nivel_efectivo_desde`,
-  `proteccion_hasta` (nullable). Levels are stored as strings
-  (`bronce`, `plata`, `oro`, `diamante`) through a `Nivel` enum that knows
-  their order.
-- **`eventos_calificados`**: `id`, `cliente_id`, `comercio_id` (the
-  merchant where it happened), `tipo` (`compra_inmueble` |
+  `nivel_efectivo` (por defecto `bronce`), `nivel_efectivo_desde`,
+  `proteccion_hasta` (nullable). Los niveles se guardan como texto
+  (`bronce`, `plata`, `oro`, `diamante`) a través de un enum `Nivel` que
+  conoce su orden.
+- **`eventos_calificados`**: `id`, `cliente_id`, `comercio_id` (el
+  comercio donde ocurrió), `tipo` (`compra_inmueble` |
   `matricula_colegio`), `vigente_desde`, `vigente_hasta`, `soporte_path`
-  (file on a private disk), `motivo_cierre` (nullable), `registrado_por`,
-  `cerrado_por` (nullable), timestamps. Rows are not deleted; closing only
-  moves `vigente_hasta` earlier, and the `AuditoriaObserver` (E2-01) keeps
-  the before and after.
-- **No `nivel_otorgado` column** on events (CLAUDE.md §4 lists it): the
-  school level depends on how many enrollments are valid, so a per-row
-  level would be wrong. The level is derived from `event_rules`.
-- **`cambios_nivel`** (append-only): `id`, `cliente_id`, `nivel_anterior`,
-  `nivel_nuevo`, `motivo` (`ascenso_compra`, `ascenso_evento`,
-  `ascenso_membresia`, `descenso_nocturno`), `created_at` set by the
-  application.
-- **Event rules** live in `config/niveles.php` (`event_rules`), with a test
-  asserting they equal the fixture. They could move to the E3-01 rule
-  engine later if the client wants to edit them from the panel.
-- **Actions** (`app/Actions/Niveles/`, invokable):
-  - `RaiseNivelEfectivo`: recomputes the three sources and sets
-    `nivel_efectivo` to the higher of the current one and the computed
-    one. It can never lower it. E4-01 calls it in the same transaction as
-    the accrual; event registration and E6-01 call it too.
-  - `ReevaluateNivelEfectivo`: the nightly evaluation. It recomputes the
-    sources, applies protection and may lower the level. It refuses to run
-    outside the console (queue worker or scheduler), and an architecture
-    test checks that only `App\Console` and `App\Jobs` use it.
-  - `RegisterEventoCalificado` and `CloseEventoCalificado`.
-  - Every level change writes `cambios_nivel` and `nivel_efectivo_desde`
-    inside the same transaction, with the customer row locked
-    (`lockForUpdate`), like the ledger (E3-02).
-- **Panel**: a resource to register and close qualifying events, with the
-  support file upload and customer lookup by `documento`. No editing or
-  deleting of events.
-- **Authorization**: property purchases are registered by the group
-  administrator (issue #1, decision 5). School enrollments are registered
-  and closed by the group administrator or the merchant administrator of
-  the school, and only for merchants in the `colegio` category.
+  (archivo en un disco privado), `motivo_cierre` (nullable),
+  `registrado_por`, `cerrado_por` (nullable), timestamps. Las filas no se
+  borran; cerrar solo adelanta `vigente_hasta`, y el `AuditoriaObserver`
+  (E2-01) guarda el antes y el después.
+- **Sin columna `nivel_otorgado`** en los eventos (CLAUDE.md §4 la lista):
+  el nivel del colegio depende de cuántas matrículas estén vigentes, así
+  que un nivel por fila sería engañoso. El nivel se deriva de
+  `event_rules`.
+- **`cambios_nivel`** (append-only): `id`, `cliente_id`,
+  `nivel_anterior`, `nivel_nuevo`, `motivo` (`ascenso_compra`,
+  `ascenso_evento`, `ascenso_membresia`, `descenso_nocturno`),
+  `created_at` puesto por la aplicación.
+- **Reglas de eventos** en `config/niveles.php` (`event_rules`), con una
+  prueba que verifica que coinciden con el fixture. Podrían pasar al motor
+  de reglas de E3-01 más adelante si el cliente quiere editarlas desde el
+  panel.
+- **Actions** (`app/Actions/Niveles/`, invocables):
+  - `RaiseNivelEfectivo`: recalcula las tres fuentes y deja
+    `nivel_efectivo` en el mayor entre el actual y el calculado. Nunca lo
+    baja. E4-01 la llama en la misma transacción que la acumulación;
+    también la llaman el registro de eventos y E6-01.
+  - `ReevaluateNivelEfectivo`: la evaluación nocturna. Recalcula las
+    fuentes, aplica la protección y puede bajar el nivel. Se niega a correr
+    fuera de la consola (worker de colas o scheduler), y una prueba de
+    arquitectura verifica que solo la usan `App\Console` y `App\Jobs`.
+  - `RegisterEventoCalificado` y `CloseEventoCalificado`.
+  - Todo cambio de nivel escribe `cambios_nivel` y `nivel_efectivo_desde`
+    dentro de la misma transacción, con la fila del cliente bloqueada
+    (`lockForUpdate`), igual que el libro (E3-02).
+- **Panel**: un recurso para registrar y cerrar eventos calificados, con
+  carga del archivo de soporte y búsqueda del cliente por `documento`. Sin
+  edición ni borrado de eventos.
+- **Autorización**: las compras de inmueble las registra el administrador
+  del grupo (issue #1, decisión 5). Las matrículas las registran y cierran
+  el administrador del grupo o el administrador del comercio del colegio,
+  y solo para comercios de la categoría `colegio`.
 
-## Decisions to confirm in review
+## Decisiones a confirmar en la revisión
 
-Proposed by the implementer (2026-10-12); the reviewer approves them with
-this spec.
+Propuestas por el implementador (2026-10-12); el revisor las aprueba con
+esta spec.
 
-1. Protection comes from the `niveles` rule (`proteccion_meses`, now 0)
-   instead of a fixed 3 months. CLAUDE.md §3.5 and §3.6 still say "3 months
-   of protection and a notice 30 days before" and should be updated
-   (issue #1 already asks for it, together with E3-05).
-2. `eventos_calificados` has no `nivel_otorgado` column; the level is
-   derived from `event_rules`.
-3. Event rules live in configuration, not in the rule engine.
-4. Level history goes to a new `cambios_nivel` table.
-5. Who registers and closes each kind of event (proposal above).
+1. La protección sale de la regla `niveles` (`proteccion_meses`, hoy 0) en
+   lugar de 3 meses fijos. CLAUDE.md §3.5 y §3.6 todavía dicen "3 meses de
+   protección y aviso 30 días antes" y deberían actualizarse (el issue #1
+   ya lo pide, junto con E3-05).
+2. `eventos_calificados` no tiene columna `nivel_otorgado`; el nivel se
+   deriva de `event_rules`.
+3. Las reglas de eventos viven en configuración, no en el motor de reglas.
+4. El historial de niveles va en una tabla nueva, `cambios_nivel`.
+5. Quién registra y cierra cada tipo de evento (propuesta arriba).
 
-## Hard rules from CLAUDE.md that apply
+## Reglas duras de CLAUDE.md que aplican
 
-- 3.5 Three separate sources
-- 3.6 Synchronous promotion, nightly demotion
-- 3.9 `America/Bogota` for validity dates
-- 3.13 Engine-agnostic code
+- 3.5 Tres fuentes separadas
+- 3.6 Ascenso síncrono, descenso nocturno
+- 3.9 `America/Bogota` para las fechas de vigencia
+- 3.13 Código agnóstico del motor
 
-## Depends on
+## Depende de
 
-E3-01 (`niveles` rule), E3-02 (`clientes` and `saldo_puntos`), E2-01
-(roles and audit), E2-02 (merchant categories).
+E3-01 (regla `niveles`), E3-02 (`clientes` y `saldo_puntos`), E2-01
+(roles y auditoría), E2-02 (categorías de comercio).

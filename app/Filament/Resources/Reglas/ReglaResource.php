@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 /**
- * Rule engine (E3-01). Access is decided by `ReglaPolicy`: only the group
+ * Rule engine. Access is decided by `ReglaPolicy`: only the group
  * administrator. There is no in-place editing or deleting: "editing" means
  * saving a new version through the actions.
  */

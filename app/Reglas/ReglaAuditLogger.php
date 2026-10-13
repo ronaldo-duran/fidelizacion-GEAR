@@ -10,7 +10,7 @@ use App\Models\User;
 
 /**
  * Records every rule save in `auditorias` with the author, the date and the
- * previous and new definition (E3-01, audit acceptance criterion).
+ * previous and new definition.
  */
 class ReglaAuditLogger
 {

@@ -7,7 +7,7 @@ namespace App\Policies;
 use App\Models\User;
 
 /**
- * Access to the rule engine (E3-01). Only the group administrator creates
+ * Access to the rule engine. Only the group administrator creates
  * rules and versions; nobody deletes them or edits them in place (hard rule
  * 3.2). Abilities receive the model as an extra argument and ignore it: the
  * permission does not depend on which rule it is.
@@ -58,12 +58,11 @@ class ReglaPolicy
     }
 
     /**
-     * The advanced JSON editor sits behind a separate permission (E3-01,
-     * business rule 6).
+     * The advanced JSON editor sits behind a separate permission.
      */
     public function editJson(User $user): bool
     {
-        return $this->managesReglas($user) && $user->puede_editar_json_reglas;
+        return $this->managesReglas($user) && $user->edita_reglas_json;
     }
 
     private function managesReglas(User $user): bool

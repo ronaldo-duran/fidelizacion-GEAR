@@ -24,9 +24,9 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $comercio_id
  * @property int|null $sede_id
  * @property bool $activo
- * @property bool $puede_editar_json_reglas
+ * @property bool $edita_reglas_json
  */
-#[Fillable(['name', 'email', 'password', 'rol', 'comercio_id', 'sede_id', 'activo', 'puede_editar_json_reglas'])]
+#[Fillable(['name', 'email', 'password', 'rol', 'comercio_id', 'sede_id', 'activo'])]
 #[Hidden(['password', 'remember_token'])]
 #[ObservedBy(AuditoriaObserver::class)]
 class User extends Authenticatable implements FilamentUser
@@ -89,7 +89,7 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'rol' => RolUsuario::class,
             'activo' => 'boolean',
-            'puede_editar_json_reglas' => 'boolean',
+            'edita_reglas_json' => 'boolean',
         ];
     }
 }

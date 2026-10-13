@@ -39,7 +39,7 @@ class UserFactory extends Factory
             'comercio_id' => null,
             'sede_id' => null,
             'activo' => true,
-            'puede_editar_json_reglas' => false,
+            'edita_reglas_json' => false,
         ];
     }
 
@@ -77,7 +77,7 @@ class UserFactory extends Factory
 
     public function jsonReglaEditor(): static
     {
-        return $this->state(['puede_editar_json_reglas' => true]);
+        return $this->state(['edita_reglas_json' => true]);
     }
 
     public function inactivo(): static

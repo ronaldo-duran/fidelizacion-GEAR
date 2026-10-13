@@ -12,6 +12,7 @@ use App\Models\Regla;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\ReglaTestData;
 
@@ -128,6 +129,33 @@ it('rejects saving on top of a version that is no longer the latest', function (
         ->toThrow(ValidationException::class);
 
     expect(Regla::query()->count())->toBe(2);
+});
+
+it('turns a concurrent save of the same version into a validation error', function (): void {
+    $v1 = ReglaTestData::createBonificacion($this->admin);
+    $this->travel(1)->minutes();
+
+    Regla::creating(static function (Regla $regla) use ($v1): void {
+        if ($regla->version !== 2) {
+            return;
+        }
+
+        DB::table('reglas')->insert([
+            'codigo' => $v1->codigo,
+            'tipo' => TipoRegla::Bonificacion->value,
+            'version' => 2,
+            'vigente_desde' => now(),
+            'activa' => true,
+            'definicion' => json_encode(ReglaTestData::bonificacion(9)),
+            'created_at' => now(),
+        ]);
+    });
+
+    expect(fn (): Regla => app(VersionRegla::class)($this->admin, $v1, ReglaTestData::bonificacion(3)))
+        ->toThrow(ValidationException::class);
+
+    expect(Regla::query()->where('codigo', $v1->codigo)->count())->toBe(1)
+        ->and($v1->fresh()?->vigente_hasta)->toBeNull();
 });
 
 it('rejects a repeated rule code', function (): void {

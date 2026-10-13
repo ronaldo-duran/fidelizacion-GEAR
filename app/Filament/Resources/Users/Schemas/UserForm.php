@@ -50,7 +50,7 @@ class UserForm
                 Toggle::make('activo')
                     ->label('Activo')
                     ->default(true),
-                Toggle::make('puede_editar_json_reglas')
+                Toggle::make('edita_reglas_json')
                     ->label('Puede usar el editor JSON de reglas')
                     ->helperText('Solo aplica al administrador del grupo.')
                     ->default(false),

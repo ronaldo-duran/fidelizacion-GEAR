@@ -7,7 +7,7 @@ namespace App\Enums;
 use Filament\Support\Contracts\HasLabel;
 
 /**
- * Rule types of the engine (E3-01). Each one has its own sub-schema in
+ * Rule types of the engine. Each one has its own sub-schema in
  * `resources/schemas/regla.json`.
  */
 enum TipoRegla: string implements HasLabel

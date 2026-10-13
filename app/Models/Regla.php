@@ -14,9 +14,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 /**
- * Immutable version of an engine rule (E3-01). Saving a change creates a new
- * row with `version + 1`; the previous one only gets `vigente_hasta` (hard
- * rule 3.2). Rows are created through the actions in `App\Actions\Reglas`.
+ * Immutable version of an engine rule. Saving a change creates a new row
+ * with `version + 1`; the previous one only gets `vigente_hasta` (hard rule
+ * 3.2). Rows are created through the actions in `App\Actions\Reglas`.
+ *
+ * The immutability guard lives in Eloquent events: mass updates through the
+ * query builder or raw SQL skip it. It is defense in depth, not a database
+ * guarantee.
  *
  * @property int $id
  * @property string $codigo

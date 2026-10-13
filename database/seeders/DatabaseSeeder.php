@@ -125,8 +125,8 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Base engine rules (E3-01) with the values the client confirmed on
-     * 2026-10-10 (issue #7): 1 point per $1.000 in every category, points
+     * Base engine rules with the values the client confirmed on 2026-10-10:
+     * 1 point per $1.000 in every category, points
      * last 12 months, thresholds 500/1.500/3.000, no protection and notices
      * 30, 7 and 1 day before. Same values as tests/Fixtures/reglas-validas.json.
      */

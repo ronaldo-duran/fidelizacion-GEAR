@@ -8,6 +8,7 @@ use App\Filament\Resources\Reglas\Pages\NewReglaVersion;
 use App\Filament\Resources\Reglas\Pages\ViewRegla;
 use App\Filament\Resources\Reglas\ReglaResource;
 use App\Filament\Resources\Reglas\RelationManagers\VersionsRelationManager;
+use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\Regla;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -36,7 +37,6 @@ it('lists every version in the read-only history', function (): void {
     $v2 = app(VersionRegla::class)($this->admin, $v1, ReglaTestData::bonificacion(3));
     $this->actingAs($this->admin);
 
-    // Relation managers load lazily, so the history is tested as its own component.
     Livewire::test(VersionsRelationManager::class, ['ownerRecord' => $v2, 'pageClass' => ViewRegla::class])
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$v1, $v2]);
@@ -74,7 +74,6 @@ it('creates a niveles rule with the guided form', function (): void {
                     ['nivel' => 'diamante', 'umbral_puntos' => '3000'],
                 ],
                 'proteccion_meses' => '0',
-                // Raw state of a simple repeater: one item per value, keyed by the field name.
                 'avisos_dias_antes' => [['dias' => '30'], ['dias' => '7'], ['dias' => '1']],
             ],
         ])
@@ -159,4 +158,24 @@ it('shows the current version on the detail page', function (): void {
     Livewire::test(ViewRegla::class, ['record' => $regla->getRouteKey()])
         ->assertSuccessful()
         ->assertSee($regla->codigo);
+});
+
+it('does not let mass assignment grant the JSON editor permission', function (): void {
+    $user = User::factory()->administradorDelGrupo()->create();
+
+    $user->update(['edita_reglas_json' => true]);
+
+    expect($user->fresh()?->edita_reglas_json)->toBeFalse();
+});
+
+it('lets the group administrator grant the JSON editor permission from the user form', function (): void {
+    $other = User::factory()->administradorDelGrupo()->create();
+    $this->actingAs($this->admin);
+
+    Livewire::test(EditUser::class, ['record' => $other->id])
+        ->fillForm(['edita_reglas_json' => true])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($other->fresh()?->edita_reglas_json)->toBeTrue();
 });

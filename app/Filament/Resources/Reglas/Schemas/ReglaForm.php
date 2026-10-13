@@ -186,8 +186,6 @@ class ReglaForm
      */
     private static function guidedSection(TipoRegla $tipo, array $components): Group
     {
-        // The group decides visibility outside the `definicion` state path,
-        // where `tipo` and `use_json_editor` resolve.
         return Group::make([
             Section::make("Definición: {$tipo->getLabel()}")
                 ->statePath('definicion')

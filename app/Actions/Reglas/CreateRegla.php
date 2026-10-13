@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Creates version 1 of a new rule (E3-01).
+ * Creates version 1 of a new rule.
  */
 class CreateRegla
 {

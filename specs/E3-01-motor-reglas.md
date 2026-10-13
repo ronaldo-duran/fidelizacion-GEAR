@@ -88,7 +88,7 @@ feature only stores the values.
   once; decreasing notices; `en` requires an array and every other operator
   a single value; `mayor`/`menor` require an integer; categories not
   repeated, normalized and existing).
-- JSON editor permission: boolean column `puede_editar_json_reglas` on
+- JSON editor permission: boolean column `edita_reglas_json` on
   `users`, following E2-01 (role as an enum plus scope attributes, no
   permissions package). It only takes effect for the group administrator.
 - Audit: every save writes one row in `auditorias` with the author, the

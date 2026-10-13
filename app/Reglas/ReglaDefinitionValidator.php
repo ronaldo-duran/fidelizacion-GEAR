@@ -127,8 +127,6 @@ class ReglaDefinitionValidator
         $slugs = $this->slugs($definicion);
         $errors = [];
 
-        // MySQL and SQL Server compare case-insensitively: the slug must
-        // already be normalized so E3-02 finds it the same way on every engine.
         foreach ($slugs as $slug) {
             if ($slug !== mb_strtolower(trim($slug))) {
                 $errors[] = "La categoría «{$slug}» debe escribirse en minúsculas y sin espacios.";

@@ -1,0 +1,151 @@
+{
+    "_note": "Scenarios for E3-04 (rule simulator). The sample purchases run in order, as if they belonged to one customer, so daily and monthly caps count earlier purchases of the same simulation. Dates are fixed (2026-10-13 is a Tuesday, 2026-10-17 a Saturday, ISO dia_semana 6) so weekend bonuses are deterministic. Times are America/Bogota. Rule definitions use the same shapes as reglas-validas.json.",
+    "_assumptions": "Pending client confirmation (TODO(cliente)): base points = floor(monto / moneda_por_punto) × puntos_por_unidad; only the highest bonus multiplier applies; order is base → bonus → per-transaction cap → daily cap → monthly cap.",
+    "comercios": [
+        { "id": 1, "categoria_slug": "restaurante" },
+        { "id": 2, "categoria_slug": "heladeria" },
+        { "id": 3, "categoria_slug": "inmobiliaria" }
+    ],
+    "current_rules": [
+        {
+            "codigo": "acumulacion-base",
+            "version": 1,
+            "tipo": "acumulacion",
+            "definicion": {
+                "moneda_por_punto": 1000,
+                "tasas_por_categoria": [
+                    { "categoria_slug": "restaurante", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "heladeria", "puntos_por_unidad": 1 },
+                    { "categoria_slug": "inmobiliaria", "puntos_por_unidad": 1 }
+                ],
+                "topes": {
+                    "puntos_por_transaccion": null,
+                    "puntos_por_dia": null,
+                    "puntos_por_mes": null
+                },
+                "vigencia_puntos_meses": 12
+            }
+        },
+        {
+            "codigo": "doble-restaurante",
+            "version": 1,
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 2,
+                "condiciones": [
+                    { "campo": "categoria_slug", "operador": "igual", "valor": "restaurante" },
+                    { "campo": "monto", "operador": "mayor_igual", "valor": 50000 }
+                ]
+            }
+        },
+        {
+            "codigo": "triple-fin-de-semana",
+            "version": 1,
+            "tipo": "bonificacion",
+            "definicion": {
+                "multiplicador": 3,
+                "condiciones": [{ "campo": "dia_semana", "operador": "en", "valor": [6, 7] }]
+            }
+        }
+    ],
+    "draft": {
+        "_description": "Draft of acumulacion-base: restaurants earn double and inmobiliaria earns nothing, with caps per transaction and per day.",
+        "codigo": "acumulacion-base",
+        "tipo": "acumulacion",
+        "definicion": {
+            "moneda_por_punto": 1000,
+            "tasas_por_categoria": [
+                { "categoria_slug": "restaurante", "puntos_por_unidad": 2 },
+                { "categoria_slug": "heladeria", "puntos_por_unidad": 1 },
+                { "categoria_slug": "inmobiliaria", "puntos_por_unidad": 0 }
+            ],
+            "topes": {
+                "puntos_por_transaccion": 500,
+                "puntos_por_dia": 1000,
+                "puntos_por_mes": null
+            },
+            "vigencia_puntos_meses": 12
+        }
+    },
+    "invalid_draft": {
+        "_description": "Draft with a key outside the whitelist: the simulator shows the validation error and computes nothing.",
+        "codigo": "acumulacion-base",
+        "tipo": "acumulacion",
+        "definicion": {
+            "moneda_por_punto": 1000,
+            "tasas_por_categoria": [{ "categoria_slug": "restaurante", "puntos_por_unidad": 1 }],
+            "vigencia_puntos_meses": 12,
+            "descuento_pesos": 5000
+        },
+        "expected_result": "validation_error"
+    },
+    "purchases": [
+        {
+            "_description": "Restaurant purchase of $85.000 on a Tuesday: the double bonus applies in both.",
+            "comercio_id": 1,
+            "monto": 85000,
+            "fecha": "2026-10-13 10:00",
+            "expected_current": { "base": 85, "bonus_rule": "doble-restaurante", "cap": null, "puntos": 170 },
+            "expected_draft": { "base": 170, "bonus_rule": "doble-restaurante", "cap": null, "puntos": 340 }
+        },
+        {
+            "_description": "Ice cream purchase of $12.500: the base rounds down and no bonus applies.",
+            "comercio_id": 2,
+            "monto": 12500,
+            "fecha": "2026-10-13 11:00",
+            "expected_current": { "base": 12, "bonus_rule": null, "cap": null, "puntos": 12 },
+            "expected_draft": { "base": 12, "bonus_rule": null, "cap": null, "puntos": 12 }
+        },
+        {
+            "_description": "Property purchase of $1.000.000: the draft rate for inmobiliaria is 0.",
+            "comercio_id": 3,
+            "monto": 1000000,
+            "fecha": "2026-10-13 12:00",
+            "expected_current": { "base": 1000, "bonus_rule": null, "cap": null, "puntos": 1000 },
+            "expected_draft": { "base": 0, "bonus_rule": null, "cap": null, "puntos": 0 }
+        },
+        {
+            "_description": "Purchase of $999: below one point, it earns nothing.",
+            "comercio_id": 1,
+            "monto": 999,
+            "fecha": "2026-10-13 13:00",
+            "expected_current": { "base": 0, "bonus_rule": null, "cap": null, "puntos": 0 },
+            "expected_draft": { "base": 0, "bonus_rule": null, "cap": null, "puntos": 0 }
+        },
+        {
+            "_description": "Restaurant purchase of $60.000 on a Saturday: double and triple both hold, only triple applies.",
+            "comercio_id": 1,
+            "monto": 60000,
+            "fecha": "2026-10-17 10:00",
+            "expected_current": { "base": 60, "bonus_rule": "triple-fin-de-semana", "cap": null, "puntos": 180 },
+            "expected_draft": { "base": 120, "bonus_rule": "triple-fin-de-semana", "cap": null, "puntos": 360 }
+        },
+        {
+            "_description": "Restaurant purchase of $300.000 the same Saturday: the draft hits the per-transaction cap.",
+            "comercio_id": 1,
+            "monto": 300000,
+            "fecha": "2026-10-17 12:00",
+            "expected_current": { "base": 300, "bonus_rule": "triple-fin-de-semana", "cap": null, "puntos": 900 },
+            "expected_draft": {
+                "base": 600,
+                "bonus_rule": "triple-fin-de-semana",
+                "cap": "puntos_por_transaccion",
+                "puntos": 500
+            }
+        },
+        {
+            "_description": "Restaurant purchase of $200.000 the same Saturday: the draft hits the daily cap (360 + 500 already today, cap 1.000).",
+            "comercio_id": 1,
+            "monto": 200000,
+            "fecha": "2026-10-17 18:00",
+            "expected_current": { "base": 200, "bonus_rule": "triple-fin-de-semana", "cap": null, "puntos": 600 },
+            "expected_draft": {
+                "base": 400,
+                "bonus_rule": "triple-fin-de-semana",
+                "cap": "puntos_por_dia",
+                "puntos": 140
+            }
+        }
+    ],
+    "expected_totals": { "current": 2862, "draft": 1352 }
+}

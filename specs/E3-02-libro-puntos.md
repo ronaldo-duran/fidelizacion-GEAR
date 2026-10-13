@@ -1,188 +1,190 @@
-# E3-02 · Points ledger
+# E3-02 · Libro de puntos
 
-**Epic:** E3 · **Estimated hours:** 16 · **Risk:** high
+**Épica:** E3 · **Horas estimadas:** 16 · **Riesgo:** alto
 
-## Goal
+## Objetivo
 
-Record every points movement in an immutable, auditable way, with the
-customer's balance always consistent.
+Registrar todo movimiento de puntos de forma inmutable y auditable, con
+el saldo del cliente siempre consistente.
 
-## Out of scope
+## Fuera de alcance
 
-- Computing how many points a purchase earns, and the `transacciones` table
-  with its idempotency (E4-01 and E9-01, hard rule 3.7).
-- Cashier screen (E4-02) and any other UI for movements.
-- The nightly expiry job and the decision on how expiry is cut (E3-05).
-  This feature only lets the ledger record a `caducidad` movement.
-- Customer levels (`nivel_*` columns, E3-03).
-- Benefit redemptions: they live in `redenciones` (E5-02) and never touch
-  points (hard rule 3.1).
+- Calcular cuántos puntos da una compra, y la tabla `transacciones` con su
+  idempotencia (E4-01 y E9-01, regla dura 3.7).
+- Pantalla de cajero (E4-02) y cualquier otra interfaz de movimientos.
+- El job nocturno de caducidad y la decisión de cómo se corta el
+  vencimiento (E3-05). Aquí solo se garantiza que el libro admite un
+  movimiento de `caducidad`.
+- Niveles del cliente (columnas `nivel_*`, E3-03).
+- Redenciones de beneficios: viven en `redenciones` (E5-02) y nunca tocan
+  los puntos (regla dura 3.1).
 
-## Business rules
+## Reglas de negocio
 
-1. `movimientos_puntos` is append-only: never UPDATE, never DELETE.
-2. Every movement stores the applied `regla_id` and `regla_version`
-   (snapshot, hard rule 3.3), except `ajuste_manual`, which has no rule
-   and instead requires a reason (`motivo`) and the user who made it.
-3. The balance in `clientes` is updated inside the same database
-   transaction that inserts the movement.
-4. Voiding a purchase inserts a negative `reversa` movement that references
-   the original transaction. The original movement is never touched.
-5. A reversal is only accepted within the reversal window after the
-   purchase. The window length lives in a fixture and in configuration,
-   never in code literals.
-6. The balance recalculated from scratch must always match the
-   materialized balance.
-7. Movement types: `acumulacion`, `caducidad`, `ajuste_manual`, `reversa`.
-   **`redencion` is removed** from the enum (see Decisions).
+1. `movimientos_puntos` es append-only: nunca UPDATE ni DELETE.
+2. Todo movimiento guarda `regla_id` y `regla_version` aplicadas
+   (snapshot, regla dura 3.3), salvo `ajuste_manual`, que no tiene regla y
+   en cambio exige un motivo y el usuario que lo hizo.
+3. El saldo en `clientes` se actualiza dentro de la misma transacción de
+   base de datos que inserta el movimiento.
+4. Anular una compra inserta un movimiento `reversa` negativo que
+   referencia la transacción original. El movimiento original no se toca.
+5. La reversa solo se admite dentro del plazo de reversa después de la
+   compra. La duración del plazo vive en un fixture y en configuración,
+   nunca como número suelto en el código.
+6. El saldo recalculado desde cero debe coincidir siempre con el saldo
+   materializado.
+7. Tipos de movimiento: `acumulacion`, `caducidad`, `ajuste_manual`,
+   `reversa`. **Se elimina `redencion`** del enum (ver Decisiones).
 
-## Acceptance criteria
+## Criterios de aceptación
 
-- [ ] Given an inserted movement, when someone tries to update or delete it
-      through the model, then the operation fails.
-- [ ] Given an accrual of N points, when it completes, then the customer's
-      balance grew by exactly N inside the same transaction.
-- [ ] Given a voided transaction, when the reversal is processed, then a
-      negative movement referencing it exists, the original is untouched
-      and the balance reflects the subtraction.
-- [ ] Given a transaction older than the reversal window, when someone
-      tries to reverse it, then it is rejected and nothing is inserted.
-- [ ] Given a transaction that was already reversed, when someone tries to
-      reverse it again, then it is rejected.
-- [ ] Given a manual adjustment, when it is recorded, then it stores the
-      reason and the user, and a manual adjustment without a reason is
-      rejected.
-- [ ] Given a customer with movements of every type, when the balance is
-      recalculated from scratch, then it matches the materialized balance.
-- [ ] Given a failure halfway through the operation, when it rolls back,
-      then neither the movement nor the balance change remain.
-- [ ] Given a movement that would leave the balance below zero, when it is
-      recorded, then it is rejected — except a reversal, which is capped at
-      the current balance (see Reversal).
-- [ ] Given a reversal of a purchase whose points were partly consumed by a
-      later negative movement, when it is processed, then it subtracts only
-      the current balance, leaves the balance at zero and records the capped
-      amount with its reason.
-- [ ] Given two reversals of the same transaction processed at the same
-      time, when both finish, then only one reversal movement exists and the
-      balance was subtracted once.
-- [ ] Given two accruals for the same customer processed at the same time,
-      when both finish, then the balance equals the sum of both.
-- [ ] Given a manual adjustment by a merchant administrator or a cashier,
-      when it is recorded, then it is rejected with 403 and nothing is
-      inserted.
-- [ ] Given a reversal by the merchant administrator of the transaction's
-      merchant, then it is accepted; by the merchant administrator of
-      another merchant or by a cashier, then it is rejected with 403.
-- [ ] Given a movement whose sign or fields do not match its type (an
-      `acumulacion` with negative points, an `acumulacion` without
-      `comercio_id` or rule snapshot, a `reversa` without `motivo`, zero
-      points), when it is recorded, then it is rejected.
+- [ ] Dado un movimiento insertado, cuando se intenta actualizarlo o
+      borrarlo por el modelo, entonces la operación falla.
+- [ ] Dada una acumulación de N puntos, cuando se completa, entonces el
+      saldo del cliente aumentó exactamente N dentro de la misma
+      transacción.
+- [ ] Dada una transacción anulada, cuando se procesa la reversa,
+      entonces existe un movimiento negativo que la referencia, el
+      original sigue intacto y el saldo refleja la resta.
+- [ ] Dada una transacción por fuera del plazo de reversa, cuando se
+      intenta revertir, entonces se rechaza y no se inserta nada.
+- [ ] Dada una transacción ya revertida, cuando se intenta revertir de
+      nuevo, entonces se rechaza.
+- [ ] Dado un ajuste manual, cuando se registra, entonces guarda el motivo
+      y el usuario, y un ajuste manual sin motivo se rechaza.
+- [ ] Dado un cliente con movimientos de todos los tipos, cuando se
+      recalcula el saldo desde cero, entonces coincide con el saldo
+      materializado.
+- [ ] Dado un fallo a mitad de la operación, cuando se hace rollback,
+      entonces no queda ni movimiento ni cambio de saldo.
+- [ ] Dado un movimiento que dejaría el saldo bajo cero, cuando se
+      registra, entonces se rechaza, salvo la reversa, que se topa en el
+      saldo actual (ver Reversa).
+- [ ] Dada la reversa de una compra cuyos puntos ya consumió en parte un
+      movimiento negativo posterior, cuando se procesa, entonces resta solo
+      el saldo actual, deja el saldo en cero y registra el monto topado con
+      su motivo.
+- [ ] Dadas dos reversas de la misma transacción procesadas al mismo
+      tiempo, cuando ambas terminan, entonces existe un solo movimiento de
+      reversa y el saldo se restó una sola vez.
+- [ ] Dadas dos acumulaciones del mismo cliente procesadas al mismo
+      tiempo, cuando ambas terminan, entonces el saldo es la suma de las
+      dos.
+- [ ] Dado un ajuste manual hecho por un administrador de comercio o un
+      cajero, cuando se registra, entonces se rechaza con 403 y no se
+      inserta nada.
+- [ ] Dada una reversa hecha por el administrador del comercio de la
+      transacción, entonces se acepta; hecha por el administrador de otro
+      comercio o por un cajero, entonces se rechaza con 403.
+- [ ] Dado un movimiento cuyo signo o campos no corresponden a su tipo
+      (una `acumulacion` con puntos negativos, una `acumulacion` sin
+      `comercio_id` o sin snapshot de regla, una `reversa` sin `motivo`,
+      cero puntos), cuando se registra, entonces se rechaza.
 
 ## Fixtures
 
-`tests/Fixtures/movimientos-escenarios.json` — updated in this spec PR:
-keys and prose in English (movement fields keep their column names), the
-pending `redencion` note replaced by the decision, `reversal_window_days`,
-and cases for: a reversal on the last day of the window (accepted), a
-double reversal, an adjustment without a reason, a movement that would go
-negative, a reversal capped at the balance, simultaneous reversals and
-accruals, authorization by role and merchant, and movements whose sign or
-fields do not match their type.
+`tests/Fixtures/movimientos-escenarios.json` — se actualiza en este PR de
+spec: claves y textos en inglés (los campos de movimiento conservan el
+nombre de su columna), la nota pendiente sobre `redencion` reemplazada por
+la decisión, `reversal_window_days`, y casos para: reversa en el último
+día del plazo (aceptada), doble reversa, ajuste sin motivo, movimiento que
+dejaría el saldo negativo, reversa topada en el saldo, reversas y
+acumulaciones simultáneas, autorización por rol y comercio, y movimientos
+cuyo signo o campos no corresponden a su tipo.
 
-## Data and migrations (technical decisions, pending review)
+## Datos y migraciones (decisiones técnicas, pendientes de revisión)
 
-- **`clientes`** (base table; this issue creates it): `id`, `documento`
-  (unique index, never the primary key — hard rule 3.10; stored trimmed),
-  `celular`, `email` (nullable, stored lowercase — 3.13), `saldo_puntos`
-  (integer, default 0), timestamps. The `nivel_*` columns are added by
-  E3-03; registration and login fields by E8-02.
-- **`movimientos_puntos`**: `id`, `cliente_id`, `comercio_id` (required
-  for `acumulacion` and `reversa`, which copies it from the original;
-  null for the other types),
-  `transaccion_id` (nullable), `tipo`, `puntos` (signed integer, never 0),
-  `regla_id` (nullable, FK to `reglas`), `regla_version` (nullable),
-  `vigencia_hasta` (nullable), `motivo` (nullable), `usuario_id`
-  (nullable, FK to `users`), `created_at` set by the application.
-  Indexes: `(cliente_id, created_at)` and `(transaccion_id)`.
-- **`transaccion_id` has no foreign key yet**: `transacciones` belongs to
-  E4-01, which adds the constraint in its own migration. Until then the
-  reversal finds the original accrual by `transaccion_id` in the ledger
-  and uses that movement's `created_at` as the purchase date.
-- **Sign and fields by type** (checked by the actions and by the model):
+- **`clientes`** (tabla base; la crea este issue): `id`, `documento`
+  (índice único, nunca llave primaria — regla dura 3.10; se guarda sin
+  espacios), `celular`, `email` (nullable, en minúsculas — 3.13),
+  `saldo_puntos` (entero, por defecto 0), timestamps. Las columnas
+  `nivel_*` las agrega E3-03; los campos de registro y acceso, E8-02.
+- **`movimientos_puntos`**: `id`, `cliente_id`, `comercio_id` (obligatorio
+  en `acumulacion` y `reversa`, que lo copia del original; nulo en los
+  demás tipos), `transaccion_id` (nullable), `tipo`, `puntos` (entero con
+  signo, nunca 0), `regla_id` (nullable, FK a `reglas`), `regla_version`
+  (nullable), `vigencia_hasta` (nullable), `motivo` (nullable),
+  `usuario_id` (nullable, FK a `users`), `created_at` puesto por la
+  aplicación. Índices: `(cliente_id, created_at)` y `(transaccion_id)`.
+- **`transaccion_id` todavía sin llave foránea**: `transacciones` es de
+  E4-01, que agrega la restricción en su propia migración. Mientras tanto,
+  la reversa encuentra la acumulación original por `transaccion_id` en el
+  libro y usa el `created_at` de ese movimiento como fecha de la compra.
+- **Signo y campos por tipo** (los verifican las Actions y el modelo):
 
-  | `tipo`          | `puntos` | `regla_*`                | `comercio_id`            | `transaccion_id` | `motivo` / `usuario_id`                  |
-  | --------------- | -------- | ------------------------ | ------------------------ | ---------------- | ---------------------------------------- |
-  | `acumulacion`   | > 0      | required                 | required                 | required         | optional                                 |
-  | `reversa`       | < 0      | copied from the original | copied from the original | required         | `motivo` required, `usuario_id` required |
-  | `caducidad`     | < 0      | required                 | —                        | —                | optional                                 |
-  | `ajuste_manual` | ≠ 0      | null                     | —                        | —                | both required                            |
+  | `tipo`          | `puntos` | `regla_*`            | `comercio_id`        | `transaccion_id` | `motivo` / `usuario_id`                        |
+  | --------------- | -------- | -------------------- | -------------------- | ---------------- | ---------------------------------------------- |
+  | `acumulacion`   | > 0      | obligatorio          | obligatorio          | obligatorio      | opcional                                       |
+  | `reversa`       | < 0      | copiado del original | copiado del original | obligatorio      | `motivo` obligatorio, `usuario_id` obligatorio |
+  | `caducidad`     | < 0      | obligatorio          | —                    | —                | opcional                                       |
+  | `ajuste_manual` | ≠ 0      | nulo                 | —                    | —                | ambos obligatorios                             |
 
-- **Reversal**: reverses the net points of the transaction (the sum of its
-  accruals), once; a second reversal is rejected. If a later negative
-  movement (an adjustment or an expiry) already took part of those points,
-  the reversal is capped at the current balance: it subtracts only what is
-  left, the balance ends at zero, and the movement records the capped
-  amount with a reason saying so. A voided purchase never leaves points
-  behind and the balance never goes negative.
-- **`vigencia_hasta`** on an accrual = movement date + the rule's
-  `vigencia_puntos_meses` (per-point validity, as CLAUDE.md §9 is drafted).
-  E3-05 decides whether the cut is daily or monthly; it does not change
-  what is stored here.
-- **Concurrency**: every movement locks the customer row
-  (`lockForUpdate`) before reading the balance, so movements for the same
-  customer are serialized. That lock is also what makes the "already
-  reversed" check race-free; a partial unique index is not used because
-  it is not portable (3.13).
-- **Balance**: updated with an atomic increment inside the transaction,
-  never read-modify-write without the lock. The balance cannot go below
-  zero: any movement that would take it there is rejected, except a
-  reversal, which is capped (see Reversal).
-- **Recalculation**: an action returns the sum of `puntos` for a customer
-  and whether it matches `saldo_puntos`. The nightly consistency check
-  that uses it belongs to E3-05.
-- **Actions** (`app/Actions/Puntos/`, invokable): `RecordAcumulacion`,
+- **Reversa**: revierte los puntos netos de la transacción (la suma de sus
+  acumulaciones), una sola vez; una segunda reversa se rechaza. Si un
+  movimiento negativo posterior (un ajuste o una caducidad) ya se llevó
+  parte de esos puntos, la reversa se topa en el saldo actual: resta solo
+  lo que queda, el saldo termina en cero y el movimiento registra el monto
+  topado con un motivo que lo dice. Una compra anulada nunca deja puntos y
+  el saldo nunca queda negativo.
+- **`vigencia_hasta`** de una acumulación = fecha del movimiento + el
+  `vigencia_puntos_meses` de la regla (vigencia por punto, como está
+  redactado CLAUDE.md §9). E3-05 decide si el corte es diario o mensual;
+  eso no cambia lo que se guarda aquí.
+- **Concurrencia**: todo movimiento bloquea la fila del cliente
+  (`lockForUpdate`) antes de leer el saldo, así los movimientos de un
+  mismo cliente se serializan. Ese bloqueo es también lo que hace segura
+  la verificación de "ya revertida"; no se usa un índice único parcial
+  porque no es portable (3.13).
+- **Saldo**: se actualiza con un incremento atómico dentro de la
+  transacción, nunca leer-modificar-escribir sin el bloqueo. El saldo no
+  puede bajar de cero: se rechaza cualquier movimiento que lo llevaría
+  ahí, salvo la reversa, que se topa (ver Reversa).
+- **Recálculo**: una Action devuelve la suma de `puntos` de un cliente y si
+  coincide con `saldo_puntos`. La verificación nocturna que la usa es de
+  E3-05.
+- **Actions** (`app/Actions/Puntos/`, invocables): `RecordAcumulacion`,
   `ReverseTransaccion`, `RecordAjusteManual`, `RecordCaducidad`,
-  `RecalculateSaldo`. Nothing else writes to `movimientos_puntos`.
-- **Authorization** in the actions: `ajuste_manual` only for the group
-  administrator. `reversa` for the group administrator or the merchant
-  administrator of the transaction's merchant. `acumulacion` and
-  `caducidad` are system operations, authorized by their callers
-  (E4-01, E3-05).
-- **Reversal window** in `config/puntos.php` (`reversal_window_days`): the
-  application needs it at runtime and production does not ship `tests/`, so
-  a test asserts it equals the fixture's value. The window counts calendar
-  days in `America/Bogota`, not instants: a reversal is allowed while
-  today's date is on or before the purchase date plus
-  `reversal_window_days`. A purchase from 30 days ago is accepted at any
-  hour; one from 31 days ago is rejected.
+  `RecalculateSaldo`. Nada más escribe en `movimientos_puntos`.
+- **Autorización** en las Actions: `ajuste_manual` solo para el
+  administrador del grupo. `reversa` para el administrador del grupo o el
+  administrador del comercio de la transacción. `acumulacion` y
+  `caducidad` son operaciones del sistema, autorizadas por quien las
+  llama (E4-01, E3-05).
+- **Plazo de reversa** en `config/puntos.php` (`reversal_window_days`): la
+  aplicación lo necesita en ejecución y producción no incluye `tests/`, así
+  que una prueba verifica que coincide con el valor del fixture. El plazo
+  cuenta días calendario en `America/Bogota`, no instantes: la reversa se
+  admite mientras la fecha de hoy sea igual o anterior a la fecha de la
+  compra más `reversal_window_days`. Una compra de hace 30 días se acepta a
+  cualquier hora; una de hace 31, no.
 
-## Decisions to confirm in review
+## Decisiones a confirmar en la revisión
 
-Proposed by the implementer (2026-10-12); the reviewer approves them with
-this spec.
+Propuestas por el implementador (2026-10-12); el revisor las aprueba con
+esta spec.
 
-1. `redencion` is removed from the movement types (hard rule 3.1: a
-   benefit never costs points, and redemptions have their own table). This
-   closes the open question in issue #8 and in CLAUDE.md §4.
-2. `transacciones` stays in E4-01; E3-02 keeps `transaccion_id` without a
-   foreign key until then.
-3. The balance can never go below zero: movements that would do so are
-   rejected, and a reversal is capped at the current balance instead.
-4. Manual adjustments: group administrator only. Reversals: group
-   administrator or the merchant administrator of the transaction's
-   merchant.
+1. Se elimina `redencion` de los tipos de movimiento (regla dura 3.1: un
+   beneficio nunca cuesta puntos, y las redenciones tienen su propia
+   tabla). Cierra la pregunta abierta del issue #8 y de CLAUDE.md §4.
+2. `transacciones` queda en E4-01; E3-02 deja `transaccion_id` sin llave
+   foránea hasta entonces.
+3. El saldo nunca baja de cero: se rechazan los movimientos que lo harían,
+   y la reversa se topa en el saldo actual.
+4. Ajustes manuales: solo el administrador del grupo. Reversas: el
+   administrador del grupo o el administrador del comercio de la
+   transacción.
 
-## Hard rules from CLAUDE.md that apply
+## Reglas duras de CLAUDE.md que aplican
 
-- 3.1 Points are status, not currency
-- 3.3 Rule snapshot
-- 3.4 Immutable ledger
-- 3.9 Integer pesos, `America/Bogota`
-- 3.10 `documento` is a unique index, never the primary key
-- 3.13 Engine-agnostic code
+- 3.1 Los puntos son estatus, no moneda
+- 3.3 Snapshot de regla
+- 3.4 Libro inmutable
+- 3.9 Pesos enteros, `America/Bogota`
+- 3.10 `documento` es índice único, nunca llave primaria
+- 3.13 Código agnóstico del motor
 
-## Depends on
+## Depende de
 
-E3-01 (`reglas` table for the snapshot), E2-01 (roles), E2-02
+E3-01 (tabla `reglas` para el snapshot), E2-01 (roles), E2-02
 (`comercios`).

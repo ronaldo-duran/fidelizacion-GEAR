@@ -117,8 +117,11 @@ cuyo signo o campos no corresponden a su tipo.
   | --------------- | -------- | -------------------- | -------------------- | ---------------- | ---------------------------------------------- |
   | `acumulacion`   | > 0      | obligatorio          | obligatorio          | obligatorio      | opcional                                       |
   | `reversa`       | < 0      | copiado del original | copiado del original | obligatorio      | `motivo` obligatorio, `usuario_id` obligatorio |
-  | `caducidad`     | < 0      | obligatorio          | —                    | —                | opcional                                       |
+  | `caducidad`     | < 0      | obligatorio (1)      | —                    | —                | opcional (1)                                   |
   | `ajuste_manual` | ≠ 0      | nulo                 | —                    | —                | ambos obligatorios                             |
+
+  (1) La caducidad de un lote que viene de un ajuste manual positivo va sin
+  regla y con `motivo` obligatorio (E3-05).
 
 - **Reversa**: revierte los puntos netos de la transacción (la suma de sus
   acumulaciones), una sola vez; una segunda reversa se rechaza. Si un
@@ -128,9 +131,11 @@ cuyo signo o campos no corresponden a su tipo.
   topado con un motivo que lo dice. Una compra anulada nunca deja puntos y
   el saldo nunca queda negativo.
 - **`vigencia_hasta`** de una acumulación = fecha del movimiento + el
-  `vigencia_puntos_meses` de la regla (vigencia por punto, como está
-  redactado CLAUDE.md §9). E3-05 decide si el corte es diario o mensual;
-  eso no cambia lo que se guarda aquí.
+  `vigencia_puntos_meses` de la regla (vigencia por punto con corte
+  diario, decidido en E3-05). Un `ajuste_manual` positivo también guarda
+  `vigencia_hasta`, con la vigencia de la regla de acumulación vigente en
+  la fecha del ajuste, porque esos puntos vencen igual que una
+  acumulación.
 - **Concurrencia**: todo movimiento bloquea la fila del cliente
   (`lockForUpdate`) antes de leer el saldo, así los movimientos de un
   mismo cliente se serializan. Ese bloqueo es también lo que hace segura

@@ -101,7 +101,8 @@ clientes
 ├── nivel_por_evento     + evento_vigente_hasta
 ├── nivel_efectivo          = MAX de los tres vigentes (materializado)
 ├── nivel_efectivo_desde
-└── proteccion_hasta        no baja antes de esta fecha
+└── proteccion_hasta        no baja antes de esta fecha (meses según la
+                            regla `niveles`; hoy 0)
 ```
 
 Nunca colapsar las tres fuentes en un solo campo.
@@ -110,8 +111,11 @@ Nunca colapsar las tres fuentes en un solo campo.
 
 - **Ascenso** se evalúa en la misma petición que registra la compra. El
   cliente debe ver su nivel nuevo al instante.
-- **Descenso** solo en el job nocturno, y solo al cerrar la ventana de
-  permanencia, con 3 meses de protección y aviso 30 días antes.
+- **Descenso** solo en el job nocturno, y solo cuando vencen puntos y
+  perderlos baja de categoría al cliente (o vence su membresía o evento).
+  La protección y los avisos previos salen de la regla `niveles`
+  (`proteccion_meses`, hoy 0; `avisos_dias_antes`, hoy 30, 7 y 1 días),
+  y el aviso solo se envía si el cliente va a bajar.
 
 Nunca bajarle el nivel a alguien en medio de una compra.
 
@@ -451,9 +455,7 @@ el issue "Decisiones pendientes del cliente".
 - [ ] Pasarela de pagos elegida
 - [ ] Cómo inicia sesión el cliente en la PWA (sin OTP por contrato)
 
-**Pendiente de confirmación interna:** el modelo de vencimiento. La
-decisión es entre vigencia individual por punto (cada punto vence a los
-N meses) y ventana móvil de 12 meses. Está redactado como vigencia por
-punto en `vigencia_hasta`; confirmar antes de implementar el job de
-caducidad. Con N = 12 ambos modelos dan el mismo saldo; lo que cambia es
-la granularidad del corte (diario o fin de mes).
+**Decidido en la spec E3-05:** el modelo de vencimiento es vigencia por
+punto con corte diario: cada lote vence a los N meses de su fecha
+(`vigencia_hasta`) y el job nocturno caduca lo vencido cada noche. Los
+ajustes negativos descuentan primero los lotes más viejos.

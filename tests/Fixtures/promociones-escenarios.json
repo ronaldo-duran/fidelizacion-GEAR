@@ -1,0 +1,251 @@
+{
+    "_note": "Scenarios for E3-06 (promotional rules). Values come from the client decisions of 2026-10-10 (issue #44): 400 points for registering on launch day, 10 points for following on Instagram with a screenshot, 100 points per enrolled student (approved by the school). Dates are relative to `hoy` in America/Bogota. Rule and movement fields use the database column names.",
+    "definitions": {
+        "_note": "Sub-schemas added to schema-regla.json in the code PR. Closed whitelist: no free-form expressions; texts are shown to the customer and never evaluated.",
+        "valid": [
+            {
+                "_description": "Launch registration bonus.",
+                "tipo": "bono_registro",
+                "definicion": { "puntos": 400, "titulo": "Bono de lanzamiento" }
+            },
+            {
+                "_description": "Instagram mission, once per customer, support required.",
+                "tipo": "mision",
+                "definicion": {
+                    "comercio_id": 2,
+                    "titulo": "Síguenos en Instagram",
+                    "descripcion": "Envía el pantallazo de que nos sigues.",
+                    "puntos": 10,
+                    "max_por_cliente": 1,
+                    "requiere_soporte": true
+                }
+            },
+            {
+                "_description": "School enrollment mission, up to three per customer (one per child).",
+                "tipo": "mision",
+                "definicion": {
+                    "comercio_id": 3,
+                    "titulo": "Matricula a tu hijo",
+                    "descripcion": "Puntos por cada estudiante matriculado.",
+                    "puntos": 100,
+                    "max_por_cliente": 3,
+                    "requiere_soporte": true
+                }
+            }
+        ],
+        "invalid": [
+            {
+                "_reason": "Key outside the whitelist in a registration bonus.",
+                "tipo": "bono_registro",
+                "definicion": { "puntos": 400, "titulo": "Bono", "condicion": "registro < '2026-11-01'" }
+            },
+            {
+                "_reason": "Zero points.",
+                "tipo": "bono_registro",
+                "definicion": { "puntos": 0, "titulo": "Bono" }
+            },
+            {
+                "_reason": "Decimal points (hard rule 3.9).",
+                "tipo": "mision",
+                "definicion": {
+                    "comercio_id": 2,
+                    "titulo": "Misión",
+                    "descripcion": "Texto",
+                    "puntos": 10.5,
+                    "max_por_cliente": 1,
+                    "requiere_soporte": true
+                }
+            },
+            {
+                "_reason": "Mission without its merchant.",
+                "tipo": "mision",
+                "definicion": {
+                    "titulo": "Misión",
+                    "descripcion": "Texto",
+                    "puntos": 10,
+                    "max_por_cliente": 1,
+                    "requiere_soporte": true
+                }
+            },
+            {
+                "_reason": "max_por_cliente below 1.",
+                "tipo": "mision",
+                "definicion": {
+                    "comercio_id": 2,
+                    "titulo": "Misión",
+                    "descripcion": "Texto",
+                    "puntos": 10,
+                    "max_por_cliente": 0,
+                    "requiere_soporte": true
+                }
+            }
+        ]
+    },
+    "limits": [
+        { "comercio_id": 2, "permite_misiones": true, "puntos_max_por_mision": 50 },
+        { "comercio_id": 3, "permite_misiones": true, "puntos_max_por_mision": 200 },
+        { "comercio_id": 4, "permite_misiones": false, "puntos_max_por_mision": 0 }
+    ],
+    "cases": [
+        {
+            "_description": "A customer registers while the launch bonus is valid: 400 points as a promocion movement with the rule snapshot.",
+            "_e3_06_criterion": "registration bonus is granted through the ledger",
+            "active_rules": [{ "codigo": "bono-lanzamiento", "version": 1, "tipo": "bono_registro", "puntos": 400 }],
+            "action": "register_cliente",
+            "expected_movimientos": [
+                {
+                    "tipo": "promocion",
+                    "puntos": 400,
+                    "regla_codigo": "bono-lanzamiento",
+                    "regla_version": 1,
+                    "comercio_id": null
+                }
+            ],
+            "expected_saldo": 400
+        },
+        {
+            "_description": "A customer registers after the bonus was deactivated: nothing is granted.",
+            "_e3_06_criterion": "no bonus without a valid rule",
+            "active_rules": [],
+            "action": "register_cliente",
+            "expected_movimientos": [],
+            "expected_saldo": 0
+        },
+        {
+            "_description": "The same bonus is granted twice at the same time to the same customer: the database unique constraint keeps one.",
+            "_e3_06_criterion": "the registration bonus is granted once, enforced by the database",
+            "active_rules": [{ "codigo": "bono-lanzamiento", "version": 1, "tipo": "bono_registro", "puntos": 400 }],
+            "concurrent_actions": ["grant_bono_registro", "grant_bono_registro"],
+            "expected_promociones_otorgadas": 1,
+            "expected_saldo": 400
+        },
+        {
+            "_description": "An enrollment mission with max 3: two approved submissions grant 200 points.",
+            "_e3_06_criterion": "a mission is granted up to its max per customer",
+            "mission": {
+                "codigo": "matricula-colegio",
+                "version": 1,
+                "comercio_id": 3,
+                "puntos": 100,
+                "max_por_cliente": 3
+            },
+            "submissions": [
+                { "estado_final": "aprobado", "reviewer": { "comercio_id": 3, "aprueba_misiones": true } },
+                { "estado_final": "aprobado", "reviewer": { "comercio_id": 3, "aprueba_misiones": true } }
+            ],
+            "expected_saldo": 200,
+            "expected_promociones_otorgadas": 2
+        },
+        {
+            "_description": "The Instagram mission allows one per customer: a second submission after an approved one is rejected.",
+            "_e3_06_criterion": "submissions beyond the max are rejected",
+            "mission": {
+                "codigo": "seguir-instagram",
+                "version": 1,
+                "comercio_id": 2,
+                "puntos": 10,
+                "max_por_cliente": 1
+            },
+            "already_granted": 1,
+            "action": "submit_cumplimiento",
+            "expected_result": "rejected"
+        },
+        {
+            "_description": "A customer with a pending submission cannot send another one for the same mission.",
+            "_e3_06_criterion": "one pending submission per mission and customer",
+            "mission": {
+                "codigo": "matricula-colegio",
+                "version": 1,
+                "comercio_id": 3,
+                "puntos": 100,
+                "max_por_cliente": 3
+            },
+            "pending_submissions": 1,
+            "action": "submit_cumplimiento",
+            "expected_result": "rejected"
+        },
+        {
+            "_description": "Who can approve a pending submission of the school mission.",
+            "_e3_06_criterion": "only a user of the owning merchant with the permission approves",
+            "mission": {
+                "codigo": "matricula-colegio",
+                "version": 1,
+                "comercio_id": 3,
+                "puntos": 100,
+                "max_por_cliente": 3
+            },
+            "approvers": [
+                { "rol": "cajero", "comercio_id": 3, "aprueba_misiones": true, "expected_result": "accepted" },
+                {
+                    "rol": "administrador_comercio",
+                    "comercio_id": 3,
+                    "aprueba_misiones": true,
+                    "expected_result": "accepted"
+                },
+                { "rol": "cajero", "comercio_id": 3, "aprueba_misiones": false, "expected_result": "forbidden" },
+                { "rol": "cajero", "comercio_id": 2, "aprueba_misiones": true, "expected_result": "forbidden" },
+                {
+                    "rol": "administrador_grupo",
+                    "comercio_id": null,
+                    "aprueba_misiones": false,
+                    "expected_result": "forbidden"
+                }
+            ]
+        },
+        {
+            "_description": "A rejected submission grants nothing and records the reason and the reviewer.",
+            "_e3_06_criterion": "a rejection records the reason and grants nothing",
+            "mission": {
+                "codigo": "seguir-instagram",
+                "version": 1,
+                "comercio_id": 2,
+                "puntos": 10,
+                "max_por_cliente": 1
+            },
+            "submissions": [
+                {
+                    "estado_final": "rechazado",
+                    "motivo_rechazo": "El pantallazo no muestra la cuenta",
+                    "reviewer": { "comercio_id": 2, "aprueba_misiones": true }
+                }
+            ],
+            "expected_saldo": 0,
+            "expected_promociones_otorgadas": 0
+        },
+        {
+            "_description": "A submission sent under version 1 is approved after the mission moved to version 2 (20 points): it grants version 1's 10 points.",
+            "_e3_06_criterion": "approval uses the mission version of the submission",
+            "mission_versions": [
+                { "codigo": "seguir-instagram", "version": 1, "comercio_id": 2, "puntos": 10, "max_por_cliente": 1 },
+                { "codigo": "seguir-instagram", "version": 2, "comercio_id": 2, "puntos": 20, "max_por_cliente": 1 }
+            ],
+            "submission_version": 1,
+            "expected_movimientos": [
+                {
+                    "tipo": "promocion",
+                    "puntos": 10,
+                    "regla_codigo": "seguir-instagram",
+                    "regla_version": 1,
+                    "comercio_id": 2
+                }
+            ]
+        },
+        {
+            "_description": "Mission limits set by the group for each merchant.",
+            "_e3_06_criterion": "a merchant cannot exceed what the group enabled",
+            "mission_saves": [
+                { "comercio_id": 2, "by": "administrador_comercio", "puntos": 50, "expected_result": "accepted" },
+                { "comercio_id": 2, "by": "administrador_comercio", "puntos": 60, "expected_result": "rejected" },
+                { "comercio_id": 4, "by": "administrador_comercio", "puntos": 10, "expected_result": "rejected" },
+                { "comercio_id": 3, "by": "administrador_comercio_of_2", "puntos": 10, "expected_result": "forbidden" }
+            ]
+        },
+        {
+            "_description": "Only one registration bonus can be valid at a time.",
+            "_e3_06_criterion": "no two valid bono_registro rules",
+            "active_rules": [{ "codigo": "bono-lanzamiento", "version": 1, "tipo": "bono_registro", "puntos": 400 }],
+            "new_rule": { "codigo": "bono-navidad", "tipo": "bono_registro", "puntos": 200 },
+            "expected_result": "rejected"
+        }
+    ]
+}

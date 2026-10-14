@@ -35,7 +35,8 @@ el saldo del cliente siempre consistente.
 6. El saldo recalculado desde cero debe coincidir siempre con el saldo
    materializado.
 7. Tipos de movimiento: `acumulacion`, `caducidad`, `ajuste_manual`,
-   `reversa`. **Se elimina `redencion`** del enum (ver Decisiones).
+   `reversa` y `promocion` (puntos de un bono de registro o de una misión,
+   E3-06). **Se elimina `redencion`** del enum (ver Decisiones).
 
 ## Criterios de aceptación
 
@@ -119,9 +120,14 @@ cuyo signo o campos no corresponden a su tipo.
   | `reversa`       | < 0      | copiado del original | copiado del original | obligatorio      | `motivo` obligatorio, `usuario_id` obligatorio |
   | `caducidad`     | < 0      | obligatorio (1)      | —                    | —                | opcional (1)                                   |
   | `ajuste_manual` | ≠ 0      | nulo                 | —                    | —                | ambos obligatorios                             |
+  | `promocion`     | > 0      | obligatorio          | el de la misión (2)  | —                | opcional                                       |
 
   (1) La caducidad de un lote que viene de un ajuste manual positivo va sin
   regla y con `motivo` obligatorio (E3-05).
+
+  (2) Nulo en el bono de registro, que es del programa y no de un comercio.
+  La `promocion` guarda `vigencia_hasta` como una acumulación y vence igual
+  (E3-05).
 
 - **Reversa**: revierte los puntos netos de la transacción (la suma de sus
   acumulaciones), una sola vez; una segunda reversa se rechaza. Si un
@@ -150,7 +156,8 @@ cuyo signo o campos no corresponden a su tipo.
   E3-05.
 - **Actions** (`app/Actions/Puntos/`, invocables): `RecordAcumulacion`,
   `ReverseTransaccion`, `RecordAjusteManual`, `RecordCaducidad`,
-  `RecalculateSaldo`. Nada más escribe en `movimientos_puntos`.
+  `RecordPromocion` (la usan las Actions de E3-06) y `RecalculateSaldo`.
+  Nada más escribe en `movimientos_puntos`.
 - **Autorización** en las Actions: `ajuste_manual` solo para el
   administrador del grupo. `reversa` para el administrador del grupo o el
   administrador del comercio de la transacción. `acumulacion` y

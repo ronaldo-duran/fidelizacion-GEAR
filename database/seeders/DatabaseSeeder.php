@@ -108,7 +108,7 @@ class DatabaseSeeder extends Seeder
             ->where('nombre', 'Sede principal')
             ->sole();
 
-        User::factory()->administradorDelGrupo()->create([
+        User::factory()->administradorDelGrupo()->jsonReglaEditor()->create([
             'name' => 'Administrador del grupo',
             'email' => 'admin@example.com',
         ]);

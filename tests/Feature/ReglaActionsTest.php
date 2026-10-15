@@ -212,3 +212,12 @@ it('seeds the base rules with the values confirmed by the client', function (): 
         ->and($acumulacion->definicion['moneda_por_punto'])->toBe(1000)
         ->and($acumulacion->version)->toBe(1);
 });
+
+it('seeds the group administrator with the JSON editor permission', function (): void {
+    $this->seed();
+
+    $admin = User::query()->where('email', 'admin@example.com')->sole();
+
+    expect($admin->edita_reglas_json)->toBeTrue()
+        ->and(User::query()->where('email', 'comercio@clubaponterivera.co')->sole()->edita_reglas_json)->toBeFalse();
+});

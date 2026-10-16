@@ -1,0 +1,226 @@
+{
+    "_note": "Scenarios for E3-05 (nightly processes). Dates are relative to `hoy` (the cutoff date of the nightly run) in America/Bogota. A lot is a positive movement (acumulacion or positive ajuste_manual); `vigencia_hasta` is the last day it is valid, so a lot with vigencia_hasta = hoy-1d expires tonight. Thresholds and notice days come from the niveles rule in reglas-validas.json (Plata 500, Oro 1.500, Diamante 3.000; notices 30, 7 and 1 days before; proteccion_meses 0). Movement fields use the database column names.",
+    "cases": [
+        {
+            "_description": "A lot that expired yesterday is expired tonight with its rule snapshot.",
+            "_e3_05_criterion": "an expired lot leaves through a caducidad movement with its rule",
+            "initial_saldo": 500,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-1d" },
+                { "tipo": "acumulacion", "puntos": 300, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+5m" }
+            ],
+            "expected_caducidades": [{ "puntos": -200, "regla_id": 1, "regla_version": 1 }],
+            "expected_saldo": 300
+        },
+        {
+            "_description": "Running the expiry twice the same night inserts nothing the second time.",
+            "_e3_05_criterion": "a second run inserts no new movement",
+            "initial_saldo": 300,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-1d" },
+                { "tipo": "acumulacion", "puntos": 300, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+5m" },
+                { "tipo": "caducidad", "puntos": -200, "regla_id": 1, "regla_version": 1 }
+            ],
+            "expected_caducidades": [],
+            "expected_saldo": 300
+        },
+        {
+            "_description": "Lots from two rule versions expire the same night: one caducidad per rule and version.",
+            "_e3_05_criterion": "one caducidad per rule and version",
+            "initial_saldo": 150,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 100, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-1d" },
+                { "tipo": "acumulacion", "puntos": 50, "regla_id": 1, "regla_version": 2, "vigencia_hasta": "hoy-1d" }
+            ],
+            "expected_caducidades": [
+                { "puntos": -100, "regla_id": 1, "regla_version": 1 },
+                { "puntos": -50, "regla_id": 1, "regla_version": 2 }
+            ],
+            "expected_saldo": 0
+        },
+        {
+            "_description": "An earlier negative adjustment consumes the oldest lot first (FIFO), so only what it left expires.",
+            "_e3_05_criterion": "negative adjustments consume the oldest lots first",
+            "initial_saldo": 350,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-1d" },
+                { "tipo": "acumulacion", "puntos": 300, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+3m" },
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": -150,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": "Corrección",
+                    "usuario_id": 7
+                }
+            ],
+            "expected_caducidades": [{ "puntos": -50, "regla_id": 1, "regla_version": 1 }],
+            "expected_saldo": 300
+        },
+        {
+            "_description": "A reversed purchase has nothing left to expire.",
+            "_e3_05_criterion": "a reversed lot does not expire",
+            "initial_saldo": 0,
+            "movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "transaccion_id": 1001,
+                    "vigencia_hasta": "hoy-1d"
+                },
+                {
+                    "tipo": "reversa",
+                    "puntos": -85,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "transaccion_id": 1001,
+                    "motivo": "Compra anulada en caja"
+                }
+            ],
+            "expected_caducidades": [],
+            "expected_saldo": 0
+        },
+        {
+            "_description": "A positive manual adjustment expires like an accrual, without a rule and with a reason.",
+            "_e3_05_criterion": "a positive adjustment expires without a rule and with a reason",
+            "initial_saldo": 30,
+            "movimientos": [
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": 30,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": "Cortesía",
+                    "usuario_id": 7,
+                    "vigencia_hasta": "hoy-1d"
+                }
+            ],
+            "expected_caducidades": [{ "puntos": -30, "regla_id": null, "regla_version": null, "has_motivo": true }],
+            "expected_saldo": 0
+        },
+        {
+            "_description": "A night was missed: the next run also expires the lot that expired the missed night.",
+            "_e3_05_criterion": "a missed night is recovered by the next run",
+            "initial_saldo": 120,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 120, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-2d" }
+            ],
+            "expected_caducidades": [{ "puntos": -120, "regla_id": 1, "regla_version": 1 }],
+            "expected_saldo": 0
+        },
+        {
+            "_description": "Expiry drops the customer from Oro to Plata; the nightly evaluation after it lowers the level and records the change.",
+            "_e3_05_criterion": "expiry that lowers the level demotes on the nightly evaluation",
+            "initial_saldo": 1600,
+            "sources": { "nivel_efectivo": "oro", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy-1d" },
+                { "tipo": "acumulacion", "puntos": 1400, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_caducidades": [{ "puntos": -200, "regla_id": 1, "regla_version": 1 }],
+            "expected_saldo": 1400,
+            "expected_nivel_efectivo": "plata",
+            "records_level_change": true
+        },
+        {
+            "_description": "Points that expire in 30 days would drop the customer from Oro to Plata: a 30-day notice is registered.",
+            "_e3_05_criterion": "notice when the expiring points lower the level",
+            "initial_saldo": 1600,
+            "sources": { "nivel_efectivo": "oro", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 200,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "vigencia_hasta": "hoy+30d"
+                },
+                { "tipo": "acumulacion", "puntos": 1400, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_avisos": [
+                {
+                    "dias_antes": 30,
+                    "fecha_vencimiento": "hoy+30d",
+                    "puntos_que_vencen": 200,
+                    "nivel_actual": "oro",
+                    "nivel_resultante": "plata"
+                }
+            ]
+        },
+        {
+            "_description": "Points that expire in 7 days do not lower the level: no notice.",
+            "_e3_05_criterion": "no notice when the level does not drop",
+            "initial_saldo": 2000,
+            "sources": { "nivel_efectivo": "oro", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+7d" },
+                { "tipo": "acumulacion", "puntos": 1800, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_avisos": []
+        },
+        {
+            "_description": "Points that expire tomorrow would lower the points level, but a valid Diamante membership keeps the effective level: no notice.",
+            "_e3_05_criterion": "no notice when another valid source keeps the level",
+            "initial_saldo": 1600,
+            "sources": {
+                "nivel_efectivo": "diamante",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "hoy+2m",
+                "nivel_por_evento": null
+            },
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 200, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+1d" },
+                { "tipo": "acumulacion", "puntos": 1400, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_avisos": []
+        },
+        {
+            "_description": "The 30-day notice was already registered: running again does not duplicate it.",
+            "_e3_05_criterion": "a notice is never duplicated",
+            "initial_saldo": 1600,
+            "sources": { "nivel_efectivo": "oro", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 200,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "vigencia_hasta": "hoy+30d"
+                },
+                { "tipo": "acumulacion", "puntos": 1400, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "existing_avisos": [{ "dias_antes": 30, "fecha_vencimiento": "hoy+30d" }],
+            "expected_avisos": []
+        },
+        {
+            "_description": "The membership expired yesterday: the customer falls to the level of their points (Oro), not to Bronce.",
+            "_e3_05_criterion": "an expired membership re-evaluates from the other sources",
+            "initial_saldo": 1600,
+            "sources": {
+                "nivel_efectivo": "diamante",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "hoy-1d",
+                "nivel_por_evento": null
+            },
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 1600, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_caducidades": [],
+            "expected_nivel_efectivo": "oro",
+            "records_level_change": true
+        },
+        {
+            "_description": "The materialized balance does not match the sum of movements: an alert is logged and the balance is not touched.",
+            "_e3_05_criterion": "a balance mismatch raises an alert and is never fixed automatically",
+            "initial_saldo": 500,
+            "movimientos": [
+                { "tipo": "acumulacion", "puntos": 480, "regla_id": 1, "regla_version": 1, "vigencia_hasta": "hoy+6m" }
+            ],
+            "expected_caducidades": [],
+            "expected_alert": true,
+            "expected_saldo": 500
+        }
+    ]
+}

@@ -192,7 +192,7 @@ transacciones      id, cliente_id, comercio_id, sede_id, monto,
                    created_at
                    UNIQUE (comercio_id, referencia_externa)
 movimientos_puntos id, cliente_id, comercio_id, transaccion_id,
-                   tipo (acumulacion|redencion|caducidad|ajuste_manual|reversa),
+                   tipo (acumulacion|caducidad|ajuste_manual|reversa),
                    puntos (+/-), regla_id, regla_version,
                    vigencia_hasta, motivo, usuario_id, created_at
 beneficios         id, comercio_id, nivel, tipo (porcentaje|monto_fijo),
@@ -204,10 +204,9 @@ eventos_calificados id, cliente_id, tipo, nivel_otorgado, vigente_hasta,
                    soporte_url, registrado_por
 ```
 
-**Por revisar (responsable):** el tipo `redencion` en `movimientos_puntos`
-choca con la regla 3.1: usar un beneficio no descuenta puntos y la
-redención ya vive en su propia tabla. Confirmar en la spec E3-02 si se
-elimina del enum antes de crear la migración.
+**Decidido en la spec E3-02:** `movimientos_puntos` no tiene tipo
+`redencion`. Por la regla 3.1, usar un beneficio no descuenta puntos y la
+redención vive en su propia tabla.
 
 ---
 

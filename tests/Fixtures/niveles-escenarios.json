@@ -1,81 +1,168 @@
 {
-    "_nota": "Escenarios para E3-03 (nivel efectivo). Verifican las reglas duras 3.5 (tres fuentes separadas, nivel_efectivo = máximo de las vigentes) y 3.6 (ascenso síncrono, descenso nocturno). Las fechas son relativas a `hoy`. Umbrales según el fixture de reglas (Plata 500, Oro 1.500, Diamante 3.000 — supuestos del cliente).",
-    "casos": [
+    "_note": "Scenarios for E3-03 (effective level). They verify hard rules 3.5 (three separate sources, nivel_efectivo = highest of the valid ones) and 3.6 (synchronous promotion, nightly demotion). Dates are relative to `hoy` (today). Thresholds come from the niveles rule in reglas-validas.json (Plata 500, Oro 1.500, Diamante 3.000, confirmed by the client). Source fields use the database column names.",
+    "event_rules": {
+        "_note": "Client decisions of 2026-10-10 (issue #9). Mirrored in config/niveles.php; a test asserts they match.",
+        "compra_inmueble": {
+            "nivel": "diamante",
+            "default_validity_months": 12
+        },
+        "matricula_colegio": {
+            "_note": "Level by the number of valid enrollments. Each enrollment brings its own end date.",
+            "levels_by_count": [
+                { "min_enrollments": 1, "nivel": "oro" },
+                { "min_enrollments": 3, "nivel": "diamante" }
+            ]
+        }
+    },
+    "cases": [
         {
-            "_descripcion": "Cliente Oro por puntos y Diamante por membresía vigente: el nivel efectivo es Diamante.",
-            "_criterio_e3_03": "oro por puntos + diamante por membresía vigente = diamante",
-            "fuentes": {
+            "_description": "Customer who is Oro by points and Diamante by a valid membership: the effective level is Diamante.",
+            "_e3_03_criterion": "oro by points + valid diamante membership = diamante",
+            "sources": {
                 "nivel_por_puntos": "oro",
                 "nivel_por_membresia": "diamante",
                 "membresia_vigente_hasta": "hoy+2m",
                 "nivel_por_evento": null,
                 "evento_vigente_hasta": null
             },
-            "nivel_efectivo_esperado": "diamante"
+            "expected_nivel_efectivo": "diamante"
         },
         {
-            "_descripcion": "Al vencer la membresía, el mismo cliente cae a Oro (su nivel por puntos), no a Bronce.",
-            "_criterio_e3_03": "al vencer la membresía cae a oro, no a bronce",
-            "fuentes": {
+            "_description": "When the membership expires, the same customer falls to Oro (their points level), not to Bronce.",
+            "_e3_03_criterion": "when the membership expires they fall to oro, not bronce",
+            "sources": {
                 "nivel_por_puntos": "oro",
                 "nivel_por_membresia": "diamante",
                 "membresia_vigente_hasta": "hoy-1d",
                 "nivel_por_evento": null
             },
-            "nivel_efectivo_esperado": "oro"
+            "action": "nightly_evaluation",
+            "expected_nivel_efectivo": "oro"
         },
         {
-            "_descripcion": "Ascenso síncrono: el cliente cruza el umbral de Oro (1.500) con una compra; al terminar la petición su nivel efectivo ya es Oro.",
-            "_criterio_e3_03": "ascenso síncrono en la misma petición",
-            "saldo_antes": 1450,
-            "nivel_antes": "plata",
-            "compra_puntos": 85,
-            "saldo_despues": 1535,
-            "nivel_efectivo_esperado": "oro",
-            "momento": "misma_peticion"
+            "_description": "Synchronous promotion: the customer crosses the Oro threshold (1.500) with a purchase; when the request ends their effective level is already Oro.",
+            "_e3_03_criterion": "synchronous promotion in the same request",
+            "saldo_before": 1450,
+            "nivel_before": "plata",
+            "purchase_puntos": 85,
+            "saldo_after": 1535,
+            "expected_nivel_efectivo": "oro",
+            "moment": "same_request"
         },
         {
-            "_descripcion": "Protección: el saldo cae bajo el umbral de Oro, pero dentro de la ventana de protección el job nocturno NO baja.",
-            "_criterio_e3_03": "dentro de protección el job no baja",
-            "fuentes": {
+            "_description": "Protection: the balance falls below the Oro threshold, but inside the protection window the nightly evaluation does NOT lower the level. Only possible when the rule's proteccion_meses is above 0.",
+            "_e3_03_criterion": "inside protection the nightly evaluation does not lower",
+            "proteccion_meses": 3,
+            "sources": {
                 "nivel_por_puntos": "oro",
                 "nivel_efectivo": "oro",
-                "saldo_actual": 1200,
+                "saldo_puntos": 1200,
                 "proteccion_hasta": "hoy+20d"
             },
-            "accion": "job_nocturno",
-            "nivel_efectivo_esperado": "oro"
+            "action": "nightly_evaluation",
+            "expected_nivel_efectivo": "oro"
         },
         {
-            "_descripcion": "Descenso: pasada la protección, el job nocturno baja al nivel que corresponde al saldo y registra el cambio con su fecha.",
-            "_criterio_e3_03": "pasada la protección el job baja y registra el cambio",
-            "fuentes": {
+            "_description": "Demotion: after the protection period, the nightly evaluation lowers to the level the balance gives and records the change with its date.",
+            "_e3_03_criterion": "after protection the nightly evaluation lowers and records the change",
+            "proteccion_meses": 3,
+            "sources": {
                 "nivel_por_puntos": "oro",
                 "nivel_efectivo": "oro",
-                "saldo_actual": 1200,
+                "saldo_puntos": 1200,
                 "proteccion_hasta": "hoy-1d"
             },
-            "accion": "job_nocturno",
-            "nivel_efectivo_esperado": "plata",
-            "registra_cambio": true
+            "action": "nightly_evaluation",
+            "expected_nivel_efectivo": "plata",
+            "records_change": true
         },
         {
-            "_descripcion": "Evento calificado: compra de inmueble otorga Diamante por un año; mientras esté vigente, el nivel efectivo es Diamante aunque los puntos digan Bronce.",
-            "_criterio_e3_03": "evento vigente manda sobre puntos",
-            "fuentes": {
-                "nivel_por_puntos": "bronce",
-                "nivel_por_membresia": null,
-                "nivel_por_evento": "diamante",
-                "evento_vigente_hasta": "hoy+11m"
+            "_description": "Zero-month protection (current client decision): the balance falls below the Oro threshold and the next nightly evaluation lowers the level right away.",
+            "_e3_03_criterion": "with proteccion_meses 0 the drop happens on the next nightly evaluation",
+            "proteccion_meses": 0,
+            "sources": {
+                "nivel_por_puntos": "oro",
+                "nivel_efectivo": "oro",
+                "saldo_puntos": 1200,
+                "proteccion_hasta": null
             },
-            "nivel_efectivo_esperado": "diamante"
+            "action": "nightly_evaluation",
+            "expected_nivel_efectivo": "plata",
+            "records_change": true
         },
         {
-            "_descripcion": "Barrera 3.6: ningún camino de código baja el nivel dentro de una petición HTTP (solo sube o se mantiene).",
-            "_criterio_e3_03": "ninguna petición HTTP baja el nivel",
-            "escenario": "cualquier_peticion",
-            "regla": "nivel_efectivo_despues >= nivel_efectivo_antes",
-            "excepcion": "solo el job nocturno puede bajar"
+            "_description": "Property purchase gives Diamante while valid, even if the points say Bronce.",
+            "_e3_03_criterion": "a valid event wins over points",
+            "sources": {
+                "nivel_por_puntos": "bronce",
+                "nivel_por_membresia": null
+            },
+            "eventos": [{ "tipo": "compra_inmueble", "vigente_hasta": "hoy+11m" }],
+            "expected_nivel_por_evento": "diamante",
+            "expected_evento_vigente_hasta": "hoy+11m",
+            "expected_nivel_efectivo": "diamante"
+        },
+        {
+            "_description": "Two properties do not add up levels: still Diamante, valid until the latest end date.",
+            "_e3_03_criterion": "several events of the same kind do not add up; validity is the latest end date",
+            "sources": { "nivel_por_puntos": "bronce" },
+            "eventos": [
+                { "tipo": "compra_inmueble", "vigente_hasta": "hoy+3m" },
+                { "tipo": "compra_inmueble", "vigente_hasta": "hoy+11m" }
+            ],
+            "expected_nivel_por_evento": "diamante",
+            "expected_evento_vigente_hasta": "hoy+11m",
+            "expected_nivel_efectivo": "diamante"
+        },
+        {
+            "_description": "Two valid school enrollments give Oro.",
+            "_e3_03_criterion": "two enrollments = oro",
+            "sources": { "nivel_por_puntos": "bronce" },
+            "eventos": [
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+5m" },
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+8m" }
+            ],
+            "expected_nivel_por_evento": "oro",
+            "expected_evento_vigente_hasta": "hoy+8m",
+            "expected_nivel_efectivo": "oro"
+        },
+        {
+            "_description": "Three valid school enrollments give Diamante.",
+            "_e3_03_criterion": "three enrollments = diamante",
+            "sources": { "nivel_por_puntos": "plata" },
+            "eventos": [
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+5m" },
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+5m" },
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+8m" }
+            ],
+            "expected_nivel_por_evento": "diamante",
+            "expected_evento_vigente_hasta": "hoy+5m",
+            "expected_nivel_efectivo": "diamante"
+        },
+        {
+            "_description": "One of three enrollments is closed (the child left the school): on the next nightly evaluation the event level goes back to Oro.",
+            "_e3_03_criterion": "closing one of three enrollments goes back to oro",
+            "sources": { "nivel_por_puntos": "plata", "nivel_efectivo": "diamante" },
+            "eventos": [
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+5m" },
+                { "tipo": "matricula_colegio", "vigente_hasta": "hoy+8m" },
+                {
+                    "tipo": "matricula_colegio",
+                    "vigente_hasta": "hoy-1d",
+                    "motivo_cierre": "El niño se retiró del colegio"
+                }
+            ],
+            "action": "nightly_evaluation",
+            "expected_nivel_por_evento": "oro",
+            "expected_nivel_efectivo": "oro",
+            "records_change": true
+        },
+        {
+            "_description": "Hard rule 3.6 barrier: no code path lowers the level inside an HTTP request (it only goes up or stays).",
+            "_e3_03_criterion": "no HTTP request lowers the level",
+            "scenario": "any_request",
+            "rule": "nivel_efectivo_after >= nivel_efectivo_before",
+            "exception": "only the nightly evaluation may lower it"
         }
     ]
 }

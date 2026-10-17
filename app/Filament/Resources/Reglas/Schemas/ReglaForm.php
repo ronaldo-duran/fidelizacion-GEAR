@@ -85,18 +85,31 @@ class ReglaForm
                             ->dehydrated()
                             ->visible(static fn (): bool => Gate::allows('editJson', Regla::class)),
                     ]),
-                Section::make('Definición en JSON')
-                    ->visible(static fn (Get $get): bool => $get('use_json_editor') === true)
-                    ->schema([
-                        CodeEditor::make('definicion_json')
-                            ->hiddenLabel()
-                            ->language(Language::Json)
-                            ->required(),
-                    ]),
-                self::acumulacion(),
-                self::niveles(),
-                self::bonificacion(),
+                ...self::definicionComponents(),
             ]);
+    }
+
+    /**
+     * The definition editors, shown by the `tipo` and `use_json_editor`
+     * state. The rule simulator reuses them for its draft.
+     *
+     * @return list<Component>
+     */
+    public static function definicionComponents(): array
+    {
+        return [
+            Section::make('Definición en JSON')
+                ->visible(static fn (Get $get): bool => $get('use_json_editor') === true)
+                ->schema([
+                    CodeEditor::make('definicion_json')
+                        ->hiddenLabel()
+                        ->language(Language::Json)
+                        ->required(),
+                ]),
+            self::acumulacion(),
+            self::niveles(),
+            self::bonificacion(),
+        ];
     }
 
     private static function acumulacion(): Group

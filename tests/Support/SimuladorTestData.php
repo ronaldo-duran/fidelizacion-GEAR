@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Actions\Reglas\SimulateReglas;
 use App\Enums\TipoRegla;
 use App\Models\Categoria;
 use App\Models\Comercio;
 use App\Models\Regla;
+use App\Models\User;
 use App\Reglas\CompraData;
 use App\Reglas\ReglaAplicada;
+use App\Reglas\SimulacionResultado;
 use Carbon\CarbonImmutable;
 
 /**
@@ -113,6 +116,24 @@ final class SimuladorTestData
         }
 
         return $comercioIds;
+    }
+
+    /**
+     * Runs the simulator with a draft of the fixture over its purchases.
+     *
+     * @param  array<int, int>  $comercioIds
+     */
+    public static function simulate(User $user, array $comercioIds, string $draftKey = 'draft'): SimulacionResultado
+    {
+        $draft = self::fixture()[$draftKey];
+
+        return app(SimulateReglas::class)(
+            $user,
+            $draft['codigo'],
+            TipoRegla::from($draft['tipo']),
+            $draft['definicion'],
+            self::purchases($comercioIds),
+        );
     }
 
     /**

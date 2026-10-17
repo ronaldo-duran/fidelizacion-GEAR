@@ -50,3 +50,8 @@ arch('la configuración se lee con config(), no con env()')
 arch('las acciones de dominio son invocables')
     ->expect('App\Actions')
     ->toBeInvokable();
+
+// 3.6: solo la evaluación nocturna baja niveles, y solo se llama desde la consola o un job.
+arch('solo la consola y los jobs bajan niveles')
+    ->expect('App\Actions\Niveles\ReevaluateNivelEfectivo')
+    ->toOnlyBeUsedIn(['App\Console', 'App\Jobs']);

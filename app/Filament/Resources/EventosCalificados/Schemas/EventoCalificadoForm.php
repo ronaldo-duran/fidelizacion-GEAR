@@ -24,7 +24,7 @@ class EventoCalificadoForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make('Evento')
                 ->columns(2)
                 ->schema([

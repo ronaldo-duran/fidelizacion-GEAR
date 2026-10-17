@@ -52,6 +52,14 @@ class Cliente extends Model
     }
 
     /**
+     * @return HasMany<EventoCalificado, $this>
+     */
+    public function eventosCalificados(): HasMany
+    {
+        return $this->hasMany(EventoCalificado::class);
+    }
+
+    /**
      * @return HasMany<CambioNivel, $this>
      */
     public function cambiosNivel(): HasMany

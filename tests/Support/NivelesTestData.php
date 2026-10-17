@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Enums\Nivel;
+use App\Enums\TipoEventoCalificado;
 use App\Enums\TipoRegla;
 use App\Models\Cliente;
+use App\Models\Comercio;
+use App\Models\EventoCalificado;
 use App\Models\Regla;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use RuntimeException;
 
@@ -30,8 +34,7 @@ final class NivelesTestData
     }
 
     /**
-     * Fixture cases that describe a customer's sources, as a dataset. Cases
-     * with qualifying events come with the events table.
+     * Fixture cases that describe a customer's sources, as a dataset.
      *
      * @return array<string, array{0: array<string, mixed>}>
      */
@@ -40,7 +43,7 @@ final class NivelesTestData
         $cases = [];
 
         foreach (self::fixture()['cases'] as $case) {
-            if (isset($case['sources']) && ! isset($case['eventos'])) {
+            if (isset($case['sources'])) {
                 $cases[$case['_e3_03_criterion']] = [$case];
             }
         }
@@ -131,5 +134,31 @@ final class NivelesTestData
         ])->save();
 
         return $cliente;
+    }
+
+    /**
+     * @param  array{tipo: string, vigente_hasta: string, motivo_cierre?: string}  $evento
+     */
+    public static function evento(
+        Cliente $cliente,
+        array $evento,
+        ?Comercio $comercio = null,
+        ?User $user = null,
+    ): EventoCalificado {
+        $created = EventoCalificado::query()->create([
+            'cliente_id' => $cliente->id,
+            'comercio_id' => ($comercio ?? Comercio::factory()->create())->id,
+            'tipo' => TipoEventoCalificado::from($evento['tipo']),
+            'vigente_desde' => CarbonImmutable::today()->subYear(),
+            'vigente_hasta' => self::day($evento['vigente_hasta']),
+            'soporte_path' => 'soportes/prueba.pdf',
+            'registrado_por' => ($user ?? User::factory()->administradorDelGrupo()->create())->id,
+        ]);
+
+        if (isset($evento['motivo_cierre'])) {
+            $created->forceFill(['motivo_cierre' => $evento['motivo_cierre']])->save();
+        }
+
+        return $created;
     }
 }

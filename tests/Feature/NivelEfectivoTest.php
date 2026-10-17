@@ -10,6 +10,7 @@ use App\Enums\Nivel;
 use App\Models\CambioNivel;
 use App\Models\Cliente;
 use App\Models\Comercio;
+use App\Models\EventoCalificado;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -20,14 +21,25 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-10-17 01:30:00'));
 });
 
+it('keeps the event rules in config equal to the fixture', function (): void {
+    $fixture = NivelesTestData::fixture()['event_rules'];
+    unset($fixture['_note'], $fixture['matricula_colegio']['_note']);
+
+    expect(config('niveles.event_rules'))->toBe($fixture);
+});
+
 it('computes the effective level of each fixture scenario', function (array $case): void {
     NivelesTestData::nivelesRegla($case['proteccion_meses'] ?? 0);
     $cliente = NivelesTestData::cliente($case['sources']);
     $antes = $cliente->nivel_efectivo;
 
+    foreach ($case['eventos'] ?? [] as $evento) {
+        NivelesTestData::evento($cliente, $evento);
+    }
+
     $result = ($case['action'] ?? null) === 'nightly_evaluation'
         ? app(ReevaluateNivelEfectivo::class)($cliente->id)
-        : app(RaiseNivelEfectivo::class)($cliente->id, MotivoCambioNivel::AscensoMembresia);
+        : app(RaiseNivelEfectivo::class)($cliente->id, MotivoCambioNivel::AscensoEvento);
     $result = $result->fresh() ?? $result;
 
     expect($result->nivel_efectivo->value)->toBe($case['expected_nivel_efectivo'], $case['_description']);
@@ -144,6 +156,15 @@ it('clears the protection when the sources recover', function (): void {
     expect(app(ReevaluateNivelEfectivo::class)($cliente->id)->proteccion_hasta)->toBeNull();
 });
 
+it('counts the last day of an event as valid', function (): void {
+    NivelesTestData::nivelesRegla();
+    $cliente = NivelesTestData::cliente([]);
+    NivelesTestData::evento($cliente, ['tipo' => 'compra_inmueble', 'vigente_hasta' => 'hoy']);
+
+    expect(app(RaiseNivelEfectivo::class)($cliente->id, MotivoCambioNivel::AscensoEvento)->nivel_efectivo)
+        ->toBe(Nivel::Diamante);
+});
+
 it('locks the customer row before changing the level', function (): void {
     NivelesTestData::nivelesRegla();
     $cliente = NivelesTestData::cliente([]);
@@ -172,21 +193,17 @@ it('never updates nor deletes a level change', function (): void {
         ->and(fn (): ?bool => $cambio->delete())->toThrow(LogicException::class);
 });
 
-it('counts a membership or event level until the last day of its date', function (): void {
-    NivelesTestData::nivelesRegla();
-    $vigente = NivelesTestData::cliente([
-        'nivel_por_evento' => 'diamante',
-        'evento_vigente_hasta' => 'hoy',
-        'nivel_efectivo' => 'bronce',
-    ]);
-    $vencida = NivelesTestData::cliente([
-        'nivel_por_membresia' => 'oro',
-        'membresia_vigente_hasta' => 'hoy-1d',
-        'nivel_efectivo' => 'bronce',
-    ]);
+it('only lets a qualifying event be closed once, never edited nor deleted', function (): void {
+    $cliente = NivelesTestData::cliente([]);
+    $evento = NivelesTestData::evento($cliente, ['tipo' => 'matricula_colegio', 'vigente_hasta' => 'hoy+5m']);
 
-    expect(app(RaiseNivelEfectivo::class)($vigente->id, MotivoCambioNivel::AscensoEvento)->nivel_efectivo)
-        ->toBe(Nivel::Diamante)
-        ->and(app(RaiseNivelEfectivo::class)($vencida->id, MotivoCambioNivel::AscensoMembresia)->nivel_efectivo)
-        ->toBe(Nivel::Bronce);
+    expect(fn (): bool => $evento->update(['tipo' => 'compra_inmueble']))->toThrow(LogicException::class)
+        ->and(fn (): ?bool => $evento->delete())->toThrow(LogicException::class);
+
+    $evento = $evento->fresh() ?? $evento;
+    $evento->forceFill(['vigente_hasta' => CarbonImmutable::today(), 'motivo_cierre' => 'Retiro'])->save();
+
+    expect(fn (): bool => $evento->forceFill(['vigente_hasta' => CarbonImmutable::today()->addYear()])->save())
+        ->toThrow(LogicException::class)
+        ->and(EventoCalificado::query()->find($evento->id)?->vigente_hasta->toDateString())->toBe('2026-10-17');
 });

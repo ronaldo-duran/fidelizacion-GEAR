@@ -75,6 +75,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Alerts of the nightly processes (balances that do not match). They
+        // are never fixed automatically: someone reviews them.
+        'alertas' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/alertas.log'),
+            'level' => 'warning',
+            'max_files' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'monthly' => [
             'driver' => 'monthly',
             'path' => storage_path('logs/laravel.log'),

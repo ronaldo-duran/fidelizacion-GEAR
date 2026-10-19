@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Enums\Nivel;
+use App\Enums\TipoDocumento;
 use App\Enums\TipoRegla;
 use App\Models\Cliente;
 use App\Models\Regla;
@@ -114,7 +115,10 @@ final class NivelesTestData
         $porPuntos = $sources['nivel_por_puntos'] ?? 'bronce';
         $hasta = static fn (?string $value): ?CarbonImmutable => $value === null ? null : self::day($value);
 
-        $cliente = Cliente::query()->create(['documento' => (string) fake()->unique()->numerify('##########')]);
+        $cliente = Cliente::query()->create([
+            'tipo_documento' => TipoDocumento::CC,
+            'documento' => (string) fake()->unique()->numerify('##########'),
+        ]);
         $cliente->forceFill([
             'saldo_puntos' => $sources['saldo_puntos'] ?? self::SALDO_POR_NIVEL[$porPuntos],
             'nivel_por_puntos' => $porPuntos,

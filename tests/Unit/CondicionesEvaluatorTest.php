@@ -57,7 +57,6 @@ it('never matches a sede when the purchase has none', function (): void {
 });
 
 it('reads the weekday and hour in Bogota', function (): void {
-    // 2026-10-18 03:00 UTC is still Saturday 22:00 in Bogota.
     $compra = new CompraData(1000, 'restaurante', 1, null, CarbonImmutable::parse('2026-10-18 03:00', 'UTC'));
 
     expect($compra->fact('dia_semana'))->toBe(6)

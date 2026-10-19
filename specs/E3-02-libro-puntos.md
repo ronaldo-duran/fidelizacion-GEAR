@@ -100,9 +100,12 @@ cuyo signo o campos no corresponden a su tipo.
 
 ## Datos y migraciones (decisiones técnicas, pendientes de revisión)
 
-- **`clientes`** (tabla base; la crea este issue): `id`, `documento`
-  (índice único, nunca llave primaria — regla dura 3.10; se guarda sin
-  espacios), `celular`, `email` (nullable, en minúsculas — 3.13),
+- **`clientes`** (tabla base; la crea este issue): `id`,
+  `tipo_documento` (`CC`, `CE`, `PPT`, `PA`, `DEX`), `documento` (se
+  guarda en mayúsculas y sin espacios; el índice único es el par
+  `(tipo_documento, documento)`, nunca llave primaria — regla dura 3.10),
+  `fecha_nacimiento` (nullable), `celular`, `email` (nullable, en
+  minúsculas — 3.13),
   `saldo_puntos` (entero, por defecto 0), timestamps. Las columnas
   `nivel_*` las agrega E3-03; los campos de registro y acceso, E8-02.
 - **`movimientos_puntos`**: `id`, `cliente_id`, `comercio_id` (obligatorio
@@ -200,7 +203,7 @@ esta spec.
 - 3.3 Snapshot de regla
 - 3.4 Libro inmutable
 - 3.9 Pesos enteros, `America/Bogota`
-- 3.10 `documento` es índice único, nunca llave primaria
+- 3.10 `(tipo_documento, documento)` es índice único, nunca llave primaria
 - 3.13 Código agnóstico del motor
 
 ## Depende de

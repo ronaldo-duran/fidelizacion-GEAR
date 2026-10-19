@@ -149,8 +149,19 @@ de Pest.
 
 ### 3.10 Identificación del cliente
 
-La cédula es **índice único**, nunca llave primaria. Las cédulas se
+El documento es **índice único**, nunca llave primaria. Los documentos se
 corrigen; los identificadores internos no.
+
+- El cliente se identifica por el par **(`tipo_documento`, `documento`)**,
+  no por el número solo: buena parte de los clientes son venezolanos sin
+  cédula colombiana, y un número de CE o pasaporte puede coincidir con una
+  cédula. Tipos (`App\Enums\TipoDocumento`): `CC`, `CE`, `PPT`, `PA`
+  (pasaporte) y `DEX` (documento extranjero, p. ej. cédula venezolana).
+- El documento se guarda y se busca **en mayúsculas y sin espacios**
+  (`Cliente::normalizeDocumento`), porque PPT, CE y PA traen letras.
+- En toda pantalla que pida el documento (registro, inicio de sesión,
+  cajero, panel) **se pide siempre el tipo de documento**, con `CC` como
+  primera opción sugerida.
 
 ### 3.11 Valor otorgado en cada redención
 
@@ -189,8 +200,9 @@ sedes              id, comercio_id, nombre, direccion, activa
 categorias         id, nombre, slug
 reglas             id, tipo, version, vigente_desde, vigente_hasta,
                    activa, definicion (jsonb)
-clientes           id, documento (unique), celular, email,
-                   saldo_puntos, nivel_* (ver 3.5)
+clientes           id, tipo_documento, documento, fecha_nacimiento,
+                   celular, email, saldo_puntos, nivel_* (ver 3.5)
+                   UNIQUE (tipo_documento, documento)
 transacciones      id, cliente_id, comercio_id, sede_id, monto,
                    referencia_externa, idempotency_key, registrada_por,
                    created_at

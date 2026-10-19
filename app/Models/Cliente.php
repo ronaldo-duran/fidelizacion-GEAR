@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\TipoDocumento;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,7 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * movement (hard rule 3.4).
  *
  * @property int $id
+ * @property TipoDocumento $tipo_documento
  * @property string $documento
+ * @property CarbonImmutable|null $fecha_nacimiento
  * @property string|null $celular
  * @property string|null $email
  * @property int $saldo_puntos
@@ -24,7 +28,7 @@ class Cliente extends Model
     protected $table = 'clientes';
 
     /** @var list<string> */
-    protected $fillable = ['documento', 'celular', 'email'];
+    protected $fillable = ['tipo_documento', 'documento', 'fecha_nacimiento', 'celular', 'email'];
 
     /**
      * @return HasMany<MovimientoPuntos, $this>
@@ -35,15 +39,22 @@ class Cliente extends Model
     }
 
     /**
-     * The document is stored without spaces so lookups match on every engine
-     * (hard rule 3.13).
-     *
+     * The document as it is stored and looked up: uppercase and without
+     * spaces, so `ppt123` and `PPT 123` are the same document on every engine
+     * (hard rule 3.13). Lookups must normalize with this too.
+     */
+    public static function normalizeDocumento(string $documento): string
+    {
+        return mb_strtoupper(str_replace(' ', '', trim($documento)));
+    }
+
+    /**
      * @return Attribute<string, string>
      */
     protected function documento(): Attribute
     {
         return Attribute::make(
-            set: static fn (string $value): string => str_replace(' ', '', trim($value)),
+            set: static fn (string $value): string => self::normalizeDocumento($value),
         );
     }
 
@@ -62,6 +73,10 @@ class Cliente extends Model
      */
     protected function casts(): array
     {
-        return ['saldo_puntos' => 'integer'];
+        return [
+            'tipo_documento' => TipoDocumento::class,
+            'fecha_nacimiento' => 'immutable_date',
+            'saldo_puntos' => 'integer',
+        ];
     }
 }

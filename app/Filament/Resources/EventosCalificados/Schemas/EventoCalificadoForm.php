@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\EventosCalificados\Schemas;
 
+use App\Enums\TipoDocumento;
 use App\Enums\TipoEventoCalificado;
 use App\Models\Comercio;
 use App\Models\User;
@@ -28,8 +29,14 @@ class EventoCalificadoForm
             Section::make('Evento')
                 ->columns(2)
                 ->schema([
+                    Select::make('tipo_documento')
+                        ->label('Tipo de documento')
+                        ->options(TipoDocumento::class)
+                        ->default(TipoDocumento::CC->value)
+                        ->selectablePlaceholder(false)
+                        ->required(),
                     TextInput::make('documento')
-                        ->label('Documento del cliente')
+                        ->label('Número de documento')
                         ->required()
                         ->maxLength(20),
                     Select::make('tipo')

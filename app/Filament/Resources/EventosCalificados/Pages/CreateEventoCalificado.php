@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\EventosCalificados\Pages;
 
 use App\Actions\Niveles\RegisterEventoCalificado;
+use App\Enums\TipoDocumento;
 use App\Enums\TipoEventoCalificado;
 use App\Filament\Resources\EventosCalificados\EventoCalificadoResource;
 use App\Models\Cliente;
@@ -40,7 +41,7 @@ class CreateEventoCalificado extends CreateRecord
         try {
             return app(RegisterEventoCalificado::class)(
                 $user,
-                $this->clienteId(self::text($data, 'documento')),
+                $this->clienteId(self::text($data, 'tipo_documento'), self::text($data, 'documento')),
                 (int) self::text($data, 'comercio_id'),
                 TipoEventoCalificado::from(self::text($data, 'tipo')),
                 CarbonImmutable::parse(self::text($data, 'vigente_desde')),
@@ -64,12 +65,17 @@ class CreateEventoCalificado extends CreateRecord
     /**
      * @throws ValidationException
      */
-    private function clienteId(string $documento): int
+    private function clienteId(string $tipoDocumento, string $documento): int
     {
-        $cliente = Cliente::query()->where('documento', str_replace(' ', '', trim($documento)))->first();
+        $cliente = Cliente::query()
+            ->where('tipo_documento', $tipoDocumento)
+            ->where('documento', Cliente::normalizeDocumento($documento))
+            ->first();
 
         if (! $cliente instanceof Cliente) {
-            throw ValidationException::withMessages(['documento' => 'No hay un cliente con ese documento.']);
+            throw ValidationException::withMessages([
+                'documento' => 'No hay un cliente con ese tipo y número de documento.',
+            ]);
         }
 
         return $cliente->id;
@@ -85,7 +91,7 @@ class CreateEventoCalificado extends CreateRecord
         $value = $data[$key] ?? null;
 
         return match (true) {
-            $value instanceof TipoEventoCalificado => $value->value,
+            $value instanceof TipoEventoCalificado, $value instanceof TipoDocumento => $value->value,
             is_string($value), is_int($value) => (string) $value,
             default => '',
         };

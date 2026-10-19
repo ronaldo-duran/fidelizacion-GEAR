@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Nivel;
+use App\Enums\TipoDocumento;
 use App\Enums\TipoEventoCalificado;
 use App\Filament\Resources\EventosCalificados\Pages\CreateEventoCalificado;
 use App\Filament\Resources\EventosCalificados\Pages\ListEventosCalificados;
@@ -69,6 +70,33 @@ it('shows an unknown document without saving anything', function (): void {
         ->assertNotified('No se registró el evento');
 
     expect(EventoCalificado::query()->count())->toBe(0);
+});
+
+it('finds the customer by document type and number, in any case', function (): void {
+    $this->actingAs($this->admin);
+    $venezolano = NivelesTestData::cliente([]);
+    $venezolano->forceFill(['tipo_documento' => TipoDocumento::PPT, 'documento' => 'PPT55'])->save();
+    $form = [
+        'documento' => 'ppt 55',
+        'tipo' => TipoEventoCalificado::MatriculaColegio->value,
+        'comercio_id' => $this->colegio->id,
+        'vigente_desde' => '2026-10-17',
+        'vigente_hasta' => '2027-06-30',
+        'soporte_path' => UploadedFile::fake()->create('matricula.pdf', 100, 'application/pdf'),
+    ];
+
+    Livewire::test(CreateEventoCalificado::class)
+        ->fillForm([...$form, 'tipo_documento' => TipoDocumento::CE->value])
+        ->call('create')
+        ->assertNotified('No se registró el evento');
+
+    Livewire::test(CreateEventoCalificado::class)
+        ->assertSchemaStateSet(['tipo_documento' => TipoDocumento::CC])
+        ->fillForm([...$form, 'tipo_documento' => TipoDocumento::PPT->value])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(EventoCalificado::query()->sole()->cliente_id)->toBe($venezolano->id);
 });
 
 it('lets the school administrator see and close only their enrollments', function (): void {

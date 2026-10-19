@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Enums\TipoDocumento;
 use App\Enums\TipoRegla;
 use App\Models\Cliente;
 use App\Models\MovimientoPuntos;
@@ -42,7 +43,7 @@ final class LedgerTestData
 
     public static function cliente(string $documento = '1010101010'): Cliente
     {
-        return Cliente::query()->create(['documento' => $documento]);
+        return Cliente::query()->create(['tipo_documento' => TipoDocumento::CC, 'documento' => $documento]);
     }
 
     public static function acumulacionRegla(): Regla

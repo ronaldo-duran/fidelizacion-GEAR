@@ -10,6 +10,7 @@ use App\Enums\Nivel;
 use App\Models\CambioNivel;
 use App\Models\Cliente;
 use App\Models\Comercio;
+use App\Models\Transaccion;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -61,12 +62,13 @@ it('promotes in the same request that records the purchase', function (): void {
     ]);
     $regla = LedgerTestData::acumulacionRegla();
     $comercio = Comercio::factory()->create();
+    $transaccion = Transaccion::factory()->create(['comercio_id' => $comercio->id, 'cliente_id' => $cliente->id]);
 
-    DB::transaction(function () use ($cliente, $comercio, $regla, $case): void {
+    DB::transaction(function () use ($cliente, $comercio, $regla, $case, $transaccion): void {
         app(RecordAcumulacion::class)(
             $cliente->id,
             $comercio->id,
-            9001,
+            $transaccion->id,
             $case['purchase_puntos'],
             $regla,
             CarbonImmutable::now()->addYear(),

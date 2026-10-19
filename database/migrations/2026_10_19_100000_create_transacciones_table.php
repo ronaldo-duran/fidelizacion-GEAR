@@ -34,7 +34,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['comercio_id', 'referencia_externa']);
-            $table->index(['tipo_documento_cliente', 'documento_cliente', 'estado']);
+            $table->index(
+                ['tipo_documento_cliente', 'documento_cliente', 'estado'],
+                'transacciones_documento_estado_index',
+            );
             $table->index(['cliente_id', 'created_at']);
         });
 

@@ -273,7 +273,7 @@ it('annuls a credited purchase through the reversal and a pending one by marking
     app(AnnulCompra::class)($this->admin, $pendiente->id, 'Compra anulada en caja');
 
     expect($acreditada->fresh()?->estado)->toBe(EstadoTransaccion::Anulada)
-        ->and(MovimientoPuntos::query()->where('transaccion_id', $acreditada->id)
+        ->and((int) MovimientoPuntos::query()->where('transaccion_id', $acreditada->id)
             ->where('tipo', TipoMovimiento::Reversa->value)->sum('puntos'))->toBe(-170)
         ->and($this->cliente->fresh()?->saldo_puntos)->toBe(0)
         ->and($pendiente->fresh()?->estado)->toBe(EstadoTransaccion::Anulada)

@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Enums\TipoRegla;
 use App\Reglas\ReglaDefinitionValidator;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -97,6 +99,22 @@ class Regla extends Model
     public function versions(): HasMany
     {
         return $this->hasMany(self::class, 'codigo', 'codigo');
+    }
+
+    /**
+     * Active versions in force at a given instant: the half-open interval
+     * [vigente_desde, vigente_hasta) contains it.
+     *
+     * @return Builder<Regla>
+     */
+    public static function inForceAt(CarbonInterface $instant): Builder
+    {
+        return self::query()
+            ->where('activa', true)
+            ->where('vigente_desde', '<=', $instant)
+            ->where(static fn (Builder $open): Builder => $open
+                ->where('vigente_hasta', '>', $instant)
+                ->orWhere('vigente_hasta', null));
     }
 
     /**

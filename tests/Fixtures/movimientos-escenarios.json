@@ -135,15 +135,30 @@
             "expected_saldo": 30
         },
         {
-            "_description": "Reversal capped at the balance: a manual adjustment already took 35 of the purchase's 85 points. The reversal subtracts only the 50 left, the balance ends at zero and the movement says it was capped.",
-            "_e3_02_criterion": "reversal capped at the current balance",
+            "_description": "Reversal capped at what is left of the purchase's lot: a manual adjustment already took 35 of the purchase's 85 points. The reversal subtracts only the 50 left and the movement says it was capped.",
+            "_e3_02_criterion": "reversal capped at the purchase lot remainder",
+            "movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "transaccion_id": 1005,
+                    "created_at": "hoy-5d",
+                    "vigencia_hasta": "hoy+12m"
+                },
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": -35,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": "Corrección",
+                    "usuario_id": 7
+                }
+            ],
             "initial_saldo": 50,
-            "transaccion": {
-                "id": 1005,
-                "awarded_puntos": 85,
-                "created_at": "hoy-5d"
-            },
             "action": "reversa",
+            "transaccion_id": 1005,
             "expected_result": "accepted",
             "expected_movimiento": {
                 "tipo": "reversa",
@@ -152,6 +167,44 @@
                 "capped": true
             },
             "expected_saldo": 0
+        },
+        {
+            "_description": "The reversal never takes points of other purchases: purchase A (85) was fully consumed by a manual adjustment, then purchase B earned 50. Reversing A finds nothing left in A's lot, inserts no movement and B keeps its 50 points.",
+            "_e3_02_criterion": "a reversal never takes points of another purchase",
+            "movimientos": [
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "transaccion_id": 2001,
+                    "created_at": "hoy-10d",
+                    "vigencia_hasta": "hoy+12m"
+                },
+                {
+                    "tipo": "ajuste_manual",
+                    "puntos": -85,
+                    "regla_id": null,
+                    "regla_version": null,
+                    "motivo": "Corrección",
+                    "usuario_id": 7
+                },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 50,
+                    "regla_id": 1,
+                    "regla_version": 1,
+                    "transaccion_id": 2002,
+                    "created_at": "hoy-2d",
+                    "vigencia_hasta": "hoy+12m"
+                }
+            ],
+            "initial_saldo": 50,
+            "action": "reversa",
+            "transaccion_id": 2001,
+            "expected_result": "nothing_to_reverse",
+            "expected_reversa_movimientos": 0,
+            "expected_saldo": 50
         },
         {
             "_description": "Expiry: points that expired leave through a negative `caducidad` movement. (The job is E3-05; here we only check the ledger supports it.)",

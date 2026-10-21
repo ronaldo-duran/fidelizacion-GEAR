@@ -9,6 +9,7 @@ use App\Enums\Nivel;
 use App\Enums\TipoRegla;
 use App\Models\CambioNivel;
 use App\Models\Cliente;
+use App\Models\EventoCalificado;
 use App\Models\Regla;
 use App\Puntos\Ledger;
 use Carbon\CarbonImmutable;
@@ -24,10 +25,13 @@ class NivelEfectivo
 
     private readonly NivelCalculator $calculator;
 
-    public function __construct(Ledger $ledger, NivelCalculator $calculator)
+    private readonly EventoNivelCalculator $eventos;
+
+    public function __construct(Ledger $ledger, NivelCalculator $calculator, EventoNivelCalculator $eventos)
     {
         $this->ledger = $ledger;
         $this->calculator = $calculator;
+        $this->eventos = $eventos;
     }
 
     public function lockCliente(int $clienteId): Cliente
@@ -50,13 +54,21 @@ class NivelEfectivo
     }
 
     /**
-     * Recomputes the points source, stores it on the customer (not saved
-     * yet) and returns the level the three valid sources give.
+     * Recomputes the points and event sources, stores them on the customer
+     * (not saved yet) and returns the level the three valid sources give.
      *
      * @param  array<array-key, mixed>  $definicionNiveles
      */
     public function refreshFuentes(Cliente $cliente, array $definicionNiveles, CarbonImmutable $day): Nivel
     {
+        $eventRules = config('niveles.event_rules');
+        [$porEvento, $eventoVigenteHasta] = $this->eventos->porEventos(
+            EventoCalificado::query()->where('cliente_id', $cliente->id)->get(),
+            is_array($eventRules) ? $eventRules : [],
+            $day,
+        );
+
+        $cliente->forceFill(['nivel_por_evento' => $porEvento, 'evento_vigente_hasta' => $eventoVigenteHasta]);
         $fuentes = $this->calculator->fuentes($cliente, $definicionNiveles, $day);
 
         $cliente->forceFill(['nivel_por_puntos' => $fuentes->porPuntos]);

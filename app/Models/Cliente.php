@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Nivel;
 use App\Enums\TipoDocumento;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -13,7 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Program customer. `saldo_puntos` is derived from the ledger and is only
  * written by the points actions, inside the same transaction as the
- * movement (hard rule 3.4).
+ * movement (hard rule 3.4). The level columns keep the three sources apart
+ * and are only written by the level actions (hard rule 3.5).
  *
  * @property int $id
  * @property TipoDocumento $tipo_documento
@@ -22,6 +24,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $celular
  * @property string|null $email
  * @property int $saldo_puntos
+ * @property Nivel $nivel_por_puntos
+ * @property Nivel|null $nivel_por_membresia
+ * @property CarbonImmutable|null $membresia_vigente_hasta
+ * @property Nivel|null $nivel_por_evento
+ * @property CarbonImmutable|null $evento_vigente_hasta
+ * @property Nivel $nivel_efectivo
+ * @property CarbonImmutable|null $nivel_efectivo_desde
+ * @property CarbonImmutable|null $proteccion_hasta
  */
 class Cliente extends Model
 {
@@ -30,12 +40,34 @@ class Cliente extends Model
     /** @var list<string> */
     protected $fillable = ['tipo_documento', 'documento', 'fecha_nacimiento', 'celular', 'email'];
 
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'nivel_por_puntos' => 'bronce',
+        'nivel_efectivo' => 'bronce',
+    ];
+
     /**
      * @return HasMany<MovimientoPuntos, $this>
      */
     public function movimientos(): HasMany
     {
         return $this->hasMany(MovimientoPuntos::class);
+    }
+
+    /**
+     * @return HasMany<EventoCalificado, $this>
+     */
+    public function eventosCalificados(): HasMany
+    {
+        return $this->hasMany(EventoCalificado::class);
+    }
+
+    /**
+     * @return HasMany<CambioNivel, $this>
+     */
+    public function cambiosNivel(): HasMany
+    {
+        return $this->hasMany(CambioNivel::class);
     }
 
     /**
@@ -77,6 +109,14 @@ class Cliente extends Model
             'tipo_documento' => TipoDocumento::class,
             'fecha_nacimiento' => 'immutable_date',
             'saldo_puntos' => 'integer',
+            'nivel_por_puntos' => Nivel::class,
+            'nivel_por_membresia' => Nivel::class,
+            'membresia_vigente_hasta' => 'immutable_date',
+            'nivel_por_evento' => Nivel::class,
+            'evento_vigente_hasta' => 'immutable_date',
+            'nivel_efectivo' => Nivel::class,
+            'nivel_efectivo_desde' => 'immutable_datetime',
+            'proteccion_hasta' => 'immutable_date',
         ];
     }
 }

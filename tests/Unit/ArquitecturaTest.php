@@ -50,3 +50,7 @@ arch('la configuración se lee con config(), no con env()')
 arch('las acciones de dominio son invocables')
     ->expect('App\Actions')
     ->toBeInvokable();
+
+arch('solo la consola y los jobs bajan niveles')
+    ->expect('App\Actions\Niveles\ReevaluateNivelEfectivo')
+    ->toOnlyBeUsedIn(['App\Console', 'App\Jobs']);

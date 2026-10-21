@@ -216,8 +216,12 @@ beneficios         id, comercio_id, nivel, tipo (porcentaje|monto_fijo),
 redenciones        id, cliente_id, beneficio_id, comercio_id,
                    valor_otorgado_cop, validado_por, created_at
 membresias         id, cliente_id, plan_id, vigente_hasta, estado
-eventos_calificados id, cliente_id, tipo, nivel_otorgado, vigente_hasta,
-                   soporte_url, registrado_por
+eventos_calificados id, cliente_id, comercio_id, tipo, vigente_desde,
+                   vigente_hasta, soporte_path, motivo_cierre,
+                   registrado_por, cerrado_por
+                   (sin nivel_otorgado: el nivel sale de config/niveles.php)
+cambios_nivel      id, cliente_id, nivel_anterior, nivel_nuevo, motivo,
+                   created_at (append-only)
 ```
 
 **Decidido en la spec E3-02:** `movimientos_puntos` no tiene tipo

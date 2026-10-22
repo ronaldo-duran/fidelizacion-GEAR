@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Enums\EstadoTransaccion;
 use App\Enums\TipoMovimiento;
 use App\Enums\TipoRegla;
 use App\Jobs\Nocturno\ProcesosNocturnos;
@@ -11,6 +12,7 @@ use App\Models\Cliente;
 use App\Models\Comercio;
 use App\Models\MovimientoPuntos;
 use App\Models\Regla;
+use App\Models\Transaccion;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
@@ -103,6 +105,7 @@ final class NocturnoTestData
         $comercio = Comercio::factory()->create();
         $user = User::factory()->administradorDelGrupo()->create();
         $transaccion = 5000;
+        $transacciones = [];
 
         foreach ($case['movimientos'] as $movimiento) {
             $regla = $movimiento['regla_id'] === null
@@ -110,11 +113,21 @@ final class NocturnoTestData
                 : $reglas["{$movimiento['regla_id']}:{$movimiento['regla_version']}"];
             $tipo = TipoMovimiento::from($movimiento['tipo']);
             $porCompra = in_array($tipo, [TipoMovimiento::Acumulacion, TipoMovimiento::Reversa], true);
+            $transaccionId = null;
+
+            if ($porCompra) {
+                $clave = $movimiento['transaccion_id'] ?? ++$transaccion;
+                $transaccionId = $transacciones[$clave] ??= Transaccion::factory()->create([
+                    'cliente_id' => $cliente->id,
+                    'comercio_id' => $comercio->id,
+                    'estado' => EstadoTransaccion::Acreditada,
+                ])->id;
+            }
 
             MovimientoPuntos::query()->create([
                 'cliente_id' => $cliente->id,
                 'comercio_id' => $porCompra ? $comercio->id : null,
-                'transaccion_id' => $porCompra ? ($movimiento['transaccion_id'] ?? ++$transaccion) : null,
+                'transaccion_id' => $transaccionId,
                 'tipo' => $tipo,
                 'puntos' => $movimiento['puntos'],
                 'regla_id' => $regla?->id,

@@ -1,17 +1,43 @@
 {
-    "_note": "Scenarios for E4-01 (purchase registration). Dates are relative to `hoy` in America/Bogota. Thresholds come from the niveles rule in reglas-validas.json (Plata 500, Oro 1.500, Diamante 3.000). The calculation follows the E3-04 assumptions still pending client confirmation (TODO(cliente)): base = floor(monto / moneda_por_punto) × puntos_por_unidad, only the highest bonus applies, caps trim the bonus points first. Transaction and movement fields use the database column names.",
+    "_note": "Scenarios for E4-01 (purchase registration). Dates are relative to `hoy` in America/Bogota. Thresholds come from the niveles rule in reglas-validas.json (Plata 500, Oro 1.500, Diamante 3.000). The calculation follows the E3-04 assumptions still pending client confirmation (TODO(cliente)): base = floor(monto / moneda_por_punto) × puntos_por_unidad, only the highest bonus applies, caps trim the bonus points first. Transaction and movement fields use the database column names. Customers and purchases are identified by tipo_documento and documento (CLAUDE.md 3.10); when a case leaves tipo_documento out it is CC.",
     "comercios": [
         {
             "id": 1,
             "categoria_slug": "restaurante",
             "activo": true,
             "sedes": [
-                { "id": 11, "activa": true },
-                { "id": 12, "activa": false }
+                {
+                    "id": 11,
+                    "activa": true
+                },
+                {
+                    "id": 12,
+                    "activa": false
+                }
             ]
         },
-        { "id": 2, "categoria_slug": "heladeria", "activo": true, "sedes": [{ "id": 21, "activa": true }] },
-        { "id": 5, "categoria_slug": "restaurante", "activo": false, "sedes": [{ "id": 51, "activa": true }] }
+        {
+            "id": 2,
+            "categoria_slug": "heladeria",
+            "activo": true,
+            "sedes": [
+                {
+                    "id": 21,
+                    "activa": true
+                }
+            ]
+        },
+        {
+            "id": 5,
+            "categoria_slug": "restaurante",
+            "activo": false,
+            "sedes": [
+                {
+                    "id": 51,
+                    "activa": true
+                }
+            ]
+        }
     ],
     "rules": [
         {
@@ -22,10 +48,20 @@
             "definicion": {
                 "moneda_por_punto": 1000,
                 "tasas_por_categoria": [
-                    { "categoria_slug": "restaurante", "puntos_por_unidad": 1 },
-                    { "categoria_slug": "heladeria", "puntos_por_unidad": 1 }
+                    {
+                        "categoria_slug": "restaurante",
+                        "puntos_por_unidad": 1
+                    },
+                    {
+                        "categoria_slug": "heladeria",
+                        "puntos_por_unidad": 1
+                    }
                 ],
-                "topes": { "puntos_por_transaccion": null, "puntos_por_dia": null, "puntos_por_mes": null },
+                "topes": {
+                    "puntos_por_transaccion": null,
+                    "puntos_por_dia": null,
+                    "puntos_por_mes": null
+                },
                 "vigencia_puntos_meses": 12
             }
         },
@@ -37,8 +73,16 @@
             "definicion": {
                 "multiplicador": 2,
                 "condiciones": [
-                    { "campo": "categoria_slug", "operador": "igual", "valor": "restaurante" },
-                    { "campo": "monto", "operador": "mayor_igual", "valor": 50000 }
+                    {
+                        "campo": "categoria_slug",
+                        "operador": "igual",
+                        "valor": "restaurante"
+                    },
+                    {
+                        "campo": "monto",
+                        "operador": "mayor_igual",
+                        "valor": 50000
+                    }
                 ]
             }
         }
@@ -47,8 +91,17 @@
         {
             "_description": "Registered customer, restaurant purchase of $85.000 with the double bonus: two accrual movements, one per rule.",
             "_e4_01_criterion": "a bonus leaves one movement per rule",
-            "cliente": { "documento": "1010101010", "saldo_puntos": 0, "nivel_efectivo": "bronce" },
-            "purchase": { "comercio_id": 1, "sede_id": 11, "monto": 85000, "referencia_externa": "caja-0001" },
+            "cliente": {
+                "documento": "1010101010",
+                "saldo_puntos": 0,
+                "nivel_efectivo": "bronce"
+            },
+            "purchase": {
+                "comercio_id": 1,
+                "sede_id": 11,
+                "monto": 85000,
+                "referencia_externa": "caja-0001"
+            },
             "expected_estado": "acreditada",
             "expected_movimientos": [
                 {
@@ -71,10 +124,24 @@
         {
             "_description": "A purchase crosses the Oro threshold: the customer is Oro when the request ends.",
             "_e4_01_criterion": "synchronous promotion in the same request",
-            "cliente": { "documento": "2020202020", "saldo_puntos": 1450, "nivel_efectivo": "plata" },
-            "purchase": { "comercio_id": 2, "sede_id": 21, "monto": 50000, "referencia_externa": "caja-0002" },
+            "cliente": {
+                "documento": "2020202020",
+                "saldo_puntos": 1450,
+                "nivel_efectivo": "plata"
+            },
+            "purchase": {
+                "comercio_id": 2,
+                "sede_id": 21,
+                "monto": 50000,
+                "referencia_externa": "caja-0002"
+            },
             "expected_movimientos": [
-                { "tipo": "acumulacion", "puntos": 50, "regla_codigo": "acumulacion-base", "regla_version": 1 }
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 50,
+                    "regla_codigo": "acumulacion-base",
+                    "regla_version": 1
+                }
             ],
             "expected_saldo": 1500,
             "expected_nivel_efectivo": "oro"
@@ -82,14 +149,22 @@
         {
             "_description": "The cashier taps twice: the same reference with the same data returns the existing purchase and grants no new points.",
             "_e4_01_criterion": "an identical retry returns the existing purchase",
-            "cliente": { "documento": "1010101010", "saldo_puntos": 170 },
+            "cliente": {
+                "documento": "1010101010",
+                "saldo_puntos": 170
+            },
             "existing_transaccion": {
                 "comercio_id": 1,
                 "referencia_externa": "caja-0001",
                 "documento_cliente": "1010101010",
                 "monto": 85000
             },
-            "purchase": { "comercio_id": 1, "sede_id": 11, "monto": 85000, "referencia_externa": "caja-0001" },
+            "purchase": {
+                "comercio_id": 1,
+                "sede_id": 11,
+                "monto": 85000,
+                "referencia_externa": "caja-0001"
+            },
             "expected_result": "existing",
             "expected_saldo": 170
         },
@@ -102,16 +177,34 @@
                 "documento_cliente": "1010101010",
                 "monto": 85000
             },
-            "purchase": { "comercio_id": 1, "sede_id": 11, "monto": 90000, "referencia_externa": "caja-0001" },
+            "purchase": {
+                "comercio_id": 1,
+                "sede_id": 11,
+                "monto": 90000,
+                "referencia_externa": "caja-0001"
+            },
             "expected_result": "conflict"
         },
         {
             "_description": "Two registrations with the same reference at the same time: one purchase, points granted once.",
             "_e4_01_criterion": "concurrent duplicates are stopped by the database",
-            "cliente": { "documento": "3030303030", "saldo_puntos": 0 },
+            "cliente": {
+                "documento": "3030303030",
+                "saldo_puntos": 0
+            },
             "concurrent_purchases": [
-                { "comercio_id": 2, "sede_id": 21, "monto": 20000, "referencia_externa": "pos-77" },
-                { "comercio_id": 2, "sede_id": 21, "monto": 20000, "referencia_externa": "pos-77" }
+                {
+                    "comercio_id": 2,
+                    "sede_id": 21,
+                    "monto": 20000,
+                    "referencia_externa": "pos-77"
+                },
+                {
+                    "comercio_id": 2,
+                    "sede_id": 21,
+                    "monto": 20000,
+                    "referencia_externa": "pos-77"
+                }
             ],
             "expected_transacciones": 1,
             "expected_saldo": 20
@@ -119,10 +212,23 @@
         {
             "_description": "The same reference in two different merchants: both are registered.",
             "_e4_01_criterion": "references are unique per merchant",
-            "cliente": { "documento": "3030303030", "saldo_puntos": 0 },
+            "cliente": {
+                "documento": "3030303030",
+                "saldo_puntos": 0
+            },
             "purchases": [
-                { "comercio_id": 1, "sede_id": 11, "monto": 10000, "referencia_externa": "ticket-1" },
-                { "comercio_id": 2, "sede_id": 21, "monto": 10000, "referencia_externa": "ticket-1" }
+                {
+                    "comercio_id": 1,
+                    "sede_id": 11,
+                    "monto": 10000,
+                    "referencia_externa": "ticket-1"
+                },
+                {
+                    "comercio_id": 2,
+                    "sede_id": 21,
+                    "monto": 10000,
+                    "referencia_externa": "ticket-1"
+                }
             ],
             "expected_transacciones": 2,
             "expected_saldo": 20
@@ -132,12 +238,30 @@
             "_e4_01_criterion": "daily caps count the customer's earlier purchases of the day",
             "rule_override": {
                 "codigo": "acumulacion-base",
-                "topes": { "puntos_por_transaccion": null, "puntos_por_dia": 1000, "puntos_por_mes": null }
+                "topes": {
+                    "puntos_por_transaccion": null,
+                    "puntos_por_dia": 1000,
+                    "puntos_por_mes": null
+                }
             },
-            "cliente": { "documento": "4040404040", "saldo_puntos": 900, "puntos_acumulados_hoy": 900 },
-            "purchase": { "comercio_id": 2, "sede_id": 21, "monto": 200000, "referencia_externa": "caja-0100" },
+            "cliente": {
+                "documento": "4040404040",
+                "saldo_puntos": 900,
+                "puntos_acumulados_hoy": 900
+            },
+            "purchase": {
+                "comercio_id": 2,
+                "sede_id": 21,
+                "monto": 200000,
+                "referencia_externa": "caja-0100"
+            },
             "expected_movimientos": [
-                { "tipo": "acumulacion", "puntos": 100, "regla_codigo": "acumulacion-base", "regla_version": 1 }
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 100,
+                    "regla_codigo": "acumulacion-base",
+                    "regla_version": 1
+                }
             ],
             "expected_cap": "puntos_por_dia",
             "expected_saldo": 1000
@@ -147,13 +271,35 @@
             "_e4_01_criterion": "caps trim the bonus points first",
             "rule_override": {
                 "codigo": "acumulacion-base",
-                "topes": { "puntos_por_transaccion": 100, "puntos_por_dia": null, "puntos_por_mes": null }
+                "topes": {
+                    "puntos_por_transaccion": 100,
+                    "puntos_por_dia": null,
+                    "puntos_por_mes": null
+                }
             },
-            "cliente": { "documento": "5050505050", "saldo_puntos": 0 },
-            "purchase": { "comercio_id": 1, "sede_id": 11, "monto": 85000, "referencia_externa": "caja-0101" },
+            "cliente": {
+                "documento": "5050505050",
+                "saldo_puntos": 0
+            },
+            "purchase": {
+                "comercio_id": 1,
+                "sede_id": 11,
+                "monto": 85000,
+                "referencia_externa": "caja-0101"
+            },
             "expected_movimientos": [
-                { "tipo": "acumulacion", "puntos": 85, "regla_codigo": "acumulacion-base", "regla_version": 1 },
-                { "tipo": "acumulacion", "puntos": 15, "regla_codigo": "doble-restaurante", "regla_version": 1 }
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 85,
+                    "regla_codigo": "acumulacion-base",
+                    "regla_version": 1
+                },
+                {
+                    "tipo": "acumulacion",
+                    "puntos": 15,
+                    "regla_codigo": "doble-restaurante",
+                    "regla_version": 1
+                }
             ],
             "expected_cap": "puntos_por_transaccion",
             "expected_saldo": 100
@@ -185,10 +331,17 @@
                 }
             ],
             "rule_versions_after_purchase": [
-                { "codigo": "acumulacion-base", "version": 2, "vigente_desde": "hoy-20d", "puntos_por_unidad": 2 }
+                {
+                    "codigo": "acumulacion-base",
+                    "version": 2,
+                    "vigente_desde": "hoy-20d",
+                    "puntos_por_unidad": 2
+                }
             ],
             "action": "register_cliente",
-            "cliente": { "documento": "9090909090" },
+            "cliente": {
+                "documento": "9090909090"
+            },
             "expected_estado": "acreditada",
             "expected_movimientos": [
                 {
@@ -214,13 +367,39 @@
                 }
             ],
             "concurrent_actions": ["credit_pending_compras", "credit_pending_compras"],
-            "cliente": { "documento": "8080808080" },
+            "cliente": {
+                "documento": "8080808080"
+            },
             "expected_saldo": 10
+        },
+        {
+            "_description": "A pending purchase made with a CE is not credited to a customer who registers with the same number as a CC.",
+            "_e4_01_criterion": "pending purchases are credited by document type and number",
+            "pending_transacciones": [
+                {
+                    "comercio_id": 2,
+                    "tipo_documento_cliente": "CE",
+                    "documento_cliente": "7070707070",
+                    "monto": 40000,
+                    "referencia_externa": "caja-0350",
+                    "created_at": "hoy-3d"
+                }
+            ],
+            "action": "register_cliente",
+            "cliente": {
+                "tipo_documento": "CC",
+                "documento": "7070707070"
+            },
+            "expected_estado": "pendiente",
+            "expected_movimientos": [],
+            "expected_saldo": 0
         },
         {
             "_description": "Merchant and branch validations.",
             "_e4_01_criterion": "merchant and branch must be active and consistent",
-            "cliente": { "documento": "1010101010" },
+            "cliente": {
+                "documento": "1010101010"
+            },
             "attempts": [
                 {
                     "comercio_id": 5,
@@ -248,23 +427,64 @@
         {
             "_description": "Amount validations (hard rule 3.9).",
             "_e4_01_criterion": "amounts are positive integer pesos",
-            "cliente": { "documento": "1010101010" },
+            "cliente": {
+                "documento": "1010101010"
+            },
             "attempts": [
-                { "monto": 0, "expected_result": "rejected" },
-                { "monto": -5000, "expected_result": "rejected" },
-                { "monto": 49999.99, "expected_result": "rejected" }
+                {
+                    "monto": 0,
+                    "expected_result": "rejected"
+                },
+                {
+                    "monto": -5000,
+                    "expected_result": "rejected"
+                },
+                {
+                    "monto": 49999.99,
+                    "expected_result": "rejected"
+                }
             ]
         },
         {
             "_description": "Who can register a purchase in branch 11 of merchant 1.",
             "_e4_01_criterion": "authorization by role and branch",
             "registrars": [
-                { "rol": "cajero", "comercio_id": 1, "sede_id": 11, "expected_result": "accepted" },
-                { "rol": "cajero", "comercio_id": 1, "sede_id": 12, "expected_result": "forbidden" },
-                { "rol": "cajero", "comercio_id": 2, "sede_id": 21, "expected_result": "forbidden" },
-                { "rol": "administrador_comercio", "comercio_id": 1, "sede_id": null, "expected_result": "accepted" },
-                { "rol": "administrador_comercio", "comercio_id": 2, "sede_id": null, "expected_result": "forbidden" },
-                { "rol": "administrador_grupo", "comercio_id": null, "sede_id": null, "expected_result": "accepted" }
+                {
+                    "rol": "cajero",
+                    "comercio_id": 1,
+                    "sede_id": 11,
+                    "expected_result": "accepted"
+                },
+                {
+                    "rol": "cajero",
+                    "comercio_id": 1,
+                    "sede_id": 12,
+                    "expected_result": "forbidden"
+                },
+                {
+                    "rol": "cajero",
+                    "comercio_id": 2,
+                    "sede_id": 21,
+                    "expected_result": "forbidden"
+                },
+                {
+                    "rol": "administrador_comercio",
+                    "comercio_id": 1,
+                    "sede_id": null,
+                    "expected_result": "accepted"
+                },
+                {
+                    "rol": "administrador_comercio",
+                    "comercio_id": 2,
+                    "sede_id": null,
+                    "expected_result": "forbidden"
+                },
+                {
+                    "rol": "administrador_grupo",
+                    "comercio_id": null,
+                    "sede_id": null,
+                    "expected_result": "accepted"
+                }
             ]
         },
         {
@@ -290,8 +510,16 @@
         {
             "_description": "A purchase below one point is registered with no movements.",
             "_e4_01_criterion": "a purchase that earns no points is still registered",
-            "cliente": { "documento": "1010101010", "saldo_puntos": 0 },
-            "purchase": { "comercio_id": 2, "sede_id": 21, "monto": 999, "referencia_externa": "caja-0400" },
+            "cliente": {
+                "documento": "1010101010",
+                "saldo_puntos": 0
+            },
+            "purchase": {
+                "comercio_id": 2,
+                "sede_id": 21,
+                "monto": 999,
+                "referencia_externa": "caja-0400"
+            },
             "expected_estado": "acreditada",
             "expected_movimientos": [],
             "expected_saldo": 0

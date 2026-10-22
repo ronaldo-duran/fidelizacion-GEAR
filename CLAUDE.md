@@ -468,7 +468,9 @@ el issue "Decisiones pendientes del cliente".
 - [ ] Catálogo inicial de beneficios por comercio y nivel
 - [ ] Nombre comercial del programa (trabajo: Club Aponte Rivera) y logo
 - [ ] Pasarela de pagos elegida
-- [ ] Cómo inicia sesión el cliente en la PWA (sin OTP por contrato)
+- [x] Cómo inicia sesión el cliente en la PWA: tipo + número de documento
+      y PIN; el registro se verifica con un código por SMS (cambio de
+      alcance frente al §8, decidido en #1 el 2026-10-10; E8-02 y E8-06)
 
 **Decidido en la spec E3-05:** el modelo de vencimiento es vigencia por
 punto con corte diario: cada lote vence a los N meses de su fecha

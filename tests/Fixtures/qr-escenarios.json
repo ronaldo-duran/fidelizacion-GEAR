@@ -1,0 +1,79 @@
+{
+    "_note": "Scenarios for E4-04 (signed rotating QR). Times are seconds relative to the issue moment. Values the client has not confirmed carry \"_assumption\": true. Hard rule 3.12: never a static QR.",
+    "timing": {
+        "ttl_seconds": { "value": 30, "_assumption": true },
+        "refresh_seconds": { "value": 20, "_assumption": true, "_source": "design: 'cambia solo cada 20 s'" },
+        "clock_skew_seconds": { "value": 5, "_assumption": true }
+    },
+    "short_code": {
+        "format": "^[A-Z]{2,3}-[0-9]{4}$",
+        "identify_prefix": "AR",
+        "max_failed_attempts_per_minute": { "value": 5, "_assumption": true }
+    },
+    "purposes": ["identificar", "beneficio"],
+    "cases": [
+        {
+            "_description": "A fresh identify code is valid and can be validated more than once in its window.",
+            "_e4_04_criterion": "a valid identify code works within its window",
+            "issue": { "purpose": "identificar", "at": 0 },
+            "validations": [
+                { "at": 5, "expected": "valid" },
+                { "at": 10, "expected": "valid" }
+            ]
+        },
+        {
+            "_description": "A code past its validity plus the clock skew is expired.",
+            "_e4_04_criterion": "an expired code is rejected",
+            "issue": { "purpose": "identificar", "at": 0 },
+            "validations": [
+                { "at": 34, "expected": "valid", "_reason": "inside the clock skew" },
+                { "at": 36, "expected": "expired" }
+            ]
+        },
+        {
+            "_description": "A tampered code (signature or content) is invalid and reveals no customer data.",
+            "_e4_04_criterion": "a tampered code is invalid",
+            "issue": { "purpose": "identificar", "at": 0 },
+            "tamper": ["signature", "cliente_id", "purpose"],
+            "expected": "invalid",
+            "expected_customer_data": false
+        },
+        {
+            "_description": "A benefit code is accepted once; a second validation is already used.",
+            "_e4_04_criterion": "a benefit code is single use",
+            "issue": { "purpose": "beneficio", "comercio": "own", "at": 0 },
+            "validations": [
+                { "at": 5, "expected": "valid" },
+                { "at": 8, "expected": "used" }
+            ]
+        },
+        {
+            "_description": "A benefit code from another merchant is rejected by the cashier.",
+            "_e4_04_criterion": "a benefit code belongs to its merchant",
+            "issue": { "purpose": "beneficio", "comercio": "other", "at": 0 },
+            "validations": [{ "at": 5, "expected": "invalid" }]
+        },
+        {
+            "_description": "An identify code does not work for a benefit, and the other way around.",
+            "_e4_04_criterion": "codes are bound to their purpose",
+            "issue": { "purpose": "identificar", "at": 0 },
+            "validations": [{ "at": 5, "as_purpose": "beneficio", "expected": "invalid" }]
+        },
+        {
+            "_description": "Two issues in a row for the same customer give different QR tokens and short codes.",
+            "_e4_04_criterion": "never the same code twice",
+            "issues": [
+                { "purpose": "identificar", "at": 0 },
+                { "purpose": "identificar", "at": 20 }
+            ],
+            "expected": { "tokens_differ": true, "short_codes_differ": true }
+        },
+        {
+            "_description": "The short code is equivalent to the QR; after the maximum failed attempts the cashier is locked out.",
+            "_e4_04_criterion": "short code with attempt limit",
+            "issue": { "purpose": "identificar", "at": 0 },
+            "short_code_attempts": ["AR-0000", "AR-1111", "AR-2222", "AR-3333", "AR-4444", "issued"],
+            "expected": { "locked_on_attempt": 6 }
+        }
+    ]
+}

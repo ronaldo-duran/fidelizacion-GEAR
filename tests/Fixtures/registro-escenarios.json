@@ -1,0 +1,157 @@
+{
+    "_note": "Scenarios for E8-02 (customer registration and access). Customers are identified by tipo_documento + documento (CLAUDE.md 3.10); documents are compared normalized (uppercase, no spaces). Values the client has not confirmed carry \"_assumption\": true. Dates are relative to `hoy` in America/Bogota.",
+    "validation": {
+        "documento": {
+            "CC": { "pattern": "^[0-9]{6,10}$", "_source": "issue #18" },
+            "CE": { "pattern": "^[0-9A-Z]{4,12}$", "_assumption": true },
+            "PPT": { "pattern": "^[0-9A-Z]{4,15}$", "_assumption": true },
+            "PA": { "pattern": "^[0-9A-Z]{5,15}$", "_assumption": true },
+            "DEX": { "pattern": "^[0-9A-Z]{4,20}$", "_assumption": true }
+        },
+        "celular": { "pattern": "^3[0-9]{9}$", "_source": "issue #18: Colombian mobile, 10 digits starting with 3" },
+        "pin": {
+            "digits": 4,
+            "reject_all_same": true,
+            "reject_consecutive": true,
+            "_assumption": true
+        },
+        "edad_minima_anios": {
+            "value": 18,
+            "_assumption": true,
+            "_note": "Ley 1581 on minors' data; confirm with legal."
+        },
+        "nombre_completo": { "min_length": 3, "max_length": 120 }
+    },
+    "limits": {
+        "login_max_attempts": { "value": 5, "_assumption": true },
+        "login_lockout_minutes": { "value": 15, "_assumption": true },
+        "registro_pendiente_minutes": { "value": 30, "_assumption": true },
+        "enlace_caja_minutes": { "value": 30, "_assumption": true }
+    },
+    "cases": [
+        {
+            "_description": "A complete, valid registration that verifies the phone creates the customer, stores the authorization and starts the session.",
+            "_e8_02_criterion": "a verified registration creates the customer with its authorization",
+            "form": {
+                "tipo_documento": "CC",
+                "documento": "1023456789",
+                "nombre_completo": "Marcela Gómez",
+                "fecha_nacimiento": "hoy-30y",
+                "celular": "3001234567",
+                "pin": "4826",
+                "pin_confirmation": "4826",
+                "autorizacion": true
+            },
+            "verified": true,
+            "expected": { "cliente_created": true, "autorizacion_stored": true, "logged_in": true }
+        },
+        {
+            "_description": "Without the authorization the account cannot be created.",
+            "_e8_02_criterion": "no account without the authorization",
+            "form": {
+                "tipo_documento": "CC",
+                "documento": "1023456788",
+                "nombre_completo": "Andrés Pérez",
+                "fecha_nacimiento": "hoy-25y",
+                "celular": "3011234567",
+                "pin": "4826",
+                "pin_confirmation": "4826",
+                "autorizacion": false
+            },
+            "expected": { "error_field": "autorizacion", "sms_sent": false }
+        },
+        {
+            "_description": "An unverified registration creates no customer, credits nothing and gives no access.",
+            "_e8_02_criterion": "an unverified registration creates nothing",
+            "form": {
+                "tipo_documento": "PPT",
+                "documento": "ppt 5566",
+                "nombre_completo": "Beto Rivas",
+                "fecha_nacimiento": "hoy-40y",
+                "celular": "3021234567",
+                "pin": "9134",
+                "pin_confirmation": "9134",
+                "autorizacion": true
+            },
+            "pending_compras": [{ "tipo_documento_cliente": "PPT", "documento_cliente": "PPT5566", "monto": 40000 }],
+            "verified": false,
+            "expected": { "cliente_created": false, "compras_estado": "pendiente", "logged_in": false }
+        },
+        {
+            "_description": "On verification the pending purchases of that document type and number are credited once.",
+            "_e8_02_criterion": "pending purchases are credited on verification",
+            "form": {
+                "tipo_documento": "PPT",
+                "documento": "ppt 5566",
+                "nombre_completo": "Beto Rivas",
+                "fecha_nacimiento": "hoy-40y",
+                "celular": "3021234567",
+                "pin": "9134",
+                "pin_confirmation": "9134",
+                "autorizacion": true
+            },
+            "pending_compras": [
+                { "tipo_documento_cliente": "PPT", "documento_cliente": "PPT5566", "monto": 40000 },
+                { "tipo_documento_cliente": "CC", "documento_cliente": "5566", "monto": 10000 }
+            ],
+            "verified": true,
+            "expected": { "cliente_created": true, "compras_acreditadas": 1, "compras_pendientes_restantes": 1 }
+        },
+        {
+            "_description": "Invalid fields are rejected before any SMS is sent.",
+            "_e8_02_criterion": "invalid fields are rejected before sending the SMS",
+            "attempts": [
+                {
+                    "field": "documento",
+                    "tipo_documento": "CC",
+                    "value": "12345",
+                    "_reason": "CC shorter than 6 digits"
+                },
+                { "field": "documento", "tipo_documento": "CC", "value": "10234AB", "_reason": "CC with letters" },
+                { "field": "celular", "value": "2001234567", "_reason": "does not start with 3" },
+                { "field": "celular", "value": "300123456", "_reason": "9 digits" },
+                { "field": "pin", "value": "1111", "_reason": "all digits the same" },
+                { "field": "pin", "value": "1234", "_reason": "consecutive" },
+                { "field": "pin", "value": "482", "_reason": "3 digits" },
+                { "field": "fecha_nacimiento", "value": "hoy-17y", "_reason": "under the minimum age" }
+            ],
+            "expected": { "sms_sent": false }
+        },
+        {
+            "_description": "Registering an existing document shows a generic message that reveals nothing about the owner.",
+            "_e8_02_criterion": "a duplicate document reveals nothing",
+            "existing_cliente": { "tipo_documento": "CC", "documento": "1023456789" },
+            "form": { "tipo_documento": "CC", "documento": "1023 456 789" },
+            "expected": { "message": "Ya hay una cuenta con ese documento. Ingresa o recupera tu PIN." }
+        },
+        {
+            "_description": "The cashier QR link opens the registration with the document type and number already filled; an expired or altered link is rejected.",
+            "_e8_02_criterion": "the cashier link prefills the document and expires",
+            "link": { "tipo_documento": "CE", "documento": "E123456" },
+            "expected": {
+                "prefilled": true,
+                "expired_after_minutes_from": "enlace_caja_minutes",
+                "tampered": "rejected"
+            }
+        },
+        {
+            "_description": "Login with the right PIN works; a wrong one does not say whether the document exists; after the maximum attempts the document is locked even for the right PIN.",
+            "_e8_02_criterion": "login with PIN and lockout",
+            "existing_cliente": { "tipo_documento": "CC", "documento": "1023456789", "pin": "4826" },
+            "attempts": ["0000", "1357", "2468", "8642", "9753", "4826"],
+            "expected": { "error_message": "El documento o el PIN no coinciden.", "locked_on_attempt": 6 }
+        },
+        {
+            "_description": "Forgot PIN: with the SMS code the PIN changes and the other sessions are closed.",
+            "_e8_02_criterion": "reset the PIN with the SMS code",
+            "existing_cliente": {
+                "tipo_documento": "CC",
+                "documento": "1023456789",
+                "pin": "4826",
+                "celular": "3001234567"
+            },
+            "new_pin": "7351",
+            "expected": { "old_pin_works": false, "new_pin_works": true, "other_sessions_closed": true }
+        }
+    ]
+}

@@ -15,7 +15,8 @@ La usan el cajero (E4-02), la carga masiva (E4-03) y la API pública
   de la API con su header `Idempotency-Key` (E9-01). Aquí se define la
   Action que los tres llaman y la tabla que los protege.
 - Identificar al cliente por QR (E4-04). Aquí el cliente llega por
-  `documento` o por `cliente_id` ya resuelto.
+  tipo y número de documento (CLAUDE.md §3.10) o por `cliente_id` ya
+  resuelto.
 - El registro del cliente (E8-02). Aquí solo se define la Action que el
   registro llama para acreditar sus compras pendientes.
 - Los avisos al cliente (E7-01).
@@ -41,7 +42,8 @@ La usan el cajero (E4-02), la carga masiva (E4-03) y la API pública
    y los puntos extra con el snapshot de la regla de bonificación. Cada
    punto queda trazado a su regla. Si un tope recorta, se descuenta primero
    de los puntos extra.
-5. **Compra pendiente**: si el documento no corresponde a ningún cliente,
+5. **Compra pendiente**: si el tipo y número de documento no corresponden
+   a ningún cliente,
    la compra se guarda como pendiente, sin puntos. El monto nunca se pierde
    (decisión de producto del diseño, 1h y 1i) y no tiene plazo para
    reclamarse.
@@ -74,12 +76,15 @@ La usan el cajero (E4-02), la carga masiva (E4-03) y la API pública
       la suma.
 - [ ] Dado un tope diario y compras anteriores del mismo día, cuando la
       compra lo supera, entonces solo se otorga lo que falta para el tope.
-- [ ] Dada una cédula sin cliente, cuando se registra la compra, entonces
-      queda pendiente y no hay movimientos.
+- [ ] Dado un tipo y número de documento sin cliente, cuando se registra la
+      compra, entonces queda pendiente y no hay movimientos.
 - [ ] Dado un cliente que se registra con compras pendientes, cuando se
       acreditan, entonces cada una se acredita una sola vez, con las reglas
       de su fecha de compra, aunque las reglas hayan cambiado después; dos
       acreditaciones simultáneas no duplican puntos.
+- [ ] Dada una compra pendiente con un tipo de documento, cuando se
+      registra un cliente con el mismo número y otro tipo, entonces no se le
+      acredita.
 - [ ] Dado un comercio o una sede inactivos, o una sede de otro comercio,
       cuando se registra una compra, entonces se rechaza.
 - [ ] Dado un monto de cero, negativo o con decimales, entonces se
@@ -102,7 +107,8 @@ Las reglas reutilizan las formas de `tests/Fixtures/reglas-validas.json`.
 ## Datos y diseño (decisiones técnicas, pendientes de revisión)
 
 - **`transacciones`**: `id`, `cliente_id` (nullable mientras está
-  pendiente), `documento_cliente` (el que se digitó, normalizado),
+  pendiente), `tipo_documento_cliente` y `documento_cliente` (los que se
+  digitaron; el número normalizado en mayúsculas y sin espacios, §3.10),
   `comercio_id`, `sede_id` (obligatoria para el cajero y la carga masiva;
   opcional en la API), `monto` (entero), `referencia_externa` (sin
   espacios y en minúsculas, regla 3.13), `idempotency_key` (nullable, la
@@ -110,7 +116,9 @@ Las reglas reutilizan las formas de `tests/Fixtures/reglas-validas.json`.
   (`acreditada` | `pendiente` | `anulada`), `acreditada_at`,
   `registrada_por` (nullable en la API), `created_at` puesto por la
   aplicación. **Restricción única `(comercio_id, referencia_externa)`.**
-  Índice `(documento_cliente, estado)` para buscar pendientes.
+  Índice `(tipo_documento_cliente, documento_cliente, estado)` para
+  buscar pendientes: las pendientes se acreditan por el par tipo + número,
+  nunca por el número solo.
 - **Llave foránea de E3-02**: esta feature agrega la FK de
   `movimientos_puntos.transaccion_id` a `transacciones.id`, que E3-02 dejó
   pendiente.
@@ -118,7 +126,8 @@ Las reglas reutilizan las formas de `tests/Fixtures/reglas-validas.json`.
   `pendiente` a `acreditada` o a `anulada`, o de `acreditada` a `anulada`.
   El modelo rechaza cualquier otro cambio.
 - **Repetición**: ante la violación de la restricción única, se lee la
-  compra existente y se comparan cliente (o documento) y monto: iguales →
+  compra existente y se comparan cliente (o tipo y número de documento) y
+  monto: iguales →
   se devuelve; distintos → conflicto.
 - **Acreditación sin duplicados**: cada pendiente se pasa a `acreditada`
   con un UPDATE condicionado a `estado = pendiente`; si afecta cero filas,

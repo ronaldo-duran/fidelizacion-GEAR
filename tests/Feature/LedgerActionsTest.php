@@ -8,10 +8,12 @@ use App\Actions\Puntos\RecordAjusteManual;
 use App\Actions\Puntos\RecordCaducidad;
 use App\Actions\Puntos\RecordPromocion;
 use App\Actions\Puntos\ReverseTransaccion;
+use App\Enums\EstadoTransaccion;
 use App\Enums\TipoMovimiento;
 use App\Models\Cliente;
 use App\Models\Comercio;
 use App\Models\MovimientoPuntos;
+use App\Models\Transaccion;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -26,13 +28,20 @@ beforeEach(function (): void {
     $this->cliente = LedgerTestData::cliente();
     $this->admin = User::factory()->administradorDelGrupo()->create();
 
+    $this->transacciones = [];
+    $this->tx = fn (int $key): int => $this->transacciones[$key] ??= Transaccion::factory()->create([
+        'comercio_id' => $this->comercio->id,
+        'cliente_id' => $this->cliente->id,
+        'estado' => EstadoTransaccion::Acreditada,
+    ])->id;
+
     $this->accrue = function (int $transaccionId, int $puntos, ?CarbonImmutable $at = null): MovimientoPuntos {
         $now = CarbonImmutable::now();
         $this->travelTo($at ?? $now);
         $movimiento = app(RecordAcumulacion::class)(
             $this->cliente->id,
             $this->comercio->id,
-            $transaccionId,
+            ($this->tx)($transaccionId),
             $puntos,
             $this->regla,
             CarbonImmutable::now()->addMonths(12),
@@ -58,11 +67,11 @@ it('credits exactly the accrued points in the same transaction', function (): vo
 it('reverses a purchase within the window and leaves the original untouched', function (): void {
     $original = ($this->accrue)(1001, 85, CarbonImmutable::now()->subDays(10));
 
-    $reversals = app(ReverseTransaccion::class)($this->admin, 1001, 'Compra anulada en caja');
+    $reversals = app(ReverseTransaccion::class)($this->admin, ($this->tx)(1001), 'Compra anulada en caja');
 
     expect($reversals)->toHaveCount(1)
         ->and($reversals[0]->puntos)->toBe(-85)
-        ->and($reversals[0]->transaccion_id)->toBe(1001)
+        ->and($reversals[0]->transaccion_id)->toBe(($this->tx)(1001))
         ->and($reversals[0]->regla_id)->toBe($this->regla->id)
         ->and($reversals[0]->usuario_id)->toBe($this->admin->id)
         ->and($original->fresh()?->puntos)->toBe(85)
@@ -72,7 +81,7 @@ it('reverses a purchase within the window and leaves the original untouched', fu
 it('rejects a reversal older than the window and inserts nothing', function (): void {
     ($this->accrue)(1002, 85, CarbonImmutable::now()->subDays(31));
 
-    expect(fn (): array => app(ReverseTransaccion::class)($this->admin, 1002, 'Anulada'))
+    expect(fn (): array => app(ReverseTransaccion::class)($this->admin, ($this->tx)(1002), 'Anulada'))
         ->toThrow(ValidationException::class);
 
     expect(MovimientoPuntos::query()->count())->toBe(1);
@@ -84,14 +93,14 @@ it('accepts a reversal on the last day of the window at any hour', function (): 
     ($this->accrue)(1003, 85, CarbonImmutable::parse('2026-09-17 00:05:00'));
     $this->travelTo(CarbonImmutable::parse('2026-10-17 23:55:00'));
 
-    expect(app(ReverseTransaccion::class)($this->admin, 1003, 'Anulada'))->toHaveCount(1);
+    expect(app(ReverseTransaccion::class)($this->admin, ($this->tx)(1003), 'Anulada'))->toHaveCount(1);
 });
 
 it('rejects a second reversal of the same purchase', function (): void {
     ($this->accrue)(1004, 85, CarbonImmutable::now()->subDays(5));
-    app(ReverseTransaccion::class)($this->admin, 1004, 'Anulada');
+    app(ReverseTransaccion::class)($this->admin, ($this->tx)(1004), 'Anulada');
 
-    expect(fn (): array => app(ReverseTransaccion::class)($this->admin, 1004, 'Otra vez'))
+    expect(fn (): array => app(ReverseTransaccion::class)($this->admin, ($this->tx)(1004), 'Otra vez'))
         ->toThrow(ValidationException::class);
 
     expect(MovimientoPuntos::query()->where('tipo', 'reversa')->count())->toBe(1);
@@ -102,7 +111,7 @@ it('caps the reversal at what is left of the purchase lot', function (): void {
     ($this->accrue)(1005, 85, CarbonImmutable::now()->subDays(5));
     app(RecordAjusteManual::class)($this->admin, $this->cliente->id, -35, 'Corrección');
 
-    $reversals = app(ReverseTransaccion::class)($this->admin, 1005, 'Anulada');
+    $reversals = app(ReverseTransaccion::class)($this->admin, ($this->tx)(1005), 'Anulada');
 
     expect($reversals[0]->puntos)->toBe($case['expected_movimiento']['puntos'])
         ->and($reversals[0]->motivo)->toContain('topada')
@@ -115,7 +124,7 @@ it('never takes points of another purchase when reversing', function (): void {
     app(RecordAjusteManual::class)($this->admin, $this->cliente->id, -85, 'Corrección');
     ($this->accrue)(2002, 50, CarbonImmutable::now()->subDays(2));
 
-    $reversals = app(ReverseTransaccion::class)($this->admin, 2001, 'Anulada');
+    $reversals = app(ReverseTransaccion::class)($this->admin, ($this->tx)(2001), 'Anulada');
 
     expect($reversals)->toHaveCount($case['expected_reversa_movimientos'])
         ->and($this->cliente->fresh()?->saldo_puntos)->toBe($case['expected_saldo']);
@@ -178,7 +187,7 @@ it('recalculates the balance from scratch after every movement type', function (
     $case = LedgerTestData::fixtureCase('recalculated balance == materialized balance');
     ($this->accrue)(4001, 85, CarbonImmutable::now()->subDays(3));
     ($this->accrue)(4002, 200, CarbonImmutable::now()->subDays(2));
-    app(ReverseTransaccion::class)($this->admin, 4001, 'Anulada');
+    app(ReverseTransaccion::class)($this->admin, ($this->tx)(4001), 'Anulada');
     app(RecordAjusteManual::class)($this->admin, $this->cliente->id, 30, 'Cortesía');
     app(RecordCaducidad::class)($this->cliente->id, 50, $this->regla);
 
@@ -237,7 +246,7 @@ it('authorizes reversals and manual adjustments by role and merchant', function 
     ($this->accrue)(8001, 85, CarbonImmutable::now()->subDay());
 
     $run = $action === 'reversa'
-        ? fn (): array => app(ReverseTransaccion::class)($user, 8001, 'Anulada')
+        ? fn (): array => app(ReverseTransaccion::class)($user, ($this->tx)(8001), 'Anulada')
         : fn (): MovimientoPuntos => app(RecordAjusteManual::class)($user, $this->cliente->id, -10, 'Corrección');
 
     if ($expected === 'forbidden') {

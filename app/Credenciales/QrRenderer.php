@@ -10,7 +10,8 @@ use chillerlan\QRCode\QROptions;
 use RuntimeException;
 
 /**
- * Draws a credential token as a real QR image (SVG), generated on the server.
+ * Dibuja el token de una credencial como una imagen QR real (SVG), generada en
+ * el servidor.
  */
 class QrRenderer
 {
@@ -25,7 +26,7 @@ class QrRenderer
         $svg = (new QRCode($options))->render($token);
 
         if (! is_string($svg)) {
-            throw new RuntimeException('The QR could not be drawn.');
+            throw new RuntimeException('No se pudo dibujar el QR.');
         }
 
         return $svg;

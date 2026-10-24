@@ -16,13 +16,14 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
- * Validates what the cashier scanned (the signed token) or typed (the short
- * code) for the purpose the cashier expects: signature, expiry with a small
- * clock skew, purpose and, for a benefit, the cashier's merchant.
+ * Valida lo que el cajero escaneó (el token firmado) o digitó (el código
+ * corto) para el propósito que espera: firma, vencimiento con una pequeña
+ * tolerancia de reloj, propósito y, para un beneficio, el comercio del cajero.
  *
- * A benefit credential is used once: it is marked with an UPDATE conditioned
- * on `usado_at IS NULL`, so two simultaneous validations accept only one.
- * Failed short codes are limited per cashier against brute force.
+ * Una credencial de beneficio se usa una vez: se marca con un UPDATE
+ * condicionado a `usado_at IS NULL`, así de dos validaciones simultáneas solo
+ * una pasa. Los códigos cortos fallidos se limitan por cajero contra la
+ * fuerza bruta.
  */
 class ValidateCredencial
 {
@@ -39,7 +40,7 @@ class ValidateCredencial
     public function __invoke(User $cajero, string $entrada, PropositoCredencial $esperado): ValidacionCredencial
     {
         if (! $cajero->activo) {
-            throw new AuthorizationException('Inactive users cannot validate credentials.');
+            throw new AuthorizationException('Un usuario inactivo no puede validar credenciales.');
         }
 
         $entrada = trim($entrada);
@@ -119,9 +120,9 @@ class ValidateCredencial
     }
 
     /**
-     * TODO(E5-02): the redemption must be created in the same
-     * `DB::transaction()` as this mark, so a failed redemption doesn't burn
-     * the customer's single-use code.
+     * TODO(E5-02): la redención debe crearse en la misma `DB::transaction()`
+     * que esta marca, para que una redención fallida no queme el código de un
+     * solo uso del cliente.
      */
     private function markUsed(CredencialQr $credencial, User $cajero): bool
     {

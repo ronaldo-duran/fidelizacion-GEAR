@@ -19,15 +19,16 @@ use Random\Randomizer;
 use RuntimeException;
 
 /**
- * Issues a QR credential that lives for seconds (hard rule 3.12): a signed
- * token with a random nonce, so the same customer never gets the same code
- * twice, and an equivalent short code for the cashier. A benefit credential
- * belongs to the benefit's merchant and its short code carries the
- * merchant's prefix.
+ * Emite una credencial QR que vive segundos (regla dura 3.12): un token
+ * firmado con un nonce aleatorio, para que el mismo cliente nunca reciba dos
+ * veces el mismo código, y un código corto equivalente para el cajero. Una
+ * credencial de beneficio pertenece al comercio del beneficio y su código
+ * corto lleva el prefijo de ese comercio.
  *
- * A short code is unique among the credentials still valid by a database
- * constraint (`credenciales_qr_codigos`), never by a check in code: of two
- * simultaneous issues with the same code, the second one retries.
+ * El código corto es único entre las credenciales vigentes por una
+ * restricción de la base de datos (`credenciales_qr_codigos`), nunca por una
+ * verificación en código: de dos emisiones simultáneas con el mismo código,
+ * la segunda reintenta.
  */
 class IssueCredencial
 {
@@ -52,7 +53,7 @@ class IssueCredencial
         $esBeneficio = $proposito === PropositoCredencial::Beneficio;
 
         if ($esBeneficio !== ($beneficioId !== null && $comercioId !== null)) {
-            throw new InvalidArgumentException('Only a benefit credential carries a benefit and its merchant.');
+            throw new InvalidArgumentException('Solo una credencial de beneficio lleva un beneficio y su comercio.');
         }
 
         $credencial = $this->create([
@@ -74,10 +75,10 @@ class IssueCredencial
     }
 
     /**
-     * Creates the credential with a random short code (a prefix plus four
-     * digits) and reserves that code; when the reservation breaks the unique
-     * constraint, retries with another. Each try is its own transaction, so a
-     * failed insert doesn't abort the next one.
+     * Crea la credencial con un código corto aleatorio (un prefijo y cuatro
+     * dígitos) y reserva ese código; si la reserva rompe la restricción única,
+     * reintenta con otro. Cada intento es su propia transacción, así un insert
+     * fallido no aborta el siguiente.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -106,15 +107,15 @@ class IssueCredencial
             }
         }
 
-        throw new RuntimeException('Could not find a free short code.');
+        throw new RuntimeException('No se encontró un código corto libre.');
     }
 
     /**
-     * Reserves the short code in every time window its validity touches: from
-     * the issue until the expiry plus the clock skew, as long as
-     * `ValidateCredencial` still finds it. The windows are that long, so a
-     * validity touches one or two of them and two overlapping validities
-     * always share one.
+     * Reserva el código corto en cada ventana de tiempo que toca su vigencia:
+     * desde la emisión hasta el vencimiento más la tolerancia de reloj, lo que
+     * `ValidateCredencial` todavía lo encuentra. Las ventanas duran eso mismo,
+     * así una vigencia toca una o dos y dos vigencias que se cruzan siempre
+     * comparten una.
      */
     private function reserve(CredencialQr $credencial): void
     {
@@ -134,9 +135,9 @@ class IssueCredencial
     }
 
     /**
-     * `AR` to identify the customer; for a benefit, the first three letters
-     * of the merchant's name without leading articles (e.g. "El Rancho de
-     * Javi" gives "RAN").
+     * `AR` para identificar al cliente; para un beneficio, las tres primeras
+     * letras del nombre del comercio sin artículos al inicio (p. ej. "El Rancho
+     * de Javi" da "RAN").
      */
     private function prefix(?int $comercioId): string
     {

@@ -8,8 +8,8 @@ use App\Models\CredencialQr;
 use Carbon\CarbonImmutable;
 
 /**
- * What the customer's app shows: the signed token behind the QR, its short
- * code and when it expires.
+ * Lo que muestra la app del cliente: el token firmado detrás del QR, su código
+ * corto y cuándo vence.
  */
 final class CredencialEmitida
 {

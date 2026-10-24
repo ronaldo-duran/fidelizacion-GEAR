@@ -7,9 +7,9 @@ namespace App\Credenciales;
 use RuntimeException;
 
 /**
- * Signs and reads QR tokens: `base64url(payload) . "." . base64url(hmac)`,
- * with an HMAC-SHA256 keyed by the application key. A token whose signature
- * does not match is never read.
+ * Firma y lee los tokens del QR: `base64url(payload) . "." . base64url(hmac)`,
+ * con un HMAC-SHA256 con la llave de la aplicación. Un token cuya firma no
+ * coincide nunca se lee.
  */
 class TokenSigner
 {
@@ -24,7 +24,7 @@ class TokenSigner
     }
 
     /**
-     * The payload of a token with a valid signature, or null.
+     * El contenido de un token con firma válida, o null.
      *
      * @return array<array-key, mixed>|null
      */
@@ -47,7 +47,7 @@ class TokenSigner
         $key = config('app.key');
 
         if (! is_string($key) || $key === '') {
-            throw new RuntimeException('The application key is required to sign QR credentials.');
+            throw new RuntimeException('Falta la llave de la aplicación para firmar las credenciales QR.');
         }
 
         return hash_hmac('sha256', 'credencial-qr|' . $body, $key, true);

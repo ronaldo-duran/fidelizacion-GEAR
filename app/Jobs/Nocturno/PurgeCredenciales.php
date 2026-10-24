@@ -7,9 +7,9 @@ namespace App\Jobs\Nocturno;
 use App\Models\CredencialQr;
 
 /**
- * 5. Deletes QR credentials that expired before the cutoff. They live for
- * seconds and hold no history: a benefit redemption keeps its own record
- * (E5-02).
+ * 5. Borra las credenciales QR vencidas antes del corte. Viven segundos y no
+ * guardan historia: la redención de un beneficio tiene su propio registro
+ * (E5-02). Sus reservas de código corto se borran en cascada.
  */
 class PurgeCredenciales extends NightlyJob
 {

@@ -9,10 +9,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Signed QR credentials (hard rule 3.12). Each one lives for seconds; a
-     * benefit credential is used once, marked with a conditional UPDATE on
-     * `usado_at`. `beneficio_id` gets its foreign key with the benefits table
-     * (E5-01). Expired rows are purged by the nightly process.
+     * Credenciales QR firmadas (regla dura 3.12). Cada una vive segundos; una
+     * credencial de beneficio se usa una vez, marcada con un UPDATE
+     * condicionado a `usado_at`. `beneficio_id` recibe su llave foránea con la
+     * tabla de beneficios (E5-01). El proceso nocturno purga las vencidas.
      */
     public function up(): void
     {

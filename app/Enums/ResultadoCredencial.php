@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * What the cashier gets back when validating a QR credential or its short
- * code. Only `Valido` carries customer data.
+ * Lo que recibe el cajero al validar una credencial QR o su código corto.
+ * Solo `Valido` trae datos del cliente.
  */
 enum ResultadoCredencial: string
 {

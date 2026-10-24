@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * What a QR credential is for: the cashier recognizing the customer to
- * register a purchase, or the customer using one benefit. A code for one
- * never works for the other.
+ * Para qué sirve una credencial QR: que el cajero reconozca al cliente para
+ * registrar una compra, o que el cliente use un beneficio. Un código de uno
+ * nunca sirve para el otro.
  */
 enum PropositoCredencial: string
 {

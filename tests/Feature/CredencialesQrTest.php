@@ -129,13 +129,13 @@ it('accepts the short code like the QR and locks the cashier after too many fail
     $wrongCodes = array_filter($attempts, static fn (string $code): bool => $code !== 'issued');
 
     foreach ($wrongCodes as $wrong) {
-        // A wrong code that happens to be the issued one is swapped for another wrong one.
+        // Un código equivocado que coincida con el emitido se cambia por otro equivocado.
         ($this->validate)($wrong === $emitida->codigoCorto ? 'AR-9999X' : $wrong, 'identificar');
     }
 
     expect(($this->validate)($emitida->codigoCorto, 'identificar')->resultado)->toBe(ResultadoCredencial::Bloqueado);
 
-    // The lockout lasts one minute ("max_failed_attempts_per_minute").
+    // El bloqueo dura un minuto ("max_failed_attempts_per_minute").
     $this->travel(1)->minutes();
     $this->travel(1)->seconds();
     $nueva = ($this->issue)('identificar');
@@ -144,7 +144,7 @@ it('accepts the short code like the QR and locks the cashier after too many fail
 });
 
 it('retries a short code taken by a valid credential and frees it once that one expires', function (): void {
-    // Same seed, same sequence of short codes: the second issue draws the taken code first.
+    // Misma semilla, misma secuencia de códigos: la segunda emisión saca primero el código ocupado.
     $seeded = static fn (): Randomizer => new Randomizer(new Mt19937(7));
     $sequence = $seeded();
     $firstCode = sprintf('AR-%04d', $sequence->getInt(0, 9999));
@@ -161,7 +161,7 @@ it('retries a short code taken by a valid credential and frees it once that one 
         ->and(($this->validate)($firstCode, 'identificar')->cliente?->id)->toBe($this->cliente->id)
         ->and(($this->validate)($secondCode, 'identificar')->cliente?->id)->toBe($otroCliente->id);
 
-    // A code stays reserved until its last window ends: at most two windows (validity + skew) after issue.
+    // Un código queda reservado hasta que termina su última ventana: a lo sumo dos tras la emisión.
     $timing = $this->fixture['timing'];
     $window = $timing['ttl_seconds']['value'] + $timing['clock_skew_seconds']['value'];
     $this->travel((2 * $window) + 1)->seconds();

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /*
-| Signed rotating QR (E4-04, hard rule 3.12). Mirrored in
-| tests/Fixtures/qr-escenarios.json; a test asserts they match.
+| QR firmado y rotativo (E4-04, regla dura 3.12). Reflejado en
+| tests/Fixtures/qr-escenarios.json; una prueba verifica que coincidan.
 */
 
 return [

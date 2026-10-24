@@ -9,8 +9,9 @@ use App\Models\Cliente;
 use App\Models\CredencialQr;
 
 /**
- * Outcome of a cashier validation. The customer and the credential are only
- * present when it is valid, so an invalid code never reveals customer data.
+ * Resultado de una validación del cajero. El cliente y la credencial solo
+ * vienen cuando es válida, así un código inválido nunca revela datos del
+ * cliente.
  */
 final class ValidacionCredencial
 {

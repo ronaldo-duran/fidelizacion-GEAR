@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One issued QR credential. Its token is signed with the application key and
- * lives for seconds (hard rule 3.12).
+ * Una credencial QR emitida. Su token se firma con la llave de la aplicación y
+ * vive segundos (regla dura 3.12).
  *
  * @property int $id
  * @property int $cliente_id

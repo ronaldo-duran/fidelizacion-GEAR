@@ -9,13 +9,14 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Keeps a short code unique among the credentials still valid, enforced by
-     * the database instead of a check in code. Each credential reserves its
-     * code in every time window its validity touches; two credentials whose
-     * validity overlaps share a window, so the second insert breaks the unique
-     * constraint and the issue retries with another code. A plain composite
-     * unique index, portable to every engine (no partial index). The rows go
-     * away with their credential in the nightly purge.
+     * Mantiene el código corto único entre las credenciales vigentes, impuesto
+     * por la base de datos y no por una verificación en código. Cada credencial
+     * reserva su código en cada ventana de tiempo que toca su vigencia; dos
+     * credenciales cuyas vigencias se cruzan comparten una ventana, así el
+     * segundo insert rompe la restricción única y la emisión reintenta con otro
+     * código. Un índice único compuesto normal, portable a todos los motores
+     * (sin índice parcial). Las filas se van con su credencial en la purga
+     * nocturna.
      */
     public function up(): void
     {

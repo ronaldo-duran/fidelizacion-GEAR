@@ -9,8 +9,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One SMS verification code. Only its hash is stored and it is hidden from
- * serialization, so it never reaches a response or a log.
+ * Un código de verificación por SMS. Solo se guarda su huella y se oculta al
+ * serializar, para que nunca llegue a una respuesta ni a un log.
  *
  * @property int $id
  * @property PropositoVerificacion $proposito

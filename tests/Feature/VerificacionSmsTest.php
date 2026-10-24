@@ -164,7 +164,7 @@ it('rejects a phone that is not a Colombian mobile without sending an SMS', func
 })->with(['letters' => 'abc', 'too long' => '30012345678901', 'landline' => '6011234567', 'short' => '300123']);
 
 it('counts a request before sending, so a request during another send is rejected', function (): void {
-    // While the first SMS is going out, a second request for the same phone arrives.
+    // Mientras sale el primer SMS, llega una segunda petición para el mismo celular.
     $sender = new class implements SmsSender
     {
         public ?string $inner = null;
@@ -214,7 +214,7 @@ it('keeps the previous code valid when the SMS fails, and still counts the reque
 });
 
 it('decides on the stored attempts, not on a value read before', function (): void {
-    // The state simultaneous wrong verifications leave: the stored count reached the limit before any invalidated.
+    // El estado que dejan verificaciones fallidas simultáneas: el conteo llegó al límite sin que ninguna invalidara.
     app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567');
     $code = ($this->lastCode)();
     CodigoVerificacion::query()->update(['intentos' => $this->fixture['code']['max_attempts']['value']]);

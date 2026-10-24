@@ -7,9 +7,9 @@ namespace App\Sms;
 use RuntimeException;
 
 /**
- * The Colombian SMS provider the client will choose (Inalambria, smsmasivo or
- * Háblame). Its HTTP call is written once the provider and its credentials
- * are known.
+ * El proveedor colombiano de SMS que elija el cliente (Inalambria, smsmasivo
+ * o Háblame). Su llamada HTTP se escribe cuando se conozcan el proveedor y sus
+ * credenciales.
  */
 class ProveedorSmsSender implements SmsSender
 {
@@ -17,6 +17,6 @@ class ProveedorSmsSender implements SmsSender
     {
         // TODO(cliente): implementar la llamada HTTP del proveedor elegido con
         // config('sms.proveedor.url') y config('sms.proveedor.token').
-        throw new RuntimeException('The SMS provider is not configured yet.');
+        throw new RuntimeException('El proveedor de SMS aún no está configurado.');
     }
 }

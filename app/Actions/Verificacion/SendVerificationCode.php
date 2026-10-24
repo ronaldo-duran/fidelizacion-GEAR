@@ -14,11 +14,11 @@ use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * Sends a one-time code by SMS (E8-06, a scope change accepted in #1). A new
- * code invalidates the previous one for that phone and purpose, but only
- * once the SMS went out. A cooldown between sends and caps per phone and per
- * IP stop abuse and cap the SMS cost. Only the code's hash is stored; the
- * code never reaches a log.
+ * Envía un código de un solo uso por SMS (E8-06, cambio de alcance aceptado
+ * en #1). Un código nuevo invalida el anterior de ese celular y propósito,
+ * pero solo cuando el SMS ya salió. Una espera entre envíos y topes por
+ * celular y por IP frenan el abuso y limitan el costo de los SMS. Solo se
+ * guarda la huella del código; el código nunca llega a un log.
  */
 class SendVerificationCode
 {
@@ -58,7 +58,7 @@ class SendVerificationCode
         try {
             $this->sms->send($celular, $this->message($codigo));
         } catch (Throwable $e) {
-            // The previous code stays valid; the request still counts against the limits.
+            // El código anterior sigue vigente; la petición igual cuenta para los límites.
             CodigoVerificacion::query()->toBase()->where('id', $nuevo->id)->update(['invalidado_at' => $now]);
 
             throw $e;
@@ -74,10 +74,10 @@ class SendVerificationCode
     }
 
     /**
-     * Counts the request before sending, with an atomic increment per limit,
-     * so simultaneous requests can't all slip past the check. The first limit
-     * exceeded rejects the request without an SMS; the later ones are not
-     * counted.
+     * Cuenta la petición antes de enviar, con un incremento atómico por límite,
+     * para que peticiones simultáneas no pasen todas el chequeo. El primer
+     * límite superado rechaza la petición sin SMS; los siguientes no se
+     * cuentan.
      *
      * @throws ValidationException
      */

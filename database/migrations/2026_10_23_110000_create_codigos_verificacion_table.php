@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * One-time SMS codes (E8-06). The code itself is never stored: only its
-     * HMAC. One active code per phone and purpose; a new one invalidates the
-     * previous.
+     * Códigos de un solo uso por SMS (E8-06). El código nunca se guarda: solo
+     * su HMAC. Un código vigente por celular y propósito; uno nuevo invalida el
+     * anterior.
      */
     public function up(): void
     {

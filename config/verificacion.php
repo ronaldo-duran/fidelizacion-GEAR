@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /*
-| One-time SMS codes (E8-06). Mirrored in tests/Fixtures/otp-escenarios.json;
-| a test asserts they match.
+| Códigos de un solo uso por SMS (E8-06). Reflejados en
+| tests/Fixtures/otp-escenarios.json; una prueba verifica que coincidan.
 */
 
 return [

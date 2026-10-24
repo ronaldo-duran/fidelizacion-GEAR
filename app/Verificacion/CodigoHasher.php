@@ -8,9 +8,9 @@ use App\Enums\PropositoVerificacion;
 use RuntimeException;
 
 /**
- * Hashes verification codes with an HMAC keyed by the application key, bound
- * to the phone and the purpose, and normalizes Colombian mobiles. The code
- * is never stored nor logged.
+ * Calcula la huella de los códigos de verificación con un HMAC con la llave de
+ * la aplicación, atada al celular y al propósito, y normaliza celulares
+ * colombianos. El código nunca se guarda ni se escribe en un log.
  */
 class CodigoHasher
 {
@@ -19,14 +19,14 @@ class CodigoHasher
         $key = config('app.key');
 
         if (! is_string($key) || $key === '') {
-            throw new RuntimeException('The application key is required to hash verification codes.');
+            throw new RuntimeException('Falta la llave de la aplicación para la huella de los códigos.');
         }
 
         return hash_hmac('sha256', "{$proposito->value}|{$celular}|{$codigo}", $key);
     }
 
     /**
-     * Ten digits, without spaces, signs nor the 57 country code.
+     * Diez dígitos, sin espacios, signos ni el indicativo 57.
      */
     public static function normalizeCelular(string $celular): string
     {
@@ -36,7 +36,7 @@ class CodigoHasher
     }
 
     /**
-     * A normalized Colombian mobile: ten digits starting with 3.
+     * Un celular colombiano normalizado: diez dígitos que empiezan por 3.
      */
     public static function isCelular(string $celular): bool
     {

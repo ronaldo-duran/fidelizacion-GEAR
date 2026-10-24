@@ -7,8 +7,8 @@ namespace App\Sms;
 use LogicException;
 
 /**
- * Keeps the messages in memory instead of sending them. For tests; it refuses
- * to run in production, where a message would be silently lost.
+ * Guarda los mensajes en memoria en vez de enviarlos. Para las pruebas; se
+ * niega a correr en producción, donde un mensaje se perdería sin aviso.
  */
 class ArraySmsSender implements SmsSender
 {
@@ -18,7 +18,7 @@ class ArraySmsSender implements SmsSender
     public function send(string $celular, string $mensaje): void
     {
         if (app()->environment('production')) {
-            throw new LogicException('The array SMS driver cannot run in production.');
+            throw new LogicException('El envío de SMS en memoria no puede correr en producción.');
         }
 
         $this->enviados[] = ['celular' => $celular, 'mensaje' => $mensaje];

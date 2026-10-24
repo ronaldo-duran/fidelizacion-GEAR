@@ -10,12 +10,12 @@ use App\Verificacion\CodigoHasher;
 use Carbon\CarbonImmutable;
 
 /**
- * Checks a code against the active one for that phone and purpose, in
- * constant time. A code works once and before it expires; after the maximum
- * wrong attempts it is invalidated, even if the right one arrives later.
- * Every decision is a conditional UPDATE on the stored attempts, never on a
- * value read before, so simultaneous verifications can't go past the limit.
- * Registration (E8-02) calls it inside its own transaction.
+ * Compara un código con el vigente de ese celular y propósito, en tiempo
+ * constante. Un código sirve una vez y antes de vencer; tras el máximo de
+ * intentos fallidos se invalida, aunque después llegue el correcto. Cada
+ * decisión es un UPDATE condicionado a los intentos guardados, nunca a un
+ * valor leído antes, para que verificaciones simultáneas no pasen el límite.
+ * El registro (E8-02) la llama dentro de su propia transacción.
  */
 class VerifyCode
 {
@@ -57,9 +57,9 @@ class VerifyCode
     }
 
     /**
-     * Marked with an UPDATE conditioned on the code still being unused and
-     * under the attempt limit, so two simultaneous verifications accept only
-     * one and a code that reached the limit is never accepted.
+     * Se marca con un UPDATE condicionado a que el código siga sin usar y bajo
+     * el límite de intentos: de dos verificaciones simultáneas solo una pasa, y
+     * un código que llegó al límite nunca se acepta.
      */
     private function markUsed(CodigoVerificacion $codigo, CarbonImmutable $now): bool
     {
@@ -74,8 +74,8 @@ class VerifyCode
     }
 
     /**
-     * Increments the attempts atomically and then invalidates the code if the
-     * stored count reached the limit, whatever this request read before.
+     * Incrementa los intentos de forma atómica y luego invalida el código si el
+     * conteo guardado llegó al límite, sin importar lo que leyó esta petición.
      */
     private function countFailure(CodigoVerificacion $codigo, CarbonImmutable $now): void
     {

@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Sms;
 
 /**
- * Sends one SMS. Implementations are chosen by `config/sms.php`; they must
- * never log the message outside the local environment, because it may carry
- * a verification code.
+ * Envía un SMS. La implementación se elige en `config/sms.php`; nunca debe
+ * escribir el mensaje en un log fuera del entorno local, porque puede llevar
+ * un código de verificación.
  */
 interface SmsSender
 {
     /**
-     * @param  string  $celular  normalized Colombian mobile (10 digits)
+     * @param  string  $celular  celular colombiano normalizado (10 dígitos)
      */
     public function send(string $celular, string $mensaje): void;
 }

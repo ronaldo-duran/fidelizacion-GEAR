@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 /*
-| SMS sending (E8-06). The driver is chosen by configuration so switching
-| provider, or moving to WhatsApp later, does not touch the code.
+| Envío de SMS (E8-06). El driver se elige por configuración, así cambiar de
+| proveedor, o pasar a WhatsApp más adelante, no toca el código.
 |
-| - array: keeps the messages in memory (tests); refuses to run in production.
-| - log: writes the message to the development log; only in `local`.
-| - proveedor: the Colombian provider the client chooses.
+| - array: guarda los mensajes en memoria (pruebas); no corre en producción.
+| - log: escribe el mensaje en el log de desarrollo; solo en `local`.
+| - proveedor: el proveedor colombiano que elija el cliente.
 */
 
 return [

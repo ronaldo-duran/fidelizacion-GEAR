@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Enums;
 
 /**
- * Why a verification code was sent. A code for one purpose never works for
- * the other.
+ * Para qué se envió un código de verificación. Un código de un propósito
+ * nunca sirve para el otro.
  */
 enum PropositoVerificacion: string
 {

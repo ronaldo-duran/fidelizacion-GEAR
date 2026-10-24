@@ -85,9 +85,13 @@ test('el cliente ingresa con su documento y su PIN', async ({ page }) => {
 });
 
 test('el cliente recupera su PIN con el código del SMS', async ({ page }) => {
+    // Entre dos SMS al mismo celular hay una espera de 60 s (E8-06, sin importar el propósito)
+    // y la recuperación la calla para no delatar el documento: se espera a que pase.
+    test.setTimeout(150_000);
     const cliente = nuevoCliente();
     await registrar(page, cliente);
     await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await page.waitForTimeout(61_000);
 
     await page.getByRole('link', { name: 'Olvidé mi PIN' }).click();
     await expect(page.getByRole('heading', { name: 'Recupera tu PIN' })).toBeVisible();

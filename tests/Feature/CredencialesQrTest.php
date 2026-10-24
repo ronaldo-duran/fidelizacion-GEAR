@@ -17,7 +17,11 @@ use App\Models\CredencialQr;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 beforeEach(function (): void {
     $this->fixture = json_decode((string) file_get_contents(__DIR__ . '/../Fixtures/qr-escenarios.json'), true);
@@ -108,7 +112,7 @@ it('rejects a tampered token and reveals no customer data', function (string $pa
 
 it('never issues the same token or short code twice', function (): void {
     $first = ($this->issue)('identificar');
-    $this->travel(20)->seconds();
+    $this->travel($this->fixture['timing']['refresh_seconds']['value'])->seconds();
     $second = ($this->issue)('identificar');
 
     expect($first->token)->not->toBe($second->token)
@@ -121,18 +125,61 @@ it('accepts the short code like the QR and locks the cashier after too many fail
 
     expect(($this->validate)(strtolower($emitida->codigoCorto), 'identificar')->cliente?->id)->toBe($this->cliente->id);
 
-    foreach (['AR-0000', 'AR-1111', 'AR-2222', 'AR-3333', 'AR-4444'] as $wrong) {
-        if ($wrong !== $emitida->codigoCorto) {
-            ($this->validate)($wrong, 'identificar');
-        }
+    $attempts = ($this->case)('short code with attempt limit')['short_code_attempts'];
+    $wrongCodes = array_filter($attempts, static fn (string $code): bool => $code !== 'issued');
+
+    foreach ($wrongCodes as $wrong) {
+        // A wrong code that happens to be the issued one is swapped for another wrong one.
+        ($this->validate)($wrong === $emitida->codigoCorto ? 'AR-9999X' : $wrong, 'identificar');
     }
 
     expect(($this->validate)($emitida->codigoCorto, 'identificar')->resultado)->toBe(ResultadoCredencial::Bloqueado);
 
-    $this->travel(61)->seconds();
+    // The lockout lasts one minute ("max_failed_attempts_per_minute").
+    $this->travel(1)->minutes();
+    $this->travel(1)->seconds();
     $nueva = ($this->issue)('identificar');
 
     expect(($this->validate)($nueva->codigoCorto, 'identificar')->esValida())->toBeTrue();
+});
+
+it('retries a short code taken by a valid credential and frees it once that one expires', function (): void {
+    // Same seed, same sequence of short codes: the second issue draws the taken code first.
+    $seeded = static fn (): Randomizer => new Randomizer(new Mt19937(7));
+    $sequence = $seeded();
+    $firstCode = sprintf('AR-%04d', $sequence->getInt(0, 9999));
+    $secondCode = sprintf('AR-%04d', $sequence->getInt(0, 9999));
+    $otroCliente = Cliente::query()->create(['tipo_documento' => TipoDocumento::CE, 'documento' => 'E123456']);
+
+    app()->instance(Randomizer::class, $seeded());
+    $first = ($this->issue)('identificar');
+    app()->instance(Randomizer::class, $seeded());
+    $second = app(IssueCredencial::class)($otroCliente, PropositoCredencial::Identificar);
+
+    expect($first->codigoCorto)->toBe($firstCode)
+        ->and($second->codigoCorto)->toBe($secondCode)
+        ->and(($this->validate)($firstCode, 'identificar')->cliente?->id)->toBe($this->cliente->id)
+        ->and(($this->validate)($secondCode, 'identificar')->cliente?->id)->toBe($otroCliente->id);
+
+    // A code stays reserved until its last window ends: at most two windows (validity + skew) after issue.
+    $timing = $this->fixture['timing'];
+    $window = $timing['ttl_seconds']['value'] + $timing['clock_skew_seconds']['value'];
+    $this->travel((2 * $window) + 1)->seconds();
+    app()->instance(Randomizer::class, $seeded());
+
+    expect(app(IssueCredencial::class)($otroCliente, PropositoCredencial::Identificar)->codigoCorto)->toBe($firstCode);
+});
+
+it('keeps a short code unique in the database, not only in code', function (): void {
+    $emitida = ($this->issue)('identificar');
+    $reservas = DB::table('credenciales_qr_codigos')->where('credencial_qr_id', $emitida->credencial->id)->get();
+
+    expect($reservas)->not->toBeEmpty()
+        ->and(fn () => DB::table('credenciales_qr_codigos')->insert([
+            'credencial_qr_id' => $emitida->credencial->id,
+            'codigo_corto' => $emitida->codigoCorto,
+            'ventana' => $reservas->first()?->ventana,
+        ]))->toThrow(UniqueConstraintViolationException::class);
 });
 
 it('gives a benefit short code the prefix of its merchant', function (): void {

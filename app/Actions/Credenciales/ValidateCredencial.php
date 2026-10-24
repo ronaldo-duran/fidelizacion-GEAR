@@ -118,6 +118,11 @@ class ValidateCredencial
             || $cajero->comercio_id === $credencial->comercio_id;
     }
 
+    /**
+     * TODO(E5-02): the redemption must be created in the same
+     * `DB::transaction()` as this mark, so a failed redemption doesn't burn
+     * the customer's single-use code.
+     */
     private function markUsed(CredencialQr $credencial, User $cajero): bool
     {
         $now = CarbonImmutable::now();

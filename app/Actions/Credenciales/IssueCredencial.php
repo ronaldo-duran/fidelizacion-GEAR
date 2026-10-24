@@ -11,8 +11,11 @@ use App\Models\Cliente;
 use App\Models\Comercio;
 use App\Models\CredencialQr;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Random\Randomizer;
 use RuntimeException;
 
 /**
@@ -21,6 +24,10 @@ use RuntimeException;
  * twice, and an equivalent short code for the cashier. A benefit credential
  * belongs to the benefit's merchant and its short code carries the
  * merchant's prefix.
+ *
+ * A short code is unique among the credentials still valid by a database
+ * constraint (`credenciales_qr_codigos`), never by a check in code: of two
+ * simultaneous issues with the same code, the second one retries.
  */
 class IssueCredencial
 {
@@ -28,9 +35,12 @@ class IssueCredencial
 
     private readonly TokenSigner $signer;
 
-    public function __construct(TokenSigner $signer)
+    private readonly Randomizer $random;
+
+    public function __construct(TokenSigner $signer, Randomizer $random)
     {
         $this->signer = $signer;
+        $this->random = $random;
     }
 
     public function __invoke(
@@ -45,17 +55,12 @@ class IssueCredencial
             throw new InvalidArgumentException('Only a benefit credential carries a benefit and its merchant.');
         }
 
-        $now = CarbonImmutable::now();
-        $credencial = CredencialQr::query()->create([
+        $credencial = $this->create([
             'cliente_id' => $cliente->id,
             'proposito' => $proposito,
             'beneficio_id' => $beneficioId,
             'comercio_id' => $comercioId,
-            'nonce' => Str::random(40),
-            'codigo_corto' => $this->shortCode($this->prefix($comercioId), $now),
-            'emitido_at' => $now,
-            'vence_at' => $now->addSeconds(self::seconds('ttl_seconds')),
-        ]);
+        ], $this->prefix($comercioId));
 
         $token = $this->signer->sign([
             'c' => $cliente->id,
@@ -69,25 +74,63 @@ class IssueCredencial
     }
 
     /**
-     * A prefix plus four digits, not shared with any credential still valid.
+     * Creates the credential with a random short code (a prefix plus four
+     * digits) and reserves that code; when the reservation breaks the unique
+     * constraint, retries with another. Each try is its own transaction, so a
+     * failed insert doesn't abort the next one.
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    private function shortCode(string $prefix, CarbonImmutable $now): string
+    private function create(array $attributes, string $prefix): CredencialQr
     {
-        $vigenteDesde = $now->subSeconds(self::seconds('clock_skew_seconds'));
+        for ($try = 1; $try <= self::MAX_SHORT_CODE_TRIES; $try++) {
+            $codigo = sprintf('%s-%04d', $prefix, $this->random->getInt(0, 9999));
 
-        for ($try = 0; $try < self::MAX_SHORT_CODE_TRIES; $try++) {
-            $code = sprintf('%s-%04d', $prefix, random_int(0, 9999));
-            $taken = CredencialQr::query()->toBase()
-                ->where('codigo_corto', $code)
-                ->where('vence_at', '>=', $vigenteDesde)
-                ->exists();
+            try {
+                return DB::transaction(function () use ($attributes, $codigo): CredencialQr {
+                    $now = CarbonImmutable::now();
+                    $credencial = CredencialQr::query()->create([
+                        ...$attributes,
+                        'nonce' => Str::random(40),
+                        'codigo_corto' => $codigo,
+                        'emitido_at' => $now,
+                        'vence_at' => $now->addSeconds(self::seconds('ttl_seconds')),
+                    ]);
 
-            if (! $taken) {
-                return $code;
+                    $this->reserve($credencial);
+
+                    return $credencial;
+                });
+            } catch (UniqueConstraintViolationException) {
+                continue;
             }
         }
 
         throw new RuntimeException('Could not find a free short code.');
+    }
+
+    /**
+     * Reserves the short code in every time window its validity touches: from
+     * the issue until the expiry plus the clock skew, as long as
+     * `ValidateCredencial` still finds it. The windows are that long, so a
+     * validity touches one or two of them and two overlapping validities
+     * always share one.
+     */
+    private function reserve(CredencialQr $credencial): void
+    {
+        $skew = self::seconds('clock_skew_seconds');
+        $largo = max(1, self::seconds('ttl_seconds') + $skew);
+        $desde = intdiv($credencial->emitido_at->getTimestamp(), $largo);
+        $hasta = intdiv($credencial->vence_at->getTimestamp() + $skew, $largo);
+
+        DB::table('credenciales_qr_codigos')->insert(array_map(
+            static fn (int $ventana): array => [
+                'credencial_qr_id' => $credencial->id,
+                'codigo_corto' => $credencial->codigo_corto,
+                'ventana' => $ventana,
+            ],
+            range($desde, $hasta),
+        ));
     }
 
     /**

@@ -1,0 +1,155 @@
+{
+    "_note": "Scenarios for E8-06 (mobile verification by SMS). Times are relative to the moment the code is requested. Values the client has not confirmed carry \"_assumption\": true. The code never appears in logs, the database or responses.",
+    "code": {
+        "digits": { "value": 6, "_assumption": true },
+        "ttl_minutes": { "value": 5, "_assumption": true },
+        "max_attempts": { "value": 5, "_assumption": true }
+    },
+    "sending": {
+        "resend_cooldown_seconds": { "value": 60, "_assumption": true },
+        "max_per_phone_per_hour": { "value": 3, "_assumption": true },
+        "max_per_ip_per_hour": { "value": 10, "_assumption": true }
+    },
+    "message_template": "Tu código del Club Aponte Rivera es {code}. Vence en {minutes} minutos. No lo compartas.",
+    "purposes": ["registro", "recuperar_pin"],
+    "cases": [
+        {
+            "_description": "A requested code is sent, stored only as a hash and verifies once.",
+            "_e8_06_criterion": "a code is sent, hashed and verifies once",
+            "steps": [
+                { "action": "send", "purpose": "registro", "phone": "300 123 4567", "at_seconds": 0 },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "sent",
+                    "at_seconds": 30,
+                    "expected": "valid"
+                },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "sent",
+                    "at_seconds": 40,
+                    "expected": "rejected"
+                }
+            ],
+            "expected": { "stored_phone": "3001234567", "code_in_database": false, "code_in_log": false }
+        },
+        {
+            "_description": "An expired code is rejected.",
+            "_e8_06_criterion": "an expired code is rejected",
+            "steps": [
+                { "action": "send", "purpose": "registro", "phone": "3001234567", "at_seconds": 0 },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "sent",
+                    "at_seconds": 301,
+                    "expected": "rejected"
+                }
+            ]
+        },
+        {
+            "_description": "Requesting a new code invalidates the previous one.",
+            "_e8_06_criterion": "only the last code works",
+            "steps": [
+                { "action": "send", "purpose": "registro", "phone": "3001234567", "at_seconds": 0, "label": "first" },
+                { "action": "send", "purpose": "registro", "phone": "3001234567", "at_seconds": 61, "label": "second" },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "first",
+                    "at_seconds": 70,
+                    "expected": "rejected"
+                },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "second",
+                    "at_seconds": 75,
+                    "expected": "valid"
+                }
+            ]
+        },
+        {
+            "_description": "After the maximum wrong attempts the code is invalidated, even if the right one arrives later.",
+            "_e8_06_criterion": "too many attempts invalidate the code",
+            "steps": [
+                { "action": "send", "purpose": "registro", "phone": "3001234567", "at_seconds": 0 },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "wrong",
+                    "times": 5,
+                    "at_seconds": 10,
+                    "expected": "rejected"
+                },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "sent",
+                    "at_seconds": 20,
+                    "expected": "rejected"
+                }
+            ]
+        },
+        {
+            "_description": "A request before the cooldown, or above the per-phone or per-IP cap, is rejected without sending an SMS.",
+            "_e8_06_criterion": "cooldown and caps stop sending",
+            "steps": [
+                { "action": "send", "purpose": "registro", "phone": "3001234567", "at_seconds": 0, "expected": "sent" },
+                {
+                    "action": "send",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "at_seconds": 30,
+                    "expected": "rejected"
+                },
+                {
+                    "action": "send",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "at_seconds": 61,
+                    "expected": "sent"
+                },
+                {
+                    "action": "send",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "at_seconds": 122,
+                    "expected": "sent"
+                },
+                {
+                    "action": "send",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "at_seconds": 183,
+                    "expected": "rejected"
+                }
+            ],
+            "expected": { "sms_sent": 3 }
+        },
+        {
+            "_description": "A code for one purpose does not work for the other.",
+            "_e8_06_criterion": "codes are bound to their purpose",
+            "steps": [
+                { "action": "send", "purpose": "recuperar_pin", "phone": "3001234567", "at_seconds": 0 },
+                {
+                    "action": "verify",
+                    "purpose": "registro",
+                    "phone": "3001234567",
+                    "code": "sent",
+                    "at_seconds": 10,
+                    "expected": "rejected"
+                }
+            ]
+        }
+    ]
+}

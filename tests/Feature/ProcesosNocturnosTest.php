@@ -146,13 +146,19 @@ it('schedules the nightly processes in Bogota time, without overlapping and on o
         ->and($event?->onOneServer)->toBeTrue();
 });
 
-it('chains the four processes in order on the nightly queue', function (): void {
+it('chains the nightly processes in order on the nightly queue', function (): void {
     $jobs = ProcesosNocturnos::for(CarbonImmutable::parse('2026-10-17'));
 
     expect(array_map(static fn (object $job): string => class_basename($job), $jobs))
-        ->toBe(['ExpirePuntos', 'ReevaluateNiveles', 'RegisterAvisosDescenso', 'VerifySaldos'])
+        ->toBe([
+            'ExpirePuntos',
+            'ReevaluateNiveles',
+            'RegisterAvisosDescenso',
+            'VerifySaldos',
+            'PurgeCodigosVerificacion',
+        ])
         ->and(array_map(static fn (object $job): ?string => $job->queue, $jobs))
-        ->toBe(['nocturno', 'nocturno', 'nocturno', 'nocturno']);
+        ->toBe(['nocturno', 'nocturno', 'nocturno', 'nocturno', 'nocturno']);
 });
 
 it('reruns a night by hand with the console command', function (): void {

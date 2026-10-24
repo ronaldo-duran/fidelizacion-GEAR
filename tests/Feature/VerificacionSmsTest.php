@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Verificacion\SendVerificationCode;
 use App\Actions\Verificacion\VerifyCode;
 use App\Enums\PropositoVerificacion;
+use App\Jobs\Nocturno\PurgeCodigosVerificacion;
 use App\Models\CodigoVerificacion;
 use App\Sms\ArraySmsSender;
 use App\Sms\LogSmsSender;
@@ -12,6 +13,7 @@ use App\Sms\ProveedorSmsSender;
 use App\Sms\SmsSender;
 use Carbon\CarbonImmutable;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 
@@ -230,6 +232,17 @@ it('decides on the stored attempts, not on a value read before', function (): vo
 
     expect(CodigoVerificacion::query()->latest('id')->first()?->invalidado_at)->not->toBeNull()
         ->and(app(VerifyCode::class)(PropositoVerificacion::Registro, '3001234567', $code))->toBeFalse();
+});
+
+it('purges expired codes, with their phone and IP, at night', function (): void {
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567', '10.0.0.1');
+    $this->travelTo(CarbonImmutable::parse('2026-10-24 01:30:00'));
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3109998877', '10.0.0.1');
+    $vigente = CodigoVerificacion::query()->latest('id')->firstOrFail();
+
+    Bus::dispatchSync(new PurgeCodigosVerificacion('2026-10-24'));
+
+    expect(CodigoVerificacion::query()->pluck('id')->all())->toBe([$vigente->id]);
 });
 
 it('keeps the log driver to the local environment and the array driver out of production', function (): void {

@@ -153,6 +153,85 @@ it('accepts only one of two simultaneous verifications', function (): void {
     expect([$first, $second])->toBe([true, false]);
 });
 
+it('rejects a phone that is not a Colombian mobile without sending an SMS', function (string $celular): void {
+    expect(fn () => app(SendVerificationCode::class)(PropositoVerificacion::Registro, $celular))
+        ->toThrow(ValidationException::class)
+        ->and(app(VerifyCode::class)(PropositoVerificacion::Registro, $celular, '123456'))->toBeFalse()
+        ->and($this->sms->enviados())->toBe([])
+        ->and(CodigoVerificacion::query()->count())->toBe(0);
+})->with(['letters' => 'abc', 'too long' => '30012345678901', 'landline' => '6011234567', 'short' => '300123']);
+
+it('counts a request before sending, so a request during another send is rejected', function (): void {
+    // While the first SMS is going out, a second request for the same phone arrives.
+    $sender = new class implements SmsSender
+    {
+        public ?string $inner = null;
+
+        public function send(string $celular, string $mensaje): void
+        {
+            if ($this->inner !== null) {
+                return;
+            }
+
+            $this->inner = 'pending';
+
+            try {
+                app(SendVerificationCode::class)(PropositoVerificacion::Registro, $celular);
+                $this->inner = 'sent';
+            } catch (ValidationException) {
+                $this->inner = 'rejected';
+            }
+        }
+    };
+    app()->instance(SmsSender::class, $sender);
+
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567');
+
+    expect($sender->inner)->toBe('rejected')
+        ->and(CodigoVerificacion::query()->where('invalidado_at', null)->count())->toBe(1);
+});
+
+it('keeps the previous code valid when the SMS fails, and still counts the request', function (): void {
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567');
+    $previous = ($this->lastCode)();
+    $this->travelTo($this->start->addSeconds($this->fixture['sending']['resend_cooldown_seconds']['value'] + 1));
+
+    app()->instance(SmsSender::class, new class implements SmsSender
+    {
+        public function send(string $celular, string $mensaje): void
+        {
+            throw new RuntimeException('Provider down');
+        }
+    });
+
+    expect(fn () => app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567'))
+        ->toThrow(RuntimeException::class)
+        ->and(fn () => app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567'))
+        ->toThrow(ValidationException::class)
+        ->and(app(VerifyCode::class)(PropositoVerificacion::Registro, '3001234567', $previous))->toBeTrue();
+});
+
+it('decides on the stored attempts, not on a value read before', function (): void {
+    // The state simultaneous wrong verifications leave: the stored count reached the limit before any invalidated.
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567');
+    $code = ($this->lastCode)();
+    CodigoVerificacion::query()->update(['intentos' => $this->fixture['code']['max_attempts']['value']]);
+
+    expect(app(VerifyCode::class)(PropositoVerificacion::Registro, '3001234567', $code))->toBeFalse();
+
+    $this->travelTo($this->start->addSeconds($this->fixture['sending']['resend_cooldown_seconds']['value'] + 1));
+    app(SendVerificationCode::class)(PropositoVerificacion::Registro, '3001234567');
+    $code = ($this->lastCode)();
+    CodigoVerificacion::query()->where('invalidado_at', null)
+        ->update(['intentos' => $this->fixture['code']['max_attempts']['value'] - 1]);
+    $wrong = str_pad((string) (((int) $code + 1) % 1000000), 6, '0', STR_PAD_LEFT);
+
+    app(VerifyCode::class)(PropositoVerificacion::Registro, '3001234567', $wrong);
+
+    expect(CodigoVerificacion::query()->latest('id')->first()?->invalidado_at)->not->toBeNull()
+        ->and(app(VerifyCode::class)(PropositoVerificacion::Registro, '3001234567', $code))->toBeFalse();
+});
+
 it('keeps the log driver to the local environment and the array driver out of production', function (): void {
     expect(fn () => app(LogSmsSender::class)->send('3001234567', 'x'))->toThrow(LogicException::class);
 

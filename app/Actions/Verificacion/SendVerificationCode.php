@@ -9,15 +9,16 @@ use App\Models\CodigoVerificacion;
 use App\Sms\SmsSender;
 use App\Verificacion\CodigoHasher;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Sends a one-time code by SMS (E8-06, a scope change accepted in #1). A new
- * code invalidates the previous one for that phone and purpose. A cooldown
- * between sends and caps per phone and per IP stop abuse and cap the SMS
- * cost. Only the code's hash is stored; the code never reaches a log.
+ * code invalidates the previous one for that phone and purpose, but only
+ * once the SMS went out. A cooldown between sends and caps per phone and per
+ * IP stop abuse and cap the SMS cost. Only the code's hash is stored; the
+ * code never reaches a log.
  */
 class SendVerificationCode
 {
@@ -37,39 +38,55 @@ class SendVerificationCode
     public function __invoke(PropositoVerificacion $proposito, string $celular, ?string $ip = null): void
     {
         $celular = CodigoHasher::normalizeCelular($celular);
-        $limiters = $this->limiters($celular, $ip);
 
-        foreach ($limiters as $key => $limiter) {
-            if (RateLimiter::tooManyAttempts($key, $limiter[0])) {
-                throw ValidationException::withMessages(['celular' => $limiter[2]]);
-            }
+        if (! CodigoHasher::isCelular($celular)) {
+            throw ValidationException::withMessages(['celular' => 'Escribe un celular colombiano de 10 dígitos.']);
         }
 
+        $this->countRequest($celular, $ip);
+
         $codigo = $this->newCode();
+        $now = CarbonImmutable::now();
+        $nuevo = CodigoVerificacion::query()->create([
+            'proposito' => $proposito,
+            'celular' => $celular,
+            'codigo_hash' => $this->hasher->hash($proposito, $celular, $codigo),
+            'vence_at' => $now->addMinutes(self::setting('ttl_minutes')),
+            'ip' => $ip,
+        ]);
 
-        DB::transaction(function () use ($proposito, $celular, $ip, $codigo): void {
-            $now = CarbonImmutable::now();
+        try {
+            $this->sms->send($celular, $this->message($codigo));
+        } catch (Throwable $e) {
+            // The previous code stays valid; the request still counts against the limits.
+            CodigoVerificacion::query()->toBase()->where('id', $nuevo->id)->update(['invalidado_at' => $now]);
 
-            CodigoVerificacion::query()->toBase()
-                ->where('celular', $celular)
-                ->where('proposito', $proposito->value)
-                ->whereNull('usado_at')
-                ->whereNull('invalidado_at')
-                ->update(['invalidado_at' => $now]);
+            throw $e;
+        }
 
-            CodigoVerificacion::query()->create([
-                'proposito' => $proposito,
-                'celular' => $celular,
-                'codigo_hash' => $this->hasher->hash($proposito, $celular, $codigo),
-                'vence_at' => $now->addMinutes(self::setting('ttl_minutes')),
-                'ip' => $ip,
-            ]);
-        });
+        CodigoVerificacion::query()->toBase()
+            ->where('celular', $celular)
+            ->where('proposito', $proposito->value)
+            ->where('id', '<>', $nuevo->id)
+            ->whereNull('usado_at')
+            ->whereNull('invalidado_at')
+            ->update(['invalidado_at' => $now]);
+    }
 
-        $this->sms->send($celular, $this->message($codigo));
-
-        foreach ($limiters as $key => $limiter) {
-            RateLimiter::hit($key, $limiter[1]);
+    /**
+     * Counts the request before sending, with an atomic increment per limit,
+     * so simultaneous requests can't all slip past the check. The first limit
+     * exceeded rejects the request without an SMS; the later ones are not
+     * counted.
+     *
+     * @throws ValidationException
+     */
+    private function countRequest(string $celular, ?string $ip): void
+    {
+        foreach ($this->limiters($celular, $ip) as $key => [$max, $decay, $message]) {
+            if (RateLimiter::hit($key, $decay) > $max) {
+                throw ValidationException::withMessages(['celular' => $message]);
+            }
         }
     }
 

@@ -34,4 +34,12 @@ class CodigoHasher
 
         return strlen($digits) === 12 && str_starts_with($digits, '57') ? substr($digits, 2) : $digits;
     }
+
+    /**
+     * A normalized Colombian mobile: ten digits starting with 3.
+     */
+    public static function isCelular(string $celular): bool
+    {
+        return preg_match('/^3\d{9}$/', $celular) === 1;
+    }
 }

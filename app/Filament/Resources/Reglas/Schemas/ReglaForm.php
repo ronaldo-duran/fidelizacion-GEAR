@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Reglas\Schemas;
 
 use App\Enums\TipoRegla;
-use App\Models\Categoria;
+use App\Models\Comercio;
 use App\Models\Regla;
+use App\Models\Sede;
 use Filament\Forms\Components\CodeEditor;
 use Filament\Forms\Components\CodeEditor\Enums\Language;
 use Filament\Forms\Components\DateTimePicker;
@@ -14,12 +15,15 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\StateCasts\BooleanStateCast;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -33,11 +37,11 @@ class ReglaForm
 
     private const FIELDS = [
         'monto' => 'Monto (pesos)',
-        'categoria_slug' => 'Categoría (slug)',
-        'comercio_id' => 'Comercio (id)',
-        'sede_id' => 'Sede (id)',
-        'dia_semana' => 'Día de la semana (1 = lunes, 7 = domingo)',
-        'hora' => 'Hora (0 a 23)',
+        'categoria_slug' => 'Categoría',
+        'comercio_id' => 'Comercio',
+        'sede_id' => 'Sede',
+        'dia_semana' => 'Día de la semana',
+        'hora' => 'Hora del día',
     ];
 
     private const OPERATORS = [
@@ -79,11 +83,6 @@ class ReglaForm
                             ->label('Vigente desde')
                             ->helperText('Vacío: desde que guardes. No puede ser una fecha pasada.')
                             ->seconds(false),
-                        Toggle::make('use_json_editor')
-                            ->label('Usar el editor JSON avanzado')
-                            ->live()
-                            ->dehydrated()
-                            ->visible(static fn (): bool => Gate::allows('editJson', Regla::class)),
                     ]),
                 ...self::definicionComponents(),
             ]);
@@ -98,8 +97,9 @@ class ReglaForm
     public static function definicionComponents(): array
     {
         return [
+            self::modoDefinicion(),
             Section::make('Definición en JSON')
-                ->visible(static fn (Get $get): bool => $get('use_json_editor') === true)
+                ->visible(self::usesJson(...))
                 ->schema([
                     CodeEditor::make('definicion_json')
                         ->hiddenLabel()
@@ -110,6 +110,25 @@ class ReglaForm
             self::niveles(),
             self::bonificacion(),
         ];
+    }
+
+    /**
+     * Pestañas de la definición: "Vista" (el formulario guiado) y "Modo
+     * desarrollo" (el JSON). Solo las ve quien tiene el permiso del editor
+     * JSON; los demás siempre usan el formulario guiado.
+     */
+    private static function modoDefinicion(): ToggleButtons
+    {
+        return ToggleButtons::make('use_json_editor')
+            ->label('Definición')
+            ->options([0 => 'Vista', 1 => 'Modo desarrollo'])
+            ->icons([0 => Heroicon::OutlinedEye, 1 => Heroicon::OutlinedCodeBracket])
+            ->grouped()
+            ->default(0)
+            ->stateCast(app(BooleanStateCast::class, ['isStoredAsInt' => true]))
+            ->live()
+            ->dehydrated()
+            ->visible(static fn (): bool => Gate::allows('editJson', Regla::class));
     }
 
     private static function acumulacion(): Group
@@ -123,12 +142,7 @@ class ReglaForm
                 ->schema([
                     Select::make('categoria_slug')
                         ->label('Categoría')
-                        ->options(static fn (): array => Categoria::query()->get()
-                            ->sortBy('nombre')
-                            ->mapWithKeys(static fn (Categoria $categoria): array => [
-                                $categoria->slug => $categoria->nombre,
-                            ])
-                            ->all())
+                        ->options(OpcionesCondicion::categorias(...))
                         ->required()
                         ->distinct(),
                     self::integerInput('puntos_por_unidad', 'Puntos por cada unidad', 0),
@@ -184,14 +198,45 @@ class ReglaForm
                 ->maxItems(5)
                 ->columns(3)
                 ->schema([
-                    Select::make('campo')->label('Campo')->options(self::FIELDS)->required(),
-                    Select::make('operador')->label('Operador')->options(self::OPERATORS)->required(),
-                    TextInput::make('valor')
-                        ->label('Valor')
-                        ->helperText('Para «Está en la lista», separa los valores con comas.')
-                        ->required(),
+                    Select::make('campo')->label('Campo')->options(self::FIELDS)->required()->live(),
+                    Select::make('operador')->label('Operador')->options(self::OPERATORS)->required()->live(),
+                    ...self::valorComponents(),
                 ]),
         ]);
+    }
+
+    /**
+     * El valor de una condición según su campo: el monto se escribe; el
+     * comercio, la sede, la categoría, el día y la hora se eligen de una lista
+     * (varios a la vez con «Está en la lista»). `DefinicionFormMapper` guarda
+     * en la definición los mismos ids, slugs y números de siempre.
+     *
+     * @return list<Component>
+     */
+    private static function valorComponents(): array
+    {
+        return [
+            TextInput::make('valor')
+                ->label('Valor')
+                ->helperText('Para «Está en la lista», separa los valores con comas.')
+                ->required()
+                ->visible(static fn (Get $get): bool => ! DefinicionFormMapper::isSelectable($get('campo'))),
+            Select::make('valor_opcion')
+                ->label('Valor')
+                ->options(static fn (Get $get): array => OpcionesCondicion::para($get('campo')))
+                ->searchable()
+                ->required()
+                ->visible(static fn (Get $get): bool => DefinicionFormMapper::isSelectable($get('campo'))
+                    && $get('operador') !== 'en'),
+            Select::make('valor_opciones')
+                ->label('Valores')
+                ->options(static fn (Get $get): array => OpcionesCondicion::para($get('campo')))
+                ->multiple()
+                ->searchable()
+                ->required()
+                ->visible(static fn (Get $get): bool => DefinicionFormMapper::isSelectable($get('campo'))
+                    && $get('operador') === 'en'),
+        ];
     }
 
     /**
@@ -204,8 +249,16 @@ class ReglaForm
                 ->statePath('definicion')
                 ->schema($components),
         ])->visible(
-            static fn (Get $get): bool => $get('use_json_editor') !== true && self::currentTipo($get) === $tipo,
+            static fn (Get $get): bool => ! self::usesJson($get) && self::currentTipo($get) === $tipo,
         );
+    }
+
+    /**
+     * El estado del selector llega como 0/1 (o booleano, tras deshidratar).
+     */
+    private static function usesJson(Get $get): bool
+    {
+        return in_array($get('use_json_editor'), [true, 1, '1'], true);
     }
 
     /**

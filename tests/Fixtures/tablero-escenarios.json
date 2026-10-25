@@ -1,0 +1,157 @@
+{
+    "_note": "Scenarios for E10-01 (admin dashboard). Periods are calendar months in America/Bogota compared with the previous month. Amounts are whole pesos. Values the client has not confirmed carry \"_assumption\": true.",
+    "settings": {
+        "selectable_months": { "value": 12, "_assumption": true },
+        "inactivity_days": { "value": 7, "_assumption": true, "_source": "design shows 9 days as an example" },
+        "comercios_before_more": { "value": 5, "_assumption": true }
+    },
+    "kpis": {
+        "clientes_inscritos": "customers created up to the end of the period; 'nuevos' are those created inside it",
+        "clientes_que_compraron": "merchant admin only: distinct customers with a non-annulled credited purchase at that merchant in the period",
+        "transacciones": "purchases created in the period whose estado is not anulada (pending ones count)",
+        "beneficios_entregados": "redemptions created in the period; zero until E5-02",
+        "beneficios_por_100_compras": "round(beneficios_entregados * 100 / transacciones); 0 when there are no purchases",
+        "valor_beneficios": "sum of valor_otorgado_cop of the redemptions in the period; zero until E5-02"
+    },
+    "diamante_origin_order": ["puntos", "membresia", "evento"],
+    "formats": {
+        "delta": [
+            { "current": 6412, "previous": 5937, "expected": "+8 %" },
+            { "current": 874, "previous": 901, "expected": "−3 %", "_note": "U+2212 minus sign, as in the design" },
+            { "current": 30, "previous": 30, "expected": "0 %" },
+            {
+                "current": 12,
+                "previous": 0,
+                "expected": "+12",
+                "_note": "no percentage when the previous month is zero"
+            },
+            { "current": 0, "previous": 0, "expected": "0" }
+        ],
+        "money": [
+            { "value": 19500000, "expected": "$19,5 M" },
+            { "value": 3180000, "expected": "$3.180.000" },
+            { "value": 0, "expected": "$0" }
+        ],
+        "period_label": { "period": "2026-09", "expected": "Septiembre 2026 · vs. agosto" },
+        "inactive_label": { "days": 10, "expected": "Sin registros hace 10 días" }
+    },
+    "cases": [
+        {
+            "_description": "Group admin, September 2026, seen on September 30: KPIs, deltas, levels with the Diamante origin and the activity table with one inactive merchant.",
+            "_e10_01_criterion": "group dashboard for a period",
+            "now": "2026-09-30 12:00:00",
+            "period": "2026-09",
+            "viewer": "administrador_grupo",
+            "comercios": [
+                { "id": "A", "nombre": "El Rancho de Javi", "activo": true, "sedes": ["A1", "A2"] },
+                { "id": "B", "nombre": "Cervecería BBC", "activo": true, "sedes": ["B1"] },
+                { "id": "C", "nombre": "Heladería Polar", "activo": true, "sedes": ["C1"] },
+                { "id": "D", "nombre": "Comercio cerrado", "activo": false, "sedes": ["D1"] }
+            ],
+            "clientes": [
+                {
+                    "id": "c1",
+                    "created_at": "2026-06-10",
+                    "nivel_por_puntos": "diamante",
+                    "nivel_efectivo": "diamante"
+                },
+                {
+                    "id": "c2",
+                    "created_at": "2026-07-02",
+                    "nivel_por_puntos": "plata",
+                    "nivel_por_membresia": "diamante",
+                    "nivel_por_evento": "diamante",
+                    "nivel_efectivo": "diamante"
+                },
+                { "id": "c3", "created_at": "2026-08-15", "nivel_por_puntos": "oro", "nivel_efectivo": "oro" },
+                { "id": "c4", "created_at": "2026-09-05", "nivel_por_puntos": "plata", "nivel_efectivo": "plata" },
+                { "id": "c5", "created_at": "2026-09-20", "nivel_por_puntos": "bronce", "nivel_efectivo": "bronce" },
+                {
+                    "id": "c6",
+                    "created_at": "2026-10-01",
+                    "nivel_por_puntos": "bronce",
+                    "nivel_efectivo": "bronce",
+                    "_reason": "created after the period: not in the total, but in today's level snapshot"
+                }
+            ],
+            "transacciones": [
+                { "comercio": "A", "sede": "A1", "cliente": "c1", "estado": "acreditada", "created_at": "2026-08-03" },
+                { "comercio": "A", "sede": "A1", "cliente": "c3", "estado": "acreditada", "created_at": "2026-08-20" },
+                { "comercio": "B", "sede": "B1", "cliente": "c2", "estado": "acreditada", "created_at": "2026-08-11" },
+                { "comercio": "B", "sede": "B1", "cliente": "c3", "estado": "acreditada", "created_at": "2026-08-25" },
+                { "comercio": "A", "sede": "A1", "cliente": "c1", "estado": "acreditada", "created_at": "2026-09-02" },
+                { "comercio": "A", "sede": "A2", "cliente": "c4", "estado": "acreditada", "created_at": "2026-09-14" },
+                { "comercio": "A", "sede": "A1", "cliente": "c1", "estado": "acreditada", "created_at": "2026-09-28" },
+                { "comercio": "A", "sede": "A2", "cliente": "c5", "estado": "anulada", "created_at": "2026-09-21" },
+                { "comercio": "B", "sede": "B1", "cliente": "c2", "estado": "acreditada", "created_at": "2026-09-10" },
+                { "comercio": "B", "sede": "B1", "cliente": null, "estado": "pendiente", "created_at": "2026-09-29" },
+                { "comercio": "C", "sede": "C1", "cliente": "c3", "estado": "acreditada", "created_at": "2026-09-20" },
+                { "comercio": "D", "sede": "D1", "cliente": "c4", "estado": "acreditada", "created_at": "2026-09-08" }
+            ],
+            "expected": {
+                "kpis": {
+                    "clientes_inscritos": 5,
+                    "clientes_nuevos": 2,
+                    "transacciones": 7,
+                    "transacciones_delta": "+75 %",
+                    "beneficios_entregados": 0,
+                    "beneficios_por_100_compras": 0,
+                    "valor_beneficios": 0
+                },
+                "niveles": {
+                    "bronce": { "clientes": 2, "porcentaje": 33 },
+                    "plata": { "clientes": 1, "porcentaje": 17 },
+                    "oro": { "clientes": 1, "porcentaje": 17 },
+                    "diamante": { "clientes": 2, "porcentaje": 33 }
+                },
+                "diamante_origen": { "puntos": 1, "membresia": 1, "evento": 0 },
+                "actividad": [
+                    { "comercio": "A", "transacciones": 3, "delta": "+50 %", "inactivo": false },
+                    { "comercio": "B", "transacciones": 2, "delta": "0 %", "inactivo": false },
+                    { "comercio": "C", "transacciones": 1, "delta": "+1", "inactivo": true, "dias_sin_registros": 10 }
+                ],
+                "_note": "D is inactive (activo = false): out of the table, but its purchase still counts in the group KPIs."
+            }
+        },
+        {
+            "_description": "Merchant admin of A, same data: only A counts, 'clientes que compraron' replaces 'clientes inscritos' and the table lists A's branches.",
+            "_e10_01_criterion": "merchant dashboard is filtered to its merchant",
+            "uses_data_of": "group dashboard for a period",
+            "now": "2026-09-30 12:00:00",
+            "period": "2026-09",
+            "viewer": { "rol": "administrador_comercio", "comercio": "A" },
+            "expected": {
+                "kpis": {
+                    "clientes_que_compraron": 2,
+                    "transacciones": 3,
+                    "transacciones_delta": "+50 %",
+                    "beneficios_entregados": 0,
+                    "valor_beneficios": 0
+                },
+                "actividad_por_sede": [
+                    { "sede": "A1", "transacciones": 2, "delta": "0 %" },
+                    { "sede": "A2", "transacciones": 1, "delta": "+1" }
+                ]
+            }
+        },
+        {
+            "_description": "An empty program: every block shows zero and the dashboard loads.",
+            "_e10_01_criterion": "an empty program shows zeros",
+            "now": "2026-10-24 09:00:00",
+            "period": "2026-10",
+            "viewer": "administrador_grupo",
+            "expected": {
+                "kpis": {
+                    "clientes_inscritos": 0,
+                    "clientes_nuevos": 0,
+                    "transacciones": 0,
+                    "transacciones_delta": "0",
+                    "beneficios_entregados": 0,
+                    "beneficios_por_100_compras": 0,
+                    "valor_beneficios": 0
+                },
+                "actividad": []
+            }
+        }
+    ]
+}

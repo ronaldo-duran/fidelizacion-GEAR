@@ -1,0 +1,89 @@
+{
+    "_note": "Scenarios for E4-02 (cashier screen: register a purchase). Amounts are whole pesos. Values the client has not confirmed carry \"_assumption\": true.",
+    "settings": {
+        "max_amount_digits": { "value": 9, "_assumption": true },
+        "auto_return_seconds": { "value": 5, "_source": "design 1g: 'Vuelve sola en 5 s'" },
+        "cashier_annul_minutes": { "value": 10, "_assumption": true },
+        "cashier_annul_reason": "Anulada desde la caja"
+    },
+    "keypad": [
+        { "keys": ["8", "5", "000"], "expected_amount": 85000 },
+        { "keys": ["8", "5", "000", "back"], "expected_amount": 8500 },
+        { "keys": ["0", "0", "7"], "expected_amount": 7 },
+        {
+            "keys": ["9", "9", "9", "000", "000", "1"],
+            "expected_amount": 999000000,
+            "_reason": "the 10th digit is ignored"
+        },
+        { "keys": ["000"], "expected_amount": 0, "_reason": "zeros alone are no amount; registering stays disabled" }
+    ],
+    "cases": [
+        {
+            "_description": "A registered customer identified by document: the purchase lands in the cashier's merchant and branch and the result screen shows the points.",
+            "_e4_02_criterion": "a registered customer is registered from the cashier",
+            "cashier": { "comercio": "BBC", "sede": "Norte", "activo": true },
+            "cliente": { "tipo_documento": "CC", "documento": "1023456789" },
+            "amount": 85000,
+            "identify_by": { "tipo_documento": "CC", "documento": "1023 456 789" },
+            "expected": { "estado": "acreditada", "screen": "registrada", "shows_points": true, "same_branch": true }
+        },
+        {
+            "_description": "A double tap on 'Registrar compra' leaves a single purchase.",
+            "_e4_02_criterion": "a double tap registers once",
+            "cashier": { "comercio": "BBC", "sede": "Norte", "activo": true },
+            "cliente": { "tipo_documento": "CC", "documento": "1023456789" },
+            "amount": 85000,
+            "taps": 2,
+            "expected": { "purchases": 1 }
+        },
+        {
+            "_description": "An unknown document keeps the amount; each of the three exits does what the design says.",
+            "_e4_02_criterion": "an unknown document keeps the amount",
+            "cashier": { "comercio": "BBC", "sede": "Norte", "activo": true },
+            "amount": 85000,
+            "identify_by": { "tipo_documento": "CC", "documento": "1023456780" },
+            "exits": [
+                { "exit": "guardar_pendiente", "expected": { "estado": "pendiente", "screen": "monto" } },
+                {
+                    "exit": "registrar_ahora",
+                    "expected": { "estado": "pendiente", "screen": "registro_qr", "link_document": "1023456780" }
+                },
+                { "exit": "corregir", "expected": { "purchases": 0, "screen": "identificar", "amount_kept": 85000 } }
+            ]
+        },
+        {
+            "_description": "An identify QR identifies the customer; an expired one or a benefit one is rejected without customer data.",
+            "_e4_02_criterion": "the customer QR identifies or is rejected",
+            "cashier": { "comercio": "BBC", "sede": "Norte", "activo": true },
+            "cliente": { "tipo_documento": "PPT", "documento": "PPT5566" },
+            "credentials": [
+                { "purpose": "identificar", "age_seconds": 5, "expected": "identified" },
+                { "purpose": "identificar", "age_seconds": 60, "expected": "rejected" },
+                { "purpose": "beneficio", "age_seconds": 5, "expected": "rejected" }
+            ]
+        },
+        {
+            "_description": "The cashier annuls their own purchase within the window; later, or a purchase of another cashier, is rejected.",
+            "_e4_02_criterion": "the cashier annuls only their own purchase in time",
+            "cashier": { "comercio": "BBC", "sede": "Norte", "activo": true },
+            "cliente": { "tipo_documento": "CC", "documento": "1023456789" },
+            "amount": 85000,
+            "annul_attempts": [
+                { "by": "same_cashier", "after_minutes": 2, "expected": "annulled" },
+                { "by": "same_cashier", "after_minutes": 11, "expected": "rejected" },
+                { "by": "other_cashier_same_branch", "after_minutes": 2, "expected": "rejected" }
+            ]
+        },
+        {
+            "_description": "Only active cashiers with a branch get in; the error never reveals whether the account exists.",
+            "_e4_02_criterion": "only active cashiers with a branch log in",
+            "logins": [
+                { "rol": "cajero", "activo": true, "sede": true, "expected": "in" },
+                { "rol": "cajero", "activo": false, "sede": true, "expected": "out" },
+                { "rol": "cajero", "activo": true, "sede": false, "expected": "out" },
+                { "rol": "administrador_comercio", "activo": true, "sede": false, "expected": "out" },
+                { "rol": null, "expected": "out", "_reason": "no such account: same message" }
+            ]
+        }
+    ]
+}

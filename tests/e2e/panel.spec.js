@@ -31,7 +31,7 @@ test.describe('tablero a 1024 px', () => {
     test('el administrador del grupo entra y ve el tablero del mes', async ({ page }) => {
         await page.goto('/admin/login');
         await page.getByLabel('Correo').fill('admin@example.com');
-        await page.getByLabel('Contraseña').fill('password');
+        await page.locator('input[type="password"]').fill('password');
         await page.getByRole('button', { name: 'Ingresar' }).click();
 
         await expect(page.getByRole('heading', { name: 'Tablero del grupo' })).toBeVisible();

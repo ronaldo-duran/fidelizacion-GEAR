@@ -3,6 +3,15 @@
 declare(strict_types=1);
 
 use App\Enums\RolUsuario;
+use App\Filament\Resources\Categorias\CategoriaResource;
+use App\Filament\Resources\Categorias\Pages\CreateCategoria;
+use App\Filament\Resources\Categorias\Pages\EditCategoria;
+use App\Filament\Resources\Comercios\ComercioResource;
+use App\Filament\Resources\Comercios\Pages\CreateComercio;
+use App\Filament\Resources\Comercios\Pages\EditComercio;
+use App\Filament\Resources\Sedes\Pages\CreateSede;
+use App\Filament\Resources\Sedes\Pages\EditSede;
+use App\Filament\Resources\Sedes\SedeResource;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Models\User;
@@ -146,3 +155,48 @@ it('muestra comercio y sede según el rol y limpia los que el rol no usa', funct
     expect($cajero->refresh()->comercio_id)->toBeNull()
         ->and($cajero->sede_id)->toBeNull();
 });
+
+it('vuelve a la lista después de crear o guardar, y "crear otro" deja el formulario', function (): void {
+    $grupo = User::factory()->administradorDelGrupo()->create();
+    $comercio = App\Models\Comercio::factory()->create();
+    $sede = App\Models\Sede::factory()->create(['comercio_id' => $comercio->id]);
+    $this->actingAs($grupo);
+    $datos = static fn (string $email): array => [
+        'name' => 'Cajero',
+        'email' => $email,
+        'rol' => RolUsuario::Cajero->value,
+        'comercio_id' => $comercio->id,
+        'sede_id' => $sede->id,
+        'password' => 'secreto-largo',
+    ];
+
+    Livewire::test(CreateUser::class)
+        ->fillForm($datos('cajero.lista@clubaponterivera.co'))
+        ->call('create')
+        ->assertRedirect(App\Filament\Resources\Users\UserResource::getUrl('index'));
+
+    Livewire::test(CreateUser::class)
+        ->fillForm($datos('cajero.otro.mas@clubaponterivera.co'))
+        ->call('create', another: true)
+        ->assertNoRedirect();
+
+    $creado = User::query()->where('email', 'cajero.lista@clubaponterivera.co')->sole();
+
+    Livewire::test(EditUser::class, ['record' => $creado->id])
+        ->fillForm(['name' => 'Cajero Renombrado'])
+        ->call('save')
+        ->assertRedirect(App\Filament\Resources\Users\UserResource::getUrl('index'));
+});
+
+it('vuelve a la lista en comercios, sedes y categorías', function (string $pagina, string $recurso): void {
+    $this->actingAs(User::factory()->administradorDelGrupo()->create());
+
+    expect((fn (): string => $this->getRedirectUrl())->call(app($pagina)))->toBe($recurso::getUrl('index'));
+})->with([
+    'crear comercio' => [CreateComercio::class, ComercioResource::class],
+    'editar comercio' => [EditComercio::class, ComercioResource::class],
+    'crear sede' => [CreateSede::class, SedeResource::class],
+    'editar sede' => [EditSede::class, SedeResource::class],
+    'crear categoría' => [CreateCategoria::class, CategoriaResource::class],
+    'editar categoría' => [EditCategoria::class, CategoriaResource::class],
+]);

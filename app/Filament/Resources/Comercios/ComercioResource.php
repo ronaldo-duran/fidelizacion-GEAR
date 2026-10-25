@@ -36,6 +36,8 @@ class ComercioResource extends Resource
 
     protected static string|null|UnitEnum $navigationGroup = 'Comercios';
 
+    protected static ?int $navigationSort = 1;
+
     /**
      * El grupo y los administradores de comercio entran; el cajero no.
      */

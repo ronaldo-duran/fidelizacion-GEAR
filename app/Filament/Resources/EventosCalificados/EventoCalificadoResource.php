@@ -40,6 +40,8 @@ class EventoCalificadoResource extends Resource
 
     protected static string|null|UnitEnum $navigationGroup = 'Niveles y reglas';
 
+    protected static ?int $navigationSort = 3;
+
     protected static ?string $slug = 'eventos-calificados';
 
     /**

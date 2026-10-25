@@ -17,6 +17,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class UserResource extends Resource
 {
@@ -29,6 +30,8 @@ class UserResource extends Resource
     protected static ?string $pluralModelLabel = 'usuarios';
 
     protected static ?string $navigationLabel = 'Usuarios';
+
+    protected static string|null|UnitEnum $navigationGroup = 'Configuración';
 
     /**
      * Solo el administrador del grupo gestiona usuarios. Un administrador de

@@ -47,8 +47,13 @@ class Registro extends Component
         $this->form->normalize();
         $this->form->validate();
 
+        $deLaSesion = Session::get(self::SESION_PENDIENTE);
+
         try {
-            $pendiente = $start($this->form->datos(CanalRegistro::from($this->canal), request()->ip()));
+            $pendiente = $start(
+                $this->form->datos(CanalRegistro::from($this->canal), request()->ip()),
+                is_int($deLaSesion) ? $deLaSesion : null,
+            );
         } catch (ValidationException $e) {
             foreach ($e->validator->errors()->messages() as $campo => $mensajes) {
                 $this->form->addError($campo, $mensajes[0]);

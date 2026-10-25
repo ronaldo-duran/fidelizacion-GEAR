@@ -17,6 +17,10 @@ use SensitiveParameter;
  * intentos simultáneos no pasan el tope; tras el máximo, ese documento queda
  * bloqueado el tiempo de la configuración, aunque llegue el PIN correcto. El
  * error nunca dice si el documento existe.
+ *
+ * Además se cuentan los intentos fallidos por IP, para que probar muchos
+ * documentos desde un mismo origen también se frene. Solo los fallidos: varios
+ * clientes que entran bien desde el wifi de un comercio no se bloquean.
  */
 class LoginCliente
 {
@@ -30,15 +34,22 @@ class LoginCliente
         string $documento,
         #[SensitiveParameter]
         string $pin,
+        ?string $ip = null,
     ): Cliente {
         $documento = Cliente::normalizeDocumento($documento);
         $minutos = self::setting('login_lockout_minutes');
         $key = "cliente-ingreso:{$tipo->value}|{$documento}";
+        $keyIp = $ip === null ? null : "cliente-ingreso-ip:{$ip}";
+        $bloqueado = ValidationException::withMessages([
+            'documento' => "Hiciste demasiados intentos. Espera {$minutos} minutos e intenta de nuevo.",
+        ]);
+
+        if ($keyIp !== null && RateLimiter::tooManyAttempts($keyIp, self::setting('login_max_attempts_per_ip'))) {
+            throw $bloqueado;
+        }
 
         if (RateLimiter::hit($key, $minutos * 60) > self::setting('login_max_attempts')) {
-            throw ValidationException::withMessages([
-                'documento' => "Hiciste demasiados intentos. Espera {$minutos} minutos e intenta de nuevo.",
-            ]);
+            throw $bloqueado;
         }
 
         $cliente = Cliente::query()
@@ -50,6 +61,10 @@ class LoginCliente
         $valido = Hash::check($pin, $cliente->pin_hash ?? self::hashFicticio());
 
         if (! $valido || $cliente?->pin_hash === null) {
+            if ($keyIp !== null) {
+                RateLimiter::hit($keyIp, $minutos * 60);
+            }
+
             throw ValidationException::withMessages(['documento' => self::NO_COINCIDEN]);
         }
 

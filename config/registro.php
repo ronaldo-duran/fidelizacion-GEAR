@@ -23,6 +23,7 @@ return [
 
     'login_max_attempts' => 5,
     'login_lockout_minutes' => 15,
+    'login_max_attempts_per_ip' => 20,
     'registro_pendiente_minutes' => 30,
     'enlace_caja_minutes' => 30,
 

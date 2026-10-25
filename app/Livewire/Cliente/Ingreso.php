@@ -30,7 +30,7 @@ class Ingreso extends Component
         $this->form->validate();
 
         try {
-            $cliente = $login($this->form->tipo(), $this->form->documento, $this->form->pin);
+            $cliente = $login($this->form->tipo(), $this->form->documento, $this->form->pin, request()->ip());
         } catch (ValidationException $e) {
             $this->form->addError('documento', $e->validator->errors()->first());
             $this->form->pin = '';

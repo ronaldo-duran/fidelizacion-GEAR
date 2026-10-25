@@ -7,6 +7,7 @@ use App\Actions\Clientes\MakeEnlaceRegistro;
 use App\Actions\Clientes\RequestPinReset;
 use App\Actions\Clientes\ResetPin;
 use App\Actions\Clientes\StartRegistro;
+use App\Clientes\DatosRegistro;
 use App\Enums\CanalRegistro;
 use App\Enums\EstadoTransaccion;
 use App\Enums\TipoDocumento;
@@ -101,6 +102,7 @@ it('keeps the validation rules and limits in config equal to the fixture', funct
         ->and(config('registro.nombre_max_length'))->toBe($validation['nombre_completo']['max_length'])
         ->and(config('registro.login_max_attempts'))->toBe($limits['login_max_attempts']['value'])
         ->and(config('registro.login_lockout_minutes'))->toBe($limits['login_lockout_minutes']['value'])
+        ->and(config('registro.login_max_attempts_per_ip'))->toBe($limits['login_max_attempts_per_ip']['value'])
         ->and(config('registro.registro_pendiente_minutes'))->toBe($limits['registro_pendiente_minutes']['value'])
         ->and(config('registro.enlace_caja_minutes'))->toBe($limits['enlace_caja_minutes']['value']);
 });
@@ -319,6 +321,60 @@ it('gives a panel user no customer session', function (): void {
     $this->actingAs(User::factory()->create(), 'web')
         ->get(route('cliente.inicio'))
         ->assertRedirect(route('cliente.ingreso'));
+});
+
+it('locks an IP after too many failed logins, whatever the document', function (): void {
+    ($this->clienteCon)(['tipo_documento' => 'CC', 'documento' => '1023456789', 'pin' => '4826']);
+    $maximo = $this->fixture['limits']['login_max_attempts_per_ip']['value'];
+    $login = static fn (string $documento, string $pin, string $ip): mixed => app(LoginCliente::class)(
+        TipoDocumento::CC,
+        $documento,
+        $pin,
+        $ip,
+    );
+
+    // Los ingresos correctos desde la misma IP no cuentan.
+    expect($login('1023456789', '4826', '10.0.0.7')->documento)->toBe('1023456789');
+
+    for ($i = 0; $i < $maximo; $i++) {
+        expect(fn () => $login((string) (50000000 + $i), '1357', '10.0.0.7'))
+            ->toThrow(ValidationException::class, LoginCliente::NO_COINCIDEN);
+    }
+
+    expect(fn () => $login('1023456789', '4826', '10.0.0.7'))
+        ->toThrow(ValidationException::class, 'Hiciste demasiados intentos')
+        ->and($login('1023456789', '4826', '10.0.0.8')->documento)->toBe('1023456789');
+});
+
+it('does not let someone else replace a pending registration in progress with another phone', function (): void {
+    $form = ($this->case)('a verified registration creates the customer with its authorization')['form'];
+    $datos = static fn (string $celular): DatosRegistro => new DatosRegistro(
+        TipoDocumento::from($form['tipo_documento']),
+        $form['documento'],
+        $form['nombre_completo'],
+        CarbonImmutable::today()->subYears(30),
+        $celular,
+        null,
+        $form['pin'],
+        CanalRegistro::Pwa,
+        '10.0.0.1',
+    );
+    $start = app(StartRegistro::class);
+    $propio = $start($datos('3001234567'));
+
+    expect(fn () => $start($datos('3159998877')))
+        ->toThrow(ValidationException::class, StartRegistro::REGISTRO_EN_CURSO)
+        ->and($propio->fresh()?->celular)->toBe('3001234567')
+        ->and(collect($this->sms->enviados())->pluck('celular')->all())->toBe(['3001234567']);
+
+    // Desde su propia sesión, quien lo empezó sí corrige el celular.
+    $this->travel($this->fixture['limits']['registro_pendiente_minutes']['value'] - 1)->minutes();
+    expect($start($datos('3159998877'), $propio->id)->celular)->toBe('3159998877');
+
+    // Uno vencido se reemplaza aunque venga de otra sesión.
+    $this->travel($this->fixture['limits']['registro_pendiente_minutes']['value'] + 1)->minutes();
+    expect($start($datos('3201112233'))->celular)->toBe('3201112233')
+        ->and(RegistroPendiente::query()->count())->toBe(1);
 });
 
 it('refuses an expired pending registration', function (): void {

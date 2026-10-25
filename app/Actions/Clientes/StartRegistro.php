@@ -19,11 +19,16 @@ use Illuminate\Validation\ValidationException;
  * Primer paso del registro (E8-02): guarda los datos en un registro pendiente
  * que vence y pide el código por SMS (E8-06). No crea el cliente ni reserva
  * el documento; eso pasa al verificar (`CompleteRegistro`). Un intento nuevo
- * con el mismo documento reemplaza al anterior.
+ * con el mismo documento reemplaza al anterior, salvo uno vigente con otro
+ * celular empezado en otra sesión: así un tercero que conozca el documento no
+ * le cambia el celular a quien se está registrando ni se queda con su cuenta.
  */
 class StartRegistro
 {
     public const DOCUMENTO_REGISTRADO = 'Ya hay una cuenta con ese documento. Ingresa o recupera tu PIN.';
+
+    public const REGISTRO_EN_CURSO = 'Ya hay un registro en curso con ese documento. '
+        . 'Termínalo en el celular donde lo empezaste o intenta más tarde.';
 
     private readonly SendVerificationCode $sendCode;
 
@@ -35,7 +40,7 @@ class StartRegistro
     /**
      * @throws ValidationException
      */
-    public function __invoke(DatosRegistro $datos): RegistroPendiente
+    public function __invoke(DatosRegistro $datos, ?int $pendienteDeLaSesion = null): RegistroPendiente
     {
         $documento = Cliente::normalizeDocumento($datos->documento);
         $celular = CodigoHasher::normalizeCelular($datos->celular);
@@ -46,6 +51,19 @@ class StartRegistro
 
         if ($existe) {
             throw ValidationException::withMessages(['documento' => self::DOCUMENTO_REGISTRADO]);
+        }
+
+        $enCurso = RegistroPendiente::query()
+            ->where('tipo_documento', $datos->tipoDocumento->value)
+            ->where('documento', $documento)
+            ->first();
+        $ajeno = $enCurso !== null
+            && $enCurso->vence_at->isFuture()
+            && $enCurso->celular !== $celular
+            && $enCurso->id !== $pendienteDeLaSesion;
+
+        if ($ajeno) {
+            throw ValidationException::withMessages(['documento' => self::REGISTRO_EN_CURSO]);
         }
 
         $now = CarbonImmutable::now();

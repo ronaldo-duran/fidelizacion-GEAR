@@ -113,14 +113,23 @@ recuperación del PIN. Los valores que el cliente no ha confirmado van con
   `documento`, `nombre_completo`, `fecha_nacimiento`, `celular`, `email`,
   `pin_hash`, `autorizacion_version`, `ip`, `canal` (`pwa` | `caja_qr`),
   `vence_at`, timestamps. Un intento nuevo con el mismo documento
-  reemplaza al anterior; los vencidos se purgan. No reserva el documento:
-  el cliente se crea solo al verificar.
+  reemplaza al anterior, salvo un pendiente vigente con otro celular
+  empezado en otra sesión: se rechaza con "Ya hay un registro en curso con
+  ese documento", para que un tercero que conozca el documento no le cambie
+  el celular a quien se está registrando ni se quede con su cuenta. Desde
+  su propia sesión, quien lo empezó sí puede corregir el celular. Los
+  vencidos se purgan. No reserva el documento: el cliente se crea solo al
+  verificar. Queda un riesgo aceptado: si nadie lo está registrando, un
+  tercero con el documento y un celular propio puede crear esa cuenta; el
+  documento no se verifica contra una fuente oficial (fuera de alcance).
 - **`autorizaciones_datos`** (append-only): `id`, `cliente_id`,
   `version_texto`, `aceptada_at`, `ip`, `canal`, `created_at`. La versión
   del texto la define E10-03; mientras tanto, una versión borrador
   evidente con `TODO(cliente)`.
 - **Bloqueo del ingreso**: `RateLimiter` de Laravel por tipo + número
-  normalizados (y por IP), con los números del fixture.
+  normalizados, y otro por IP que cuenta solo los intentos fallidos (varios
+  clientes que entran bien desde el wifi de un comercio no se bloquean),
+  con los números del fixture.
 - **Enlace de la caja**: URL firmada temporal de Laravel
   (`temporarySignedRoute`) con el tipo y el número; nunca datos de la
   compra.

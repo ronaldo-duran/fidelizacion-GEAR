@@ -1,9 +1,9 @@
 {
     "_note": "Scenarios for E4-02 (cashier screen: register a purchase). Amounts are whole pesos. Values the client has not confirmed carry \"_assumption\": true.",
     "settings": {
-        "max_amount_digits": { "value": 9, "_assumption": true },
+        "max_amount_digits": { "value": 9, "_source": "client confirmed 2026-10-26" },
         "auto_return_seconds": { "value": 5, "_source": "design 1g: 'Vuelve sola en 5 s'" },
-        "cashier_annul_minutes": { "value": 10, "_assumption": true },
+        "cashier_annul_hours": { "value": 72, "_source": "client 2026-10-26: annul up to 3 days later" },
         "cashier_annul_reason": "Anulada desde la caja"
     },
     "keypad": [
@@ -69,9 +69,9 @@
             "cliente": { "tipo_documento": "CC", "documento": "1023456789" },
             "amount": 85000,
             "annul_attempts": [
-                { "by": "same_cashier", "after_minutes": 2, "expected": "annulled" },
-                { "by": "same_cashier", "after_minutes": 11, "expected": "rejected" },
-                { "by": "other_cashier_same_branch", "after_minutes": 2, "expected": "rejected" }
+                { "by": "same_cashier", "after_hours": 1, "expected": "annulled" },
+                { "by": "same_cashier", "after_hours": 80, "expected": "rejected" },
+                { "by": "other_cashier_same_branch", "after_hours": 1, "expected": "rejected" }
             ]
         },
         {

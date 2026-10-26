@@ -57,7 +57,7 @@ confirma. Si el cliente no está registrado, el monto nunca se pierde.
    - **Corregir cédula**: vuelve al número con el monto intacto.
 8. **Anular desde la caja**: "Anular esta compra" en 1g, y "Anular la última
    compra" en el inicio mientras siga en plazo. El cajero solo anula una
-   compra que registró él, en su sede, dentro de los minutos del fixture;
+   compra que registró él, en su sede, dentro del plazo del fixture;
    la anulación va por `AnnulCompra` (reversa del libro, E3-02) con un
    motivo fijo. Fuera de ese plazo, la anula un administrador.
 9. **Zonas táctiles de 64 px** en todo el flujo, fondo blanco, una acción
@@ -95,8 +95,8 @@ confirma. Si el cliente no está registrado, el monto nunca se pierde.
 ## Fixtures
 
 `tests/Fixtures/cajero-escenarios.json` (nuevo, en inglés): máximo de
-dígitos del monto, segundos de la vuelta automática, minutos del plazo de
-anulación del cajero, motivo fijo de la anulación y escenarios de teclado,
+dígitos del monto, segundos de la vuelta automática, plazo de anulación del
+cajero (horas), motivo fijo de la anulación y escenarios de teclado,
 cliente registrado, pendiente, QR, doble toque, anulación y sedes. Los
 valores que el cliente no ha confirmado van con `"_assumption": true`.
 
@@ -112,36 +112,40 @@ valores que el cliente no ha confirmado van con `"_assumption": true`.
   Keypad, IdentifyActions, ResultScreen). Teclado en Alpine para que cada
   tecla no espere al servidor.
 - **Cámara**: la API `BarcodeDetector` del navegador donde exista (Chrome en
-  Android). Donde no exista (Safari en iPhone), queda "Digitar código" con el
-  código corto de E4-04 (`AR-1234`), que valida lo mismo.
+  Android). En iPhone (Safari), que no la tiene, se usa `jsqr` (MIT, npm) para
+  leer el QR con la cámara; "Digitar código" con el código corto de E4-04
+  (`AR-1234`) queda como alternativa, y valida lo mismo. (Dependencia nueva
+  aprobada por el cliente el 2026-10-26.)
 - **Anulación**: `TransaccionPolicy::annul` suma al cajero para sus propias
   compras de su sede dentro del plazo (riesgo alto: toca el libro; pasa por
   `AnnulCompra` sin cambiarla).
 - **Encabezado**: comercio y sede sobre el nombre del cajero. El diseño dice
   "Caja 2", pero el sistema no tiene cajas numeradas: se muestra la sede.
 
-## Decisiones a confirmar en la revisión
+## Decisiones de la revisión (resueltas)
 
-Propuestas por el implementador (2026-10-25); el revisor las aprueba con
-esta spec.
+Propuestas por el implementador (2026-10-25) y resueltas por el revisor el
+2026-10-26.
 
 1. El cajero ingresa por `/caja` con su correo y contraseña (la misma cuenta
    del sistema), no por el panel. Solo el rol cajero; los administradores
-   registran desde el panel.
+   registran desde el panel. **Aprobada tal cual.**
 2. Paso de confirmación con el nombre del cliente antes de registrar (el
    diseño pasa directo de identificar a 1g): evita registrar a otra persona
-   por un dígito mal puesto.
-3. El cajero puede anular solo sus propias compras, dentro de 10 minutos
-   (supuesto en el fixture), con el motivo "Anulada desde la caja".
+   por un dígito mal puesto. **Aprobada: se mantiene el paso de confirmación
+   con el mensaje que muestra el nombre del cliente** (regla 4).
+3. El cajero puede anular solo sus propias compras, con el motivo "Anulada
+   desde la caja". **Resuelta: el plazo es de 3 días (72 h en el fixture), no
+   10 minutos.** Fuera de ese plazo, la anula un administrador.
 4. En la compra pendiente (1h, 1i) **no** se muestran puntos ("Los 85 pts se
    le suman…" del diseño): todavía no existen, se calculan al registrarse con
    las reglas de la fecha de la compra y con sus topes. Se dice "Los puntos
-   se le suman cuando se registre".
-5. Cámara con `BarcodeDetector`, sin paquete nuevo; en iPhone, "Digitar
-   código". Si se quiere cámara también en iPhone, se agregaría `jsqr`
-   (MIT), que es una dependencia nueva.
+   se le suman cuando se registre". **Aprobada tal cual.**
+5. Cámara con `BarcodeDetector` en Android. **Resuelta: también cámara en
+   iPhone con `jsqr` (MIT, npm), dependencia nueva aprobada;** "Digitar
+   código" queda como alternativa.
 6. Vuelta automática a los 5 s (diseño) y máximo de 9 dígitos en el monto
-   ($999.999.999), supuestos en el fixture.
+   ($999.999.999). **Aprobada tal cual** (confirmada en el fixture).
 
 ## Reglas duras de CLAUDE.md que aplican
 

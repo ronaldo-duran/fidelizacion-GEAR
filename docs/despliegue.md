@@ -58,6 +58,12 @@ Fuera del repo, en Coolify (sección _Environment Variables_). Partir de
 - `REDIS_*` apuntando al Redis gestionado; `QUEUE_CONNECTION=redis`,
   `CACHE_STORE=redis`.
 - `HORIZON_PREFIX` distinto si dos entornos comparten el mismo Redis.
+- `SEMBRAR_DATOS_DE_MUESTRA=true` **solo en staging o en el servidor de demo**:
+  al sembrar (`migrate:fresh --seed`) agrega clientes y compras de ejemplo del
+  mes en curso y del anterior, para presentar el tablero con información. Las
+  reglas base quedan vigentes desde el mes anterior. En producción se ignora
+  aunque esté encendida; si un servidor de demo pasa a producción, limpiar la
+  base (`migrate:fresh` sin la variable) antes de cargar clientes reales.
 - Pasarela de pagos y Brevo en modo real (producción) — pendiente del
   cliente, ver E1-03.
 

@@ -149,4 +149,4 @@ Tinta `cashier-ink`. Toda zona táctil ≥ 64 px. Una mano, de pie, con luz de l
 - Selector de periodo: "Septiembre 2026 · vs. agosto".
 - 4 KPI (tarjeta radio 14, padding 16): Clientes inscritos, Transacciones, Beneficios entregados, Valor de beneficios. Cifra display 700 30px tabular, delta 13px 600 (verde, o `warn` cuando sube el costo).
 - Clientes por nivel: barra apilada de 28 alto, radio 8, gap 2, colores de nivel + leyenda con conteo y %. Desglose del origen de Diamante (puntos / suscripción / inmueble).
-- Tabla "Comercios por actividad": cabecera `#f6f2ec` overline; filas de 44 tabulares. Comercio sin actividad resaltado con fondo `warn-soft` y "Sin registros hace N días" en `warn-ink`.
+- Tabla "Comercios por actividad": cabecera `#f6f2ec` overline; filas de 44 tabulares. Comercio sin actividad resaltado en rojo, como alerta: fondo `danger-soft` y "Sin registros hace N días" en `danger`, sin ícono (cambio pedido por Ronaldo el 2026-10-26; ver NOTAS.md).

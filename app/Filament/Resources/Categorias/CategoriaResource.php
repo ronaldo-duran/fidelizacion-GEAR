@@ -34,6 +34,8 @@ class CategoriaResource extends Resource
 
     protected static string|null|UnitEnum $navigationGroup = 'Comercios';
 
+    protected static ?int $navigationSort = 3;
+
     public static function canAccess(): bool
     {
         $usuario = Auth::user();

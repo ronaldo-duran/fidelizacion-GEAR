@@ -20,20 +20,20 @@ test('la página de inicio no se desborda en celular', async ({ page }) => {
 test('un administrador entra al panel', async ({ page }) => {
     await page.goto('/admin/login');
 
-    await page.getByLabel('Correo electrónico').fill('admin@example.com');
-    await page.getByLabel('Contraseña', { exact: false }).first().fill('password');
-    await page.getByRole('button', { name: 'Entrar' }).click();
+    await page.getByLabel('Correo').fill('admin@example.com');
+    await page.locator('input[type="password"]').fill('password');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
 
     await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByRole('heading', { name: 'Escritorio' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Tablero del grupo' })).toBeVisible();
 });
 
 test('credenciales inválidas no dan acceso', async ({ page }) => {
     await page.goto('/admin/login');
 
-    await page.getByLabel('Correo electrónico').fill('admin@example.com');
-    await page.getByLabel('Contraseña', { exact: false }).first().fill('incorrecta');
-    await page.getByRole('button', { name: 'Entrar' }).click();
+    await page.getByLabel('Correo').fill('admin@example.com');
+    await page.locator('input[type="password"]').fill('incorrecta');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
 
     await expect(page).toHaveURL(/\/admin\/login/);
 });

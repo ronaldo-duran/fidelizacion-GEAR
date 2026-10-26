@@ -17,12 +17,10 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Form of the rule simulator: the draft, edited with the same guided form
@@ -43,10 +41,6 @@ class SimuladorForm
                         ->required()
                         ->live()
                         ->afterStateUpdated(self::fillDraft(...)),
-                    Toggle::make('use_json_editor')
-                        ->label('Usar el editor JSON avanzado')
-                        ->live()
-                        ->visible(static fn (): bool => Gate::allows('editJson', Regla::class)),
                     Hidden::make('codigo'),
                     Hidden::make('tipo'),
                 ]),

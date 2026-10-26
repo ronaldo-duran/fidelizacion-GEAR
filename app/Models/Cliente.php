@@ -7,6 +7,8 @@ namespace App\Models;
 use App\Enums\Nivel;
 use App\Enums\TipoDocumento;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -17,12 +19,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * movement (hard rule 3.4). The level columns keep the three sources apart
  * and are only written by the level actions (hard rule 3.5).
  *
+ * Inicia sesión en la PWA con su propio guard (`cliente`), separado del de
+ * los usuarios del panel; su contraseña es el hash del PIN (E8-02).
+ *
  * @property int $id
  * @property TipoDocumento $tipo_documento
  * @property string $documento
  * @property CarbonImmutable|null $fecha_nacimiento
  * @property string|null $celular
  * @property string|null $email
+ * @property string|null $nombre_completo
+ * @property string|null $pin_hash
+ * @property CarbonImmutable|null $celular_verificado_at
  * @property int $saldo_puntos
  * @property Nivel $nivel_por_puntos
  * @property Nivel|null $nivel_por_membresia
@@ -33,12 +41,17 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable|null $nivel_efectivo_desde
  * @property CarbonImmutable|null $proteccion_hasta
  */
-class Cliente extends Model
+class Cliente extends Model implements AuthenticatableContract
 {
+    use Authenticatable;
+
     protected $table = 'clientes';
 
     /** @var list<string> */
     protected $fillable = ['tipo_documento', 'documento', 'fecha_nacimiento', 'celular', 'email'];
+
+    /** @var list<string> */
+    protected $hidden = ['pin_hash', 'remember_token'];
 
     /** @var array<string, mixed> */
     protected $attributes = [
@@ -68,6 +81,19 @@ class Cliente extends Model
     public function cambiosNivel(): HasMany
     {
         return $this->hasMany(CambioNivel::class);
+    }
+
+    /**
+     * @return HasMany<AutorizacionDatos, $this>
+     */
+    public function autorizaciones(): HasMany
+    {
+        return $this->hasMany(AutorizacionDatos::class);
+    }
+
+    public function getAuthPasswordName(): string
+    {
+        return 'pin_hash';
     }
 
     /**
@@ -117,6 +143,7 @@ class Cliente extends Model
             'nivel_efectivo' => Nivel::class,
             'nivel_efectivo_desde' => 'immutable_datetime',
             'proteccion_hasta' => 'immutable_date',
+            'celular_verificado_at' => 'immutable_datetime',
         ];
     }
 }

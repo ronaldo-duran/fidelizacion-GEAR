@@ -36,6 +36,8 @@ class SedeResource extends Resource
 
     protected static string|null|UnitEnum $navigationGroup = 'Comercios';
 
+    protected static ?int $navigationSort = 2;
+
     public static function canAccess(): bool
     {
         $usuario = Auth::user();

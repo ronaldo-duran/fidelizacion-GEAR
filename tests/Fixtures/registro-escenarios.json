@@ -25,6 +25,11 @@
     "limits": {
         "login_max_attempts": { "value": 5, "_assumption": true },
         "login_lockout_minutes": { "value": 15, "_assumption": true },
+        "login_max_attempts_per_ip": {
+            "value": 20,
+            "_assumption": true,
+            "_note": "Failed attempts from one IP within the lockout window, whatever the document."
+        },
         "registro_pendiente_minutes": { "value": 30, "_assumption": true },
         "enlace_caja_minutes": { "value": 30, "_assumption": true }
     },

@@ -37,6 +37,8 @@ class SimuladorReglas extends Page
 
     protected static string|null|UnitEnum $navigationGroup = 'Niveles y reglas';
 
+    protected static ?int $navigationSort = 2;
+
     protected static ?string $title = 'Simulador de reglas';
 
     protected static ?string $slug = 'simulador-reglas';

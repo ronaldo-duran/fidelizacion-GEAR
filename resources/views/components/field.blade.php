@@ -18,7 +18,7 @@
         @if ($value !== null) value="{{ $value }}" @endif
         @if ($inputmode) inputmode="{{ $inputmode }}" @endif
         {{ $attributes->merge([
-            'class' => 'h-input rounded-md border border-field bg-surface px-4 text-lg text-ink outline-none placeholder:text-ink-2 focus:border-brand',
+            'class' => 'h-input rounded-md border border-field bg-surface px-4 text-lg font-normal text-ink outline-none placeholder:text-ink-2 focus:border-brand',
         ]) }}
     >
 </label>

@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
+
+        // Solo aplica a las rutas del cliente: el panel tiene su propio ingreso (Filament).
+        $middleware->redirectGuestsTo(fn () => route('cliente.ingreso'));
+        $middleware->redirectUsersTo(fn () => route('cliente.inicio'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

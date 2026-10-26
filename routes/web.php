@@ -2,7 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Cliente\LogoutController;
+use App\Http\Controllers\Cliente\RegistroCajaController;
 use App\Http\Controllers\KitUiController;
+use App\Livewire\Cliente\Ingreso;
+use App\Livewire\Cliente\RecuperarPin;
+use App\Livewire\Cliente\Registro;
+use App\Livewire\Cliente\VerificarRegistro;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('welcome'));
@@ -10,3 +16,20 @@ Route::get('/', fn () => view('welcome'));
 Route::view('/sin-conexion', 'sin-conexion')->name('sin-conexion');
 
 Route::get('/_ui', KitUiController::class)->name('kit-ui');
+
+// PWA del cliente (E8-02). Guard propio, separado del panel.
+Route::name('cliente.')->group(function (): void {
+    Route::middleware('guest:cliente')->group(function (): void {
+        Route::get('/registro', Registro::class)->name('registro');
+        Route::get('/registro/verificar', VerificarRegistro::class)->name('registro.verificar');
+        Route::get('/registro/caja', RegistroCajaController::class)->middleware('signed')->name('registro.caja');
+        Route::get('/ingresar', Ingreso::class)->name('ingreso');
+        Route::get('/recuperar-pin', RecuperarPin::class)->name('recuperar-pin');
+    });
+
+    Route::middleware(['auth:cliente', 'auth.session'])->group(function (): void {
+        // TODO(E8-03): el inicio del cliente reemplaza esta vista provisional.
+        Route::view('/inicio', 'cliente.inicio')->name('inicio');
+        Route::post('/salir', LogoutController::class)->name('salir');
+    });
+});

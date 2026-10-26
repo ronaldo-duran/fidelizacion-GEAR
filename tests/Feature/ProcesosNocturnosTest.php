@@ -157,9 +157,10 @@ it('chains the nightly processes in order on the nightly queue', function (): vo
             'VerifySaldos',
             'PurgeCredenciales',
             'PurgeCodigosVerificacion',
+            'PurgeRegistrosPendientes',
         ])
         ->and(array_map(static fn (object $job): ?string => $job->queue, $jobs))
-        ->toBe(['nocturno', 'nocturno', 'nocturno', 'nocturno', 'nocturno', 'nocturno']);
+        ->toBe(array_fill(0, 7, 'nocturno'));
 });
 
 it('reruns a night by hand with the console command', function (): void {

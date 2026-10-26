@@ -17,6 +17,16 @@ use Illuminate\Validation\ValidationException;
 class DefinicionFormMapper
 {
     /**
+     * Campos de condición cuyo valor se elige de una lista en el formulario.
+     */
+    private const SELECTABLE = ['categoria_slug', 'comercio_id', 'sede_id', 'dia_semana', 'hora'];
+
+    public static function isSelectable(mixed $campo): bool
+    {
+        return in_array($campo, self::SELECTABLE, true);
+    }
+
+    /**
      * @param  array<string, mixed>  $data  form state
      * @return array{0: array<string, mixed>, 1: DefinicionSource}
      *
@@ -24,7 +34,7 @@ class DefinicionFormMapper
      */
     public static function fromForm(TipoRegla $tipo, array $data): array
     {
-        if (($data['use_json_editor'] ?? false) === true) {
+        if (in_array($data['use_json_editor'] ?? false, [true, 1, '1'], true)) {
             return [self::fromJson($data['definicion_json'] ?? null), DefinicionSource::JsonEditor];
         }
 
@@ -52,6 +62,12 @@ class DefinicionFormMapper
             $definicion['condiciones'] = array_map(
                 static function (array $condicion): array {
                     $valor = $condicion['valor'] ?? null;
+
+                    if (self::isSelectable($condicion['campo'] ?? null)) {
+                        $condicion['valor_opcion'] = is_array($valor) ? null : $valor;
+                        $condicion['valor_opciones'] = is_array($valor) ? $valor : [];
+                    }
+
                     $condicion['valor'] = is_array($valor)
                         ? implode(', ', array_map(self::toText(...), $valor))
                         : $valor;
@@ -146,7 +162,7 @@ class DefinicionFormMapper
                 static fn (array $condicion): array => [
                     'campo' => $condicion['campo'] ?? null,
                     'operador' => $condicion['operador'] ?? null,
-                    'valor' => self::conditionValue($condicion['operador'] ?? null, $condicion['valor'] ?? null),
+                    'valor' => self::conditionValue($condicion),
                 ],
                 self::toListOfMaps($state['condiciones'] ?? null),
             ),
@@ -154,10 +170,25 @@ class DefinicionFormMapper
     }
 
     /**
-     * The `en` operator receives its values separated by commas.
+     * Un campo de lista toma el valor de su selector (uno, o varios con «Está
+     * en la lista»); el monto, del texto, donde `en` separa con comas.
+     *
+     * @param  array<string, mixed>  $condicion
      */
-    private static function conditionValue(mixed $operador, mixed $valor): mixed
+    private static function conditionValue(array $condicion): mixed
     {
+        $operador = $condicion['operador'] ?? null;
+
+        if (self::isSelectable($condicion['campo'] ?? null)) {
+            $opciones = $condicion['valor_opciones'] ?? null;
+
+            return $operador === 'en'
+                ? array_map(self::toInteger(...), is_array($opciones) ? array_values($opciones) : [])
+                : self::toInteger($condicion['valor_opcion'] ?? null);
+        }
+
+        $valor = $condicion['valor'] ?? null;
+
         if ($operador !== 'en' || ! is_string($valor)) {
             return self::toInteger($valor);
         }

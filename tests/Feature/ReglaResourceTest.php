@@ -96,7 +96,7 @@ it('saves a new version from the form without touching the previous one', functi
         ->fillForm([
             'definicion' => [
                 'multiplicador' => '3',
-                'condiciones' => [['campo' => 'dia_semana', 'operador' => 'en', 'valor' => '6, 7']],
+                'condiciones' => [['campo' => 'dia_semana', 'operador' => 'en', 'valor_opciones' => ['6', '7']]],
             ],
         ])
         ->call('save')
@@ -178,4 +178,49 @@ it('lets the group administrator grant the JSON editor permission from the user 
         ->assertHasNoFormErrors();
 
     expect($other->fresh()?->edita_reglas_json)->toBeTrue();
+});
+
+it('picks a merchant condition value from a list and stores its id', function (): void {
+    $v1 = ReglaTestData::createBonificacion($this->admin);
+    $comercio = App\Models\Comercio::factory()->create(['razon_social' => 'Cervecería BBC']);
+    $this->actingAs($this->admin);
+    $this->travel(1)->days();
+
+    Livewire::test(NewReglaVersion::class, ['record' => $v1->getRouteKey()])
+        ->fillForm([
+            'definicion' => [
+                'multiplicador' => '2',
+                'condiciones' => [
+                    ['campo' => 'comercio_id', 'operador' => 'igual', 'valor_opcion' => (string) $comercio->id],
+                ],
+            ],
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $v2 = Regla::query()->where('codigo', $v1->codigo)->where('version', 2)->sole();
+
+    expect($v2->definicion['condiciones'][0])
+        ->toEqual(['campo' => 'comercio_id', 'operador' => 'igual', 'valor' => $comercio->id]);
+
+    $this->travel(1)->days();
+
+    // La versión siguiente abre con el comercio ya elegido en la lista.
+    $condiciones = Livewire::test(NewReglaVersion::class, ['record' => $v2->getRouteKey()])
+        ->get('data.definicion.condiciones');
+
+    expect((int) reset($condiciones)['valor_opcion'])->toBe($comercio->id);
+});
+
+it('shows the definition as readable lines in the "Vista" tab and as JSON in "Modo desarrollo"', function (): void {
+    $regla = ReglaTestData::createBonificacion($this->admin);
+    $this->actingAs($this->admin);
+
+    $this->get(ReglaResource::getUrl('view', ['record' => $regla]))
+        ->assertSuccessful()
+        ->assertSee('Vista')
+        ->assertSee('Modo desarrollo')
+        ->assertSee('Multiplica los puntos por 2 cuando se cumple todo esto:')
+        ->assertSee('El monto es mayor o igual que $50.000.')
+        ->assertSee('mayor_igual');
 });

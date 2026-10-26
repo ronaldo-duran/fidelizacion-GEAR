@@ -8,7 +8,10 @@ use App\Models\Regla;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class ReglaInfolist
 {
@@ -27,12 +30,25 @@ class ReglaInfolist
                         IconEntry::make('activa')->label('Activa')->boolean(),
                         TextEntry::make('creator.name')->label('Guardada por')->placeholder('Sistema'),
                     ]),
-                Section::make('Definición')
-                    ->schema([
-                        TextEntry::make('definicion_json')
-                            ->hiddenLabel()
-                            ->html()
-                            ->state(static fn (Regla $record): string => DefinicionAsJson::html($record)),
+                Tabs::make('Definición')
+                    ->tabs([
+                        Tab::make('Vista')
+                            ->icon(Heroicon::OutlinedEye)
+                            ->schema([
+                                TextEntry::make('definicion_legible')
+                                    ->hiddenLabel()
+                                    ->listWithLineBreaks()
+                                    ->bulleted()
+                                    ->state(static fn (Regla $record): array => DefinicionLegible::lineas($record)),
+                            ]),
+                        Tab::make('Modo desarrollo')
+                            ->icon(Heroicon::OutlinedCodeBracket)
+                            ->schema([
+                                TextEntry::make('definicion_json')
+                                    ->hiddenLabel()
+                                    ->html()
+                                    ->state(static fn (Regla $record): string => DefinicionAsJson::html($record)),
+                            ]),
                     ]),
             ]);
     }

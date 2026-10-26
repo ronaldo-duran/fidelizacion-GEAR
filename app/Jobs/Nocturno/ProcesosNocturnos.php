@@ -25,6 +25,7 @@ final class ProcesosNocturnos
             new VerifySaldos($fecha),
             new PurgeCredenciales($fecha),
             new PurgeCodigosVerificacion($fecha),
+            new PurgeRegistrosPendientes($fecha),
         ];
     }
 }

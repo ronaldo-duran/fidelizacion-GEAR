@@ -24,7 +24,11 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
                             @foreach ($filas as $posicion => $fila)
                                 <tr
-                                    @class(['h-11', 'bg-danger-soft text-danger' => $fila['inactivo']])
+                                    @class([
+                                        'h-11',
+                                        // En oscuro, rojo translúcido y texto más claro, para que no quede un bloque claro.
+                                        'bg-danger-soft text-danger dark:bg-danger-500/15 dark:text-danger-400' => $fila['inactivo'],
+                                    ])
                                     @unless ($fila['visible']) x-show="todos" x-cloak @endunless
                                 >
                                     <td class="px-3">{{ $posicion + 1 }}</td>

@@ -1,0 +1,22 @@
+# Este repo guarda la aplicación YA COMPILADA: vendor/ y public/build/ SÍ se
+# versionan (el servidor compartido no tiene Composer ni Node). Solo se ignora
+# lo que es propio de cada servidor o se genera en tiempo de ejecución.
+
+/.env
+/.env.*
+!/.env.example
+
+/public/hot
+/public/storage
+
+/storage/*.key
+/storage/logs/*
+!/storage/logs/.gitignore
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+
+/bootstrap/cache/*.php
+
+.DS_Store
+Thumbs.db

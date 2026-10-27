@@ -1,0 +1,139 @@
+name: Desplegar a producción
+
+# Se dispara al crear un tag "v*" en este repositorio (el repo fuente).
+# Compila la aplicación para producción (dependencias sin dev + frontend con
+# Vite) y publica el artefacto ya compilado en el repo de producción
+# (ronaldo-duran/fidelizacion-GEAR-Produccion), que es el que el servidor
+# compartido de Hostinger consume. Por eso el repo de producción no necesita
+# ni Composer ni Node: recibe vendor/ y public/build/ ya construidos.
+#
+# El push al repo de producción usa una deploy key de escritura (secreto
+# PROD_REPO_DEPLOY_KEY); al no ser el GITHUB_TOKEN, ese push sí dispara el
+# workflow "Actualizar servidor" del repo de producción.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag o rama a compilar y publicar (p. ej. v1.2.0)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desplegar-produccion
+  cancel-in-progress: false
+
+env:
+  PHP_VERSION: '8.3'
+  NODE_VERSION: '22'
+  PHP_EXTENSIONS: pdo_pgsql, pdo_mysql, intl, redis
+  REPO_PRODUCCION: ronaldo-duran/fidelizacion-GEAR-Produccion
+
+jobs:
+  construir-y-publicar:
+    name: Compilar y publicar en el repo de producción
+    runs-on: ubuntu-latest
+    steps:
+      - name: Código del tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: ${{ env.PHP_EXTENSIONS }}
+          coverage: none
+
+      - name: Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # Dependencias de producción: sin paquetes de desarrollo y con el
+      # autoloader optimizado. --no-scripts evita arrancar la app sin entorno;
+      # los comandos de descubrimiento se corren a mano más abajo.
+      - name: Dependencias PHP (sin dev)
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts --optimize-autoloader
+
+      # Un .env mínimo y una APP_KEY desechable para que artisan arranque
+      # durante el build. Este .env NO viaja al artefacto: el servidor usa el
+      # suyo. La clave real de producción vive solo en el servidor.
+      - name: Entorno de compilación
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+          php artisan package:discover --ansi
+          php artisan filament:upgrade --no-interaction || true
+
+      - name: Compilar frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Nombre de la versión
+        id: version
+        run: echo "nombre=${{ github.event.inputs.ref || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # Árbol que irá al repo de producción: el código de la app ya compilado,
+      # sin desarrollo ni secretos. Se excluye .gitignore del repo fuente (ignora
+      # vendor/ y public/build/, que aquí SÍ deben versionarse) y se superpone
+      # deploy/produccion/ (los archivos propios del repo de producción).
+      - name: Preparar artefacto
+        run: |
+          rm -rf "$RUNNER_TEMP/artefacto"
+          mkdir -p "$RUNNER_TEMP/artefacto"
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '.husky' \
+            --exclude '.gitignore' \
+            --exclude 'node_modules' \
+            --exclude 'tests' \
+            --exclude 'docs' \
+            --exclude 'specs' \
+            --exclude 'deploy' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'playwright.config.*' \
+            --exclude 'playwright-report' \
+            --exclude 'test-results' \
+            --exclude '/storage/logs/*' \
+            ./ "$RUNNER_TEMP/artefacto/"
+          cp -R deploy/produccion/. "$RUNNER_TEMP/artefacto/"
+          chmod +x "$RUNNER_TEMP/artefacto/scripts/deploy/actualizar-servidor.sh"
+
+      - name: Clave de escritura al repo de producción
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.PROD_REPO_DEPLOY_KEY }}" > ~/.ssh/id_prod
+          chmod 600 ~/.ssh/id_prod
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null
+          echo "GIT_SSH_COMMAND=ssh -i ~/.ssh/id_prod -o IdentitiesOnly=yes" >> "$GITHUB_ENV"
+
+      # Se clona el repo de producción (puede estar vacío la primera vez), se
+      # reemplaza su árbol por el artefacto conservando solo .git, y se publica
+      # un commit en main más el tag. El servidor se actualiza desde ahí.
+      - name: Publicar en el repo de producción
+        run: |
+          git clone "git@github.com:${REPO_PRODUCCION}.git" "$RUNNER_TEMP/prod"
+          cd "$RUNNER_TEMP/prod"
+          git checkout main 2>/dev/null || git checkout -b main
+          rsync -a --delete --exclude '.git' "$RUNNER_TEMP/artefacto/" ./
+          git config user.name 'Despliegue (CI)'
+          git config user.email 'ci@grupoaponterivera.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Sin cambios que publicar.'
+          else
+            git commit -m "chore(deploy): ${{ steps.version.outputs.nombre }}"
+          fi
+          git tag -f "${{ steps.version.outputs.nombre }}"
+          git push origin HEAD:main
+          git push -f origin "refs/tags/${{ steps.version.outputs.nombre }}"

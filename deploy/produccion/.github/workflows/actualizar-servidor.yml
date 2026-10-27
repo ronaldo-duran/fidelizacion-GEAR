@@ -1,0 +1,50 @@
+name: Actualizar servidor
+
+# Este workflow vive en el repo de producción (fidelizacion-GEAR-Produccion).
+# Corre cuando el workflow "Desplegar a producción" del repo fuente publica un
+# commit en main (código ya compilado). Se conecta por SSH al hosting compartido
+# de Hostinger y ejecuta el script de actualización.
+#
+# Secretos que requiere este repo (Settings → Secrets and variables → Actions):
+#   SSH_HOST     host o IP del servidor
+#   SSH_PORT     puerto SSH (Hostinger suele usar 65002)
+#   SSH_USER     usuario SSH del hosting
+#   SSH_KEY      clave privada cuyo par público está en ~/.ssh/authorized_keys del servidor
+#   DEPLOY_PATH  ruta absoluta del clon de este repo en el servidor
+# Variable opcional:
+#   PHP_BIN      binario de PHP del host si no es "php" (p. ej. /usr/bin/php8.3)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desplegar-servidor
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Desplegar en hosting compartido
+    runs-on: ubuntu-latest
+    steps:
+      - name: Script de despliegue
+        uses: actions/checkout@v4
+
+      - name: Preparar clave SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Actualizar servidor por SSH
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "${{ secrets.SSH_PORT }}" \
+            -o IdentitiesOnly=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}' PHP_BIN='${{ vars.PHP_BIN }}' bash -s" \
+            < scripts/deploy/actualizar-servidor.sh

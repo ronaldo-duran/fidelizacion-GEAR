@@ -1,5 +1,10 @@
 # Despliegue — staging y producción (E1-02)
 
+> **Flujo vigente (Hostinger).** El despliegue a producción en uso hoy es el de
+> la sección [**Producción en hosting compartido por tag**](#producción-en-hosting-compartido-por-tag):
+> dos repositorios y un tag `v*`, sin Docker ni Node en el servidor. Las
+> secciones de Coolify/Docker de abajo quedan para la fase **VPS futura**.
+
 Guía operativa para montar los dos entornos en Hetzner con Coolify y Docker.
 El código de la aplicación (imagen, Horizon, scheduler) ya está en el repo;
 este documento cubre los pasos manuales del servidor que no viven en el
@@ -152,3 +157,82 @@ docker compose exec web php artisan migrate:fresh --seed --force
 
 Respaldos verificados, monitoreo y la lista de salida en vivo van en **E1-03**.
 La provisión de la cuenta del servidor a nombre del cliente es el issue #1.
+
+---
+
+## Producción en hosting compartido por tag
+
+Flujo en uso para el hosting compartido de **Hostinger**, donde **no hay
+Docker, ni Node, ni Composer** en el servidor. La aplicación se compila en
+GitHub Actions y al servidor solo llega el resultado listo para ejecutar.
+
+### Dos repositorios
+
+| Repositorio                                  | Rol                                                                                                         |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `ronaldo-duran/fidelizacion-GEAR`            | **Fuente.** Aquí se programa, se prueba y se crean los tags `v*`.                                           |
+| `ronaldo-duran/fidelizacion-GEAR-Produccion` | **Artefacto.** Guarda la app ya compilada (con `vendor/` y `public/build/`). Es lo que el servidor consume. |
+
+### Cómo fluye un despliegue
+
+1. **Tag en el repo fuente.** Desde `main` ya probado:
+
+   ```bash
+   git tag v1.2.0 && git push origin v1.2.0
+   ```
+
+2. **Compilación y publicación** (`.github/workflows/desplegar-produccion.yml`
+   en el repo fuente). Al recibir el tag:
+   - `composer install --no-dev --optimize-autoloader` (dependencias de producción),
+   - `npm ci && npm run build` (frontend con Vite),
+   - arma el artefacto (excluye desarrollo, pruebas, `.env` y el `.gitignore`
+     del repo fuente —que ignora `vendor/` y `public/build/`—, y superpone los
+     archivos propios del repo de producción desde `deploy/produccion/`),
+   - publica un commit en el `main` del repo de producción y empuja también el tag.
+
+   El push usa una **deploy key de escritura** (`PROD_REPO_DEPLOY_KEY`); al no
+   ser el `GITHUB_TOKEN`, ese push sí dispara el workflow del repo de producción.
+
+3. **Actualización del servidor** (`.github/workflows/actualizar-servidor.yml`
+   en el repo de producción). Al recibir el commit en `main`, entra por SSH al
+   servidor y ejecuta `scripts/deploy/actualizar-servidor.sh`:
+   `artisan down` → `git fetch` + `git reset --hard origin/main` → `migrate --force`
+   → `storage:link` → `optimize` + `filament:optimize` → `queue:restart` →
+   `artisan up`. No compila nada: el código llega compilado y con `vendor/`.
+
+### Secretos y variables
+
+**Repo fuente** (`fidelizacion-GEAR`) → Settings → Secrets and variables → Actions:
+
+| Secreto                | Qué es                                                                      |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `PROD_REPO_DEPLOY_KEY` | Clave privada SSH con permiso de **escritura** sobre el repo de producción. |
+
+**Repo de producción** (`fidelizacion-GEAR-Produccion`) → Actions:
+
+| Secreto       | Qué es                                                        |
+| ------------- | ------------------------------------------------------------- |
+| `SSH_HOST`    | Host o IP del servidor.                                       |
+| `SSH_PORT`    | Puerto SSH (Hostinger suele usar `65002`).                    |
+| `SSH_USER`    | Usuario SSH del hosting.                                      |
+| `SSH_KEY`     | Clave privada para entrar al servidor.                        |
+| `DEPLOY_PATH` | Ruta absoluta del clon del repo de producción en el servidor. |
+
+Variable opcional `PHP_BIN` si el binario de PHP del host no es `php`.
+
+El paso a paso para crear las llaves y preparar el servidor (clon, `.env`,
+permisos, document root, cron de `schedule:run`) está en el **README del repo de
+producción**.
+
+### Alternativa sin git en el servidor
+
+Si el hosting no permite `git`, cambiar `scripts/deploy/actualizar-servidor.sh`
+para que el runner envíe los archivos por `rsync`/`scp` en vez de que el servidor
+haga `git fetch`/`reset`. En ese caso el servidor no necesita deploy key de
+lectura; el resto del flujo es igual.
+
+### Relación con la fase VPS
+
+Este flujo reemplaza, para la fase Hostinger, el despliegue por Coolify descrito
+arriba. El trabajo de Docker/Horizon de E1-02 se conserva intacto para cuando se
+pase a un VPS: ahí vuelve a aplicar la estrategia de dos fases con Redis.

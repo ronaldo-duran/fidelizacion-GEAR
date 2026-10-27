@@ -134,33 +134,37 @@ disponible, bloqueado, no disponible hoy, ya usado o sin cupos.
   lógica en el recurso: guardar pasa por una Action que valida.
 - **Seeder**: el catálogo de `beneficios-catalogo.json` en `DatabaseSeeder`.
 
-## Decisiones a confirmar en la revisión
+## Decisiones de la revisión (resueltas)
 
-Propuestas por el implementador (2026-10-26); el revisor las aprueba con
-esta spec.
+Propuestas por el implementador (2026-10-26) y resueltas por el revisor el
+2026-10-27.
 
 1. **Un beneficio con un valor por nivel** (como el catálogo del cliente) en
    vez de una fila por nivel; el nivel mínimo es el más bajo con valor.
-   Actualiza el modelo de datos de CLAUDE.md §4.
+   Actualiza el modelo de datos de CLAUDE.md §4. **Aprobada tal cual.**
 2. **Lista blanca propia de los beneficios** (`es_cumpleanos`, `dia_semana`,
    `fin_de_semana`) en vez de extender la del motor de reglas: las
    condiciones de un beneficio deciden si se puede usar hoy, no cuántos
-   puntos da una compra.
+   puntos da una compra. **Aprobada tal cual.**
 3. **Ventanas calendario** en Bogotá para el límite por mes y por año ("Vuelve
-   el 1 de noviembre"), no móviles de 30 o 365 días.
+   el 1 de noviembre"), no móviles de 30 o 365 días. **Aprobada tal cual.**
 4. **La tabla `redenciones` se crea aquí** (solo esquema y lectura), para que
    el estado "usado" y "sin cupos" se pueda probar ya; E5-02 agrega la
-   escritura.
+   escritura. **Aprobada tal cual.**
 5. **"Fin de semana" es viernes, sábado y domingo** (el issue lo pide así para
-   Hubble).
+   Hubble). **Aprobada tal cual.**
 6. **Cupos sin número todavía**: Laura Rivera (¿tiene cupo?) y Hubble ("100
    por temporada": ¿cuál es la temporada?) quedan sin cupo global con
    `TODO(cliente)` hasta que el cliente fije el valor. Un cupo por temporada
    necesitaría fechas de temporada: hoy el cupo es uno solo para toda la
-   vigencia del beneficio.
+   vigencia del beneficio. **Resuelta: quedan pendientes como `TODO(cliente)`.**
 7. El estado **"disponible" sugiere el nivel siguiente** cuando da más, para
-   que E8-04 muestre "Con Oro, 40 %" (en el catálogo inicial todos los
-   beneficios dan algo desde Bronce, así que ninguno sale bloqueado).
+   que E8-04 muestre "Con Oro, 40 %". **Aprobada.** El cliente confirma que
+   habrá **beneficios exclusivos de Oro y Diamante** (un beneficio con valor
+   solo en esos niveles): a un cliente de nivel inferior le sale "bloqueado"
+   con los puntos que le faltan (regla 9). El catálogo inicial da algo desde
+   Bronce, pero el modelo admite la exclusividad desde ya (ver el escenario
+   de prueba "Postre de la casa (solo Oro y Diamante)" en el fixture).
 
 ## Reglas duras de CLAUDE.md que aplican
 

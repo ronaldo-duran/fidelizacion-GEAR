@@ -29,7 +29,24 @@ class DatabaseSeeder extends Seeder
         $this->sembrarCategorias();
         $this->sembrarComercios();
         $this->sembrarUsuarios();
-        $this->seedReglas();
+
+        if (config('muestra.sembrar') !== true) {
+            $this->seedReglas();
+
+            return;
+        }
+
+        // Datos de muestra: las reglas base rigen desde el mes anterior, como si el
+        // programa llevara ese tiempo andando, para que la historia de compras sume puntos.
+        DatosDeMuestraSeeder::reloj(DatosDeMuestraSeeder::inicio());
+
+        try {
+            $this->seedReglas();
+        } finally {
+            DatosDeMuestraSeeder::reloj(null);
+        }
+
+        $this->call(DatosDeMuestraSeeder::class);
     }
 
     /**

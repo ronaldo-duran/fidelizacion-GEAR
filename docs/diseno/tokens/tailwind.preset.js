@@ -12,7 +12,7 @@ module.exports = {
         field: '#cfc6ba',
         brand: { DEFAULT: '#1f5c4f', strong: '#163f37', soft: '#e2ede8' },
         success: { DEFAULT: '#0f6b3a', ink: '#1e7a46' },
-        danger: '#a31d15',
+        danger: { DEFAULT: '#a31d15', soft: '#fdecea', line: '#f3c2bd' },
         warn: { DEFAULT: '#9a4f00', ink: '#7a3f00', soft: '#fff6e6', line: '#efd3a0' },
         cashier: { ink: '#0f0d0b', ink2: '#4a433c', key: '#f1ede7', placeholder: '#b5ada3' },
         tier: {

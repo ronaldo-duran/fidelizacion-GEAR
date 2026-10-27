@@ -13,6 +13,7 @@ la duda, manda el acta y `CLAUDE.md`.
 | Inicio, niveles, historial | 1 punto por $1.000, Plata 500 / Oro 1.500 / Diamante 3.000, 12 meses | Son **supuestos**. Los números viven en `tests/Fixtures/` y en las reglas configurables, nunca en las vistas. |
 | Suscripción (1s) | $49.900 al mes / $499.000 al año, solo Diamante | Supuesto. Precio y planes salen de la configuración de membresías. |
 | Tablero (1z) | Nombres de comercios y cifras | Son de ejemplo. |
+| Tablero (1z) | Comercio sin actividad en amarillo (`warn-soft`) | **Cambiado a rojo** (`danger-soft` / `danger`, sin ícono) por pedido de Ronaldo (2026-10-26): debe leerse como alerta de que algo está mal. No volver al amarillo. |
 
 `PROMPT.md` es el prompt original del diseñador. El orden real de trabajo
 está en los issues y en `docs/plan-de-trabajo.md`.

@@ -56,7 +56,9 @@ class UserForm
                 Select::make('sede_id')
                     ->label('Sede')
                     ->options(static fn (Get $get): array => self::sedeOptions($get('comercio_id')))
-                    ->searchable()
+                    // Lista sin buscador (pocas sedes por comercio): la de buscador no muestra
+                    // la sede que el formulario elige solo cuando el comercio tiene una.
+                    ->native()
                     ->helperText('Solo las sedes del comercio elegido.')
                     ->visible(static fn (Get $get): bool => self::rol($get) === RolUsuario::Cajero)
                     ->required()

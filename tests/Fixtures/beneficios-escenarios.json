@@ -1,0 +1,171 @@
+{
+    "_note": "Availability scenarios for E5-01. Benefits refer to tests/Fixtures/beneficios-catalogo.json by name, plus test-only benefits defined here. Dates are in America/Bogota; 2026-10-27 is a Tuesday. Level thresholds come from the niveles rule: plata 500, oro 1500, diamante 3000 points. Values the client has not confirmed carry \"_assumption\": true.",
+    "settings": {
+        "weekend_days": { "value": ["viernes", "sabado", "domingo"], "_source": "issue #19" },
+        "windows": ["mes", "anio", "vida"],
+        "allowed_conditions": ["es_cumpleanos", "dia_semana", "fin_de_semana"]
+    },
+    "extra_benefits": [
+        {
+            "nombre": "Postre de la casa (solo Oro y Diamante)",
+            "comercio_nit": "800100100",
+            "tipo": "monto_fijo",
+            "valores_por_nivel": { "oro": 18000, "diamante": 25000 },
+            "condiciones": {},
+            "max_por_cliente": { "ventana": "mes", "cantidad": 1 },
+            "cupo_global": null,
+            "_reason": "the initial catalog gives something from Bronce, so no benefit is locked; this one tests the locked state"
+        },
+        {
+            "nombre": "Beneficio vencido",
+            "comercio_nit": "800200200",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "bronce": 5 },
+            "condiciones": {},
+            "vigente_hasta": "2026-09-30",
+            "_reason": "out of its validity: never listed"
+        }
+    ],
+    "invalid_conditions": [
+        { "condiciones": { "monto_minimo": 50000 }, "_reason": "key outside the whitelist" },
+        { "condiciones": { "dia_semana": ["festivo"] }, "_reason": "not a weekday" },
+        {
+            "condiciones": { "expresion": "monto > 50000 && categoria == 'x'" },
+            "_reason": "free expression (hard rule 3.8)"
+        },
+        { "condiciones": { "es_cumpleanos": "si" }, "_reason": "must be a boolean" }
+    ],
+    "cases": [
+        {
+            "_description": "Tuesday beer at BBC for a Plata customer: available with the Plata value and the Oro suggestion.",
+            "_e5_01_criterion": "a weekday benefit is available on its day and suggests the next level",
+            "today": "2026-10-27",
+            "cliente": { "nivel_efectivo": "plata", "saldo_puntos": 800 },
+            "beneficio": "Martes de cerveza de línea básica en Cervecería BBC",
+            "expected": {
+                "estado": "disponible",
+                "valor": 20,
+                "siguiente_nivel": { "nivel": "oro", "valor": 40, "puntos_faltantes": 700 }
+            }
+        },
+        {
+            "_description": "The same benefit on a Wednesday is not available today; it comes back next Tuesday.",
+            "_e5_01_criterion": "a weekday benefit is not available on other days",
+            "today": "2026-10-28",
+            "cliente": { "nivel_efectivo": "plata", "saldo_puntos": 800 },
+            "beneficio": "Martes de cerveza de línea básica en Cervecería BBC",
+            "expected": { "estado": "no_disponible_hoy", "proxima_fecha": "2026-11-03" }
+        },
+        {
+            "_description": "The birthday benefit on the customer's birthday, then used: it comes back next year.",
+            "_e5_01_criterion": "the birthday benefit only on the birthday",
+            "today": "2026-10-27",
+            "cliente": { "nivel_efectivo": "oro", "saldo_puntos": 1700, "fecha_nacimiento": "1990-10-27" },
+            "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+            "steps": [
+                { "redenciones_previas": [], "expected": { "estado": "disponible", "valor": 70 } },
+                {
+                    "redenciones_previas": [{ "fecha": "2026-10-27" }],
+                    "expected": { "estado": "usado", "vuelve": "2027-01-01" }
+                }
+            ]
+        },
+        {
+            "_description": "Not the birthday: next birthday date. No birth date: not available, with the reason.",
+            "_e5_01_criterion": "the birthday benefit needs the birth date",
+            "today": "2026-10-27",
+            "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+            "clientes": [
+                {
+                    "cliente": { "nivel_efectivo": "bronce", "saldo_puntos": 100, "fecha_nacimiento": "1995-12-05" },
+                    "expected": { "estado": "no_disponible_hoy", "proxima_fecha": "2026-12-05" }
+                },
+                {
+                    "cliente": { "nivel_efectivo": "bronce", "saldo_puntos": 100, "fecha_nacimiento": null },
+                    "expected": { "estado": "no_disponible_hoy", "motivo": "sin_fecha_nacimiento" }
+                }
+            ]
+        },
+        {
+            "_description": "Born on February 29: the birthday is February 28 in a non-leap year.",
+            "_e5_01_criterion": "a February 29 birthday falls on February 28",
+            "today": "2027-02-28",
+            "cliente": { "nivel_efectivo": "bronce", "saldo_puntos": 100, "fecha_nacimiento": "2000-02-29" },
+            "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+            "expected": { "estado": "disponible", "valor": 30 }
+        },
+        {
+            "_description": "The lifetime meat discount at El Rancho: once per account, never comes back; and sold out for everyone when the global quota is used up.",
+            "_e5_01_criterion": "lifetime limit and global quota",
+            "today": "2026-10-27",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "steps": [
+                {
+                    "cliente": { "nivel_efectivo": "diamante", "saldo_puntos": 3200 },
+                    "redenciones_previas": [{ "fecha": "2025-11-02", "propia": true }],
+                    "expected": { "estado": "usado", "vuelve": null }
+                },
+                {
+                    "cliente": { "nivel_efectivo": "plata", "saldo_puntos": 600 },
+                    "redenciones_de_otros": 50,
+                    "expected": { "estado": "sin_cupos" }
+                },
+                {
+                    "cliente": { "nivel_efectivo": "plata", "saldo_puntos": 600 },
+                    "redenciones_de_otros": 49,
+                    "expected": { "estado": "disponible", "valor": 20 }
+                }
+            ]
+        },
+        {
+            "_description": "Hubble on weekends only, once a month: available on Friday, used comes back on the 1st, and not available on Monday.",
+            "_e5_01_criterion": "a weekend benefit with a monthly limit",
+            "beneficio": "Descuento de alquiler de fin de semana en Hubble",
+            "cliente": { "nivel_efectivo": "oro", "saldo_puntos": 2000 },
+            "steps": [
+                {
+                    "today": "2026-10-30",
+                    "redenciones_previas": [],
+                    "expected": { "estado": "disponible", "valor": 20 }
+                },
+                {
+                    "today": "2026-10-31",
+                    "redenciones_previas": [{ "fecha": "2026-10-30" }],
+                    "expected": { "estado": "usado", "vuelve": "2026-11-01" }
+                },
+                {
+                    "today": "2026-11-02",
+                    "redenciones_previas": [{ "fecha": "2026-10-30" }],
+                    "expected": { "estado": "no_disponible_hoy", "proxima_fecha": "2026-11-06" }
+                }
+            ]
+        },
+        {
+            "_description": "A benefit from Oro for a Plata customer is locked, with the points missing for Oro.",
+            "_e5_01_criterion": "a higher-level benefit is locked with the missing points",
+            "today": "2026-10-27",
+            "cliente": { "nivel_efectivo": "plata", "saldo_puntos": 800 },
+            "beneficio": "Postre de la casa (solo Oro y Diamante)",
+            "expected": { "estado": "bloqueado", "nivel_requerido": "oro", "puntos_faltantes": 700 }
+        },
+        {
+            "_description": "Laura Rivera requires a support of the operation at redemption.",
+            "_e5_01_criterion": "a benefit can require a support",
+            "today": "2026-10-27",
+            "cliente": { "nivel_efectivo": "diamante", "saldo_puntos": 3100 },
+            "beneficio": "Descuento en cuota inicial o administración con Constructora Inmobiliaria Laura Rivera",
+            "expected": { "estado": "disponible", "valor": 5, "requiere_soporte": true }
+        },
+        {
+            "_description": "Out of validity or inactive benefits are never listed.",
+            "_e5_01_criterion": "expired or inactive benefits are not listed",
+            "today": "2026-10-27",
+            "cliente": { "nivel_efectivo": "diamante", "saldo_puntos": 3100 },
+            "not_listed": ["Beneficio vencido"],
+            "deactivate_before": ["Martes de cerveza de línea básica en Cervecería BBC"],
+            "expected": {
+                "not_listed": ["Beneficio vencido", "Martes de cerveza de línea básica en Cervecería BBC"]
+            }
+        }
+    ]
+}

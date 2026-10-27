@@ -22,6 +22,8 @@
   --color-success: #0f6b3a;      /* pantalla completa "registrada" / "válido" */
   --color-success-ink: #1e7a46;  /* deltas positivos en texto */
   --color-danger: #a31d15;       /* "ya usado", devoluciones, cerrar sesión */
+  --color-danger-soft: #fdecea;  /* fondo de alerta: comercio sin registros en el tablero (pedido de Ronaldo, 2026-10-26) */
+  --color-danger-line: #f3c2bd;
   --color-warn: #9a4f00;         /* borde cédula no encontrada */
   --color-warn-ink: #7a3f00;
   --color-warn-soft: #fff6e6;

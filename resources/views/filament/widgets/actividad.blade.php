@@ -1,4 +1,4 @@
-{{-- Comercios (o sedes) por actividad (1z): filas de 44 px tabulares; las inactivas en warn-soft con "Sin registros hace N días". --}}
+{{-- Comercios (o sedes) por actividad (1z): filas de 44 px tabulares; las inactivas en rojo (danger-soft), como alerta, con "Sin registros hace N días". --}}
 <x-filament-widgets::widget>
     <x-filament::section :heading="$titulo">
         <x-slot name="description">
@@ -24,7 +24,11 @@
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
                             @foreach ($filas as $posicion => $fila)
                                 <tr
-                                    @class(['h-11', 'bg-warn-soft text-warn-ink' => $fila['inactivo']])
+                                    @class([
+                                        'h-11',
+                                        // En oscuro, rojo translúcido y texto más claro, para que no quede un bloque claro.
+                                        'bg-danger-soft text-danger dark:bg-danger-500/15 dark:text-danger-400' => $fila['inactivo'],
+                                    ])
                                     @unless ($fila['visible']) x-show="todos" x-cloak @endunless
                                 >
                                     <td class="px-3">{{ $posicion + 1 }}</td>

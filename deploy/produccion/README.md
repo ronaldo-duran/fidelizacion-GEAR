@@ -25,9 +25,9 @@ No hay que tocar este repo a mano.
 
 Settings → Secrets and variables → Actions → **New repository secret**:
 
-| Secreto                 | Qué es                                                                 |
-| ----------------------- | ---------------------------------------------------------------------- |
-| `PROD_REPO_DEPLOY_KEY`  | Clave privada SSH con permiso de **escritura** sobre este repo de producción. |
+| Secreto                | Qué es                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `PROD_REPO_DEPLOY_KEY` | Clave privada SSH con permiso de **escritura** sobre este repo de producción. |
 
 Para crearla:
 
@@ -43,19 +43,19 @@ ssh-keygen -t ed25519 -C "deploy-produccion" -f deploy_prod -N ""
 
 Settings → Secrets and variables → Actions:
 
-| Secreto       | Qué es                                                                      |
-| ------------- | --------------------------------------------------------------------------- |
-| `SSH_HOST`    | Host o IP del servidor de Hostinger.                                        |
-| `SSH_PORT`    | Puerto SSH (en Hostinger suele ser `65002`).                                |
-| `SSH_USER`    | Usuario SSH del hosting.                                                     |
+| Secreto       | Qué es                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------- |
+| `SSH_HOST`    | Host o IP del servidor de Hostinger.                                                            |
+| `SSH_PORT`    | Puerto SSH (en Hostinger suele ser `65002`).                                                    |
+| `SSH_USER`    | Usuario SSH del hosting.                                                                        |
 | `SSH_KEY`     | Clave privada SSH para entrar al servidor (su pública va en el `authorized_keys` del servidor). |
-| `DEPLOY_PATH` | Ruta absoluta del clon de este repo en el servidor.                         |
+| `DEPLOY_PATH` | Ruta absoluta del clon de este repo en el servidor.                                             |
 
 Variable opcional (misma pantalla, pestaña **Variables**):
 
-| Variable  | Qué es                                                              |
+| Variable  | Qué es                                                             |
 | --------- | ------------------------------------------------------------------ |
-| `PHP_BIN` | Binario de PHP del host si no es `php` (p. ej. `/usr/bin/php8.3`).  |
+| `PHP_BIN` | Binario de PHP del host si no es `php` (p. ej. `/usr/bin/php8.3`). |
 
 ## Preparación del servidor (una sola vez)
 

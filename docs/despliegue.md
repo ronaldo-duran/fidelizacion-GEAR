@@ -168,9 +168,9 @@ GitHub Actions y al servidor solo llega el resultado listo para ejecutar.
 
 ### Dos repositorios
 
-| Repositorio                          | Rol                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| `ronaldo-duran/fidelizacion-GEAR`    | **Fuente.** Aquí se programa, se prueba y se crean los tags `v*`.   |
+| Repositorio                                  | Rol                                                                                                         |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `ronaldo-duran/fidelizacion-GEAR`            | **Fuente.** Aquí se programa, se prueba y se crean los tags `v*`.                                           |
 | `ronaldo-duran/fidelizacion-GEAR-Produccion` | **Artefacto.** Guarda la app ya compilada (con `vendor/` y `public/build/`). Es lo que el servidor consume. |
 
 ### Cómo fluye un despliegue
@@ -204,8 +204,8 @@ GitHub Actions y al servidor solo llega el resultado listo para ejecutar.
 
 **Repo fuente** (`fidelizacion-GEAR`) → Settings → Secrets and variables → Actions:
 
-| Secreto                | Qué es                                                                 |
-| ---------------------- | ---------------------------------------------------------------------- |
+| Secreto                | Qué es                                                                      |
+| ---------------------- | --------------------------------------------------------------------------- |
 | `PROD_REPO_DEPLOY_KEY` | Clave privada SSH con permiso de **escritura** sobre el repo de producción. |
 
 **Repo de producción** (`fidelizacion-GEAR-Produccion`) → Actions:

@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Cajero\LogoutController as CajeroLogoutController;
 use App\Http\Controllers\Cliente\LogoutController;
 use App\Http\Controllers\Cliente\RegistroCajaController;
 use App\Http\Controllers\KitUiController;
+use App\Http\Middleware\EnsureCajero;
+use App\Livewire\Cajero\Caja;
+use App\Livewire\Cajero\Ingreso as CajeroIngreso;
 use App\Livewire\Cliente\Ingreso;
 use App\Livewire\Cliente\RecuperarPin;
 use App\Livewire\Cliente\Registro;
@@ -31,5 +35,15 @@ Route::name('cliente.')->group(function (): void {
         // TODO(E8-03): el inicio del cliente reemplaza esta vista provisional.
         Route::view('/inicio', 'cliente.inicio')->name('inicio');
         Route::post('/salir', LogoutController::class)->name('salir');
+    });
+});
+
+// Caja del comercio (E4-02): la cuenta del sistema (guard web), fuera del panel.
+Route::prefix('caja')->name('caja.')->group(function (): void {
+    Route::get('/ingresar', CajeroIngreso::class)->name('ingreso');
+
+    Route::middleware(['auth:web', EnsureCajero::class])->group(function (): void {
+        Route::get('/', Caja::class)->name('inicio');
+        Route::post('/salir', CajeroLogoutController::class)->name('salir');
     });
 });

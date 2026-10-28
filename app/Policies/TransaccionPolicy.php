@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Compras\AnulacionCajero;
 use App\Enums\RolUsuario;
 use App\Models\Transaccion;
 use App\Models\User;
@@ -12,7 +13,8 @@ use App\Models\User;
  * Who registers and annuls purchases. A cashier registers only in their own
  * branch, a merchant administrator in any branch of their merchant and the
  * group administrator anywhere. The API is authorized in E9-01. Annulling
- * follows the ledger reversal (E3-02).
+ * follows the ledger reversal (E3-02); a cashier annuls only their own
+ * purchases within the window (E4-02).
  */
 class TransaccionPolicy
 {
@@ -34,10 +36,14 @@ class TransaccionPolicy
             || ($user->rol === RolUsuario::Cajero && $sedeId !== null && $user->sede_id === $sedeId);
     }
 
+    /**
+     * Los administradores, y el cajero solo para sus propias compras en plazo (E4-02).
+     */
     public function annul(User $user, Transaccion $transaccion): bool
     {
         return $user->activo
             && ($user->esAdministradorDelGrupo()
-                || ($user->esAdministradorDeComercio() && $user->comercio_id === $transaccion->comercio_id));
+                || ($user->esAdministradorDeComercio() && $user->comercio_id === $transaccion->comercio_id)
+                || AnulacionCajero::permite($user, $transaccion));
     }
 }

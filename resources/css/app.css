@@ -40,6 +40,14 @@
     --text-overline--letter-spacing: 0.06em;
     --text-overline--font-weight: 700;
 
+    /* Cajero (pantalla 8): monto, teclas, nombre del cliente y cifras de las tarjetas */
+    --text-cajero-monto: 60px;
+    --text-cajero-monto--letter-spacing: -0.02em;
+    --text-cajero-tecla: 28px;
+    --text-cajero-nombre: 26px;
+    --text-cajero-nombre--line-height: 1.15;
+    --text-cajero-cifra: 30px;
+
     /* Radios (rounded-full para pastillas) */
     --radius-xs: 6px;
     --radius-sm: 8px;
@@ -59,6 +67,10 @@
 @layer base {
     html {
         -webkit-tap-highlight-color: transparent;
+    }
+
+    [x-cloak] {
+        display: none !important;
     }
 
     body {

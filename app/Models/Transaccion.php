@@ -105,6 +105,17 @@ class Transaccion extends Model
     }
 
     /**
+     * Los puntos que dejó la compra en el libro, neto de sus reversas.
+     */
+    public function puntosOtorgados(): int
+    {
+        return $this->movimientos->reduce(
+            static fn (int $total, MovimientoPuntos $movimiento): int => $total + $movimiento->puntos,
+            0,
+        );
+    }
+
+    /**
      * The document is stored and looked up normalized (hard rule 3.10).
      *
      * @return Attribute<string, string>

@@ -4,7 +4,9 @@
         "max_amount_digits": { "value": 9, "_source": "client confirmed 2026-10-26" },
         "auto_return_seconds": { "value": 5, "_source": "design 1g: 'Vuelve sola en 5 s'" },
         "cashier_annul_hours": { "value": 72, "_source": "client 2026-10-26: annul up to 3 days later" },
-        "cashier_annul_reason": "Anulada desde la caja"
+        "cashier_annul_reason": "Anulada desde la caja",
+        "login_max_attempts": { "value": 5, "_source": "same as the customer login (E8-02)" },
+        "login_lockout_minutes": { "value": 15, "_source": "same as the customer login (E8-02)" }
     },
     "keypad": [
         { "keys": ["8", "5", "000"], "expected_amount": 85000 },

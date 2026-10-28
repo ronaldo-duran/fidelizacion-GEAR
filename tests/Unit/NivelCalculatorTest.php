@@ -48,3 +48,18 @@ it('only counts the membership and event sources while valid', function (): void
         ->and($fuentes->porEvento)->toBe(Nivel::Oro)
         ->and($fuentes->nivel())->toBe(Nivel::Oro);
 });
+
+it('tells how many points are missing for the next level', function (
+    Nivel $actual,
+    int $saldo,
+    ?array $expected,
+): void {
+    $siguiente = app(NivelCalculator::class)->siguiente($actual, $saldo, $this->umbrales);
+
+    expect($siguiente === null ? null : [$siguiente['nivel'], $siguiente['faltan']])->toBe($expected);
+})->with([
+    'plata to oro' => [Nivel::Plata, 1245, [Nivel::Oro, 255]],
+    'bronce to plata' => [Nivel::Bronce, 0, [Nivel::Plata, 500]],
+    'oro by event with few points' => [Nivel::Oro, 100, [Nivel::Diamante, 2900]],
+    'diamante has no next level' => [Nivel::Diamante, 3200, null],
+]);

@@ -52,6 +52,30 @@ class NivelCalculator
     }
 
     /**
+     * El nivel inmediatamente superior al actual y los puntos que le faltan
+     * para llegar a él ("Le faltan 255 para Oro"); null en Diamante o si la
+     * regla no trae ese umbral.
+     *
+     * @param  array<array-key, mixed>  $definicionNiveles
+     * @return array{nivel: Nivel, faltan: int}|null
+     */
+    public function siguiente(Nivel $actual, int $saldo, array $definicionNiveles): ?array
+    {
+        $umbrales = is_array($definicionNiveles['umbrales'] ?? null) ? $definicionNiveles['umbrales'] : [];
+
+        foreach ($umbrales as $umbral) {
+            $nivel = is_array($umbral) && is_string($umbral['nivel'] ?? null) ? Nivel::tryFrom($umbral['nivel']) : null;
+            $puntos = is_array($umbral) ? ($umbral['umbral_puntos'] ?? null) : null;
+
+            if ($nivel !== null && is_int($puntos) && $nivel->rank() === $actual->rank() + 1) {
+                return ['nivel' => $nivel, 'faltan' => max(0, $puntos - $saldo)];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * A level that lasts until a date counts that whole day.
      */
     private function vigente(?Nivel $nivel, ?CarbonImmutable $hasta, CarbonImmutable $day): ?Nivel

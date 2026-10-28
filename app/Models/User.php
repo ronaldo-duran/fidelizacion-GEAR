@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -45,6 +46,22 @@ class User extends Authenticatable implements FilamentUser
         return $panel->getId() === 'admin'
             && $this->activo
             && $this->rol->puedeAccederAlPanel();
+    }
+
+    /**
+     * La caja `/caja` (E4-02) solo admite cajeros activos con sede asignada.
+     */
+    public function puedeEntrarALaCaja(): bool
+    {
+        return $this->activo && $this->rol === RolUsuario::Cajero && $this->sede_id !== null;
+    }
+
+    /**
+     * @return BelongsTo<Sede, $this>
+     */
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
     }
 
     public function esAdministradorDelGrupo(): bool

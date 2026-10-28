@@ -1,0 +1,18 @@
+{
+    "_note": "JSON Schema (draft 2020-12) for the `condiciones` column of `beneficios` (E5-01). CLOSED schema, its own whitelist (hard rule 3.8): only es_cumpleanos, dia_semana and fin_de_semana. No free-form expressions or evaluable strings.",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://clubaponterivera.co/schema/beneficio-condiciones.json",
+    "title": "Condiciones de uso de un beneficio",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "es_cumpleanos": { "type": "boolean" },
+        "dia_semana": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] }
+        },
+        "fin_de_semana": { "type": "boolean" }
+    }
+}

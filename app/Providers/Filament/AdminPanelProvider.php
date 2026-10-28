@@ -49,7 +49,7 @@ class AdminPanelProvider extends PanelProvider
             // Sidebar de 208 px y grupos en el orden de 1z; un grupo sin
             // recursos todavía no se muestra.
             ->sidebarWidth('13rem')
-            ->navigationGroups(['Comercios', 'Niveles y reglas', 'Membresías', 'Configuración'])
+            ->navigationGroups(['Beneficios', 'Comercios', 'Niveles y reglas', 'Membresías', 'Configuración'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

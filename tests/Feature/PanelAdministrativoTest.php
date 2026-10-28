@@ -83,6 +83,7 @@ it('orders the navigation as in 1z and hides groups without resources', function
 
     expect($navegacion)->toBe([
         '' => ['Tablero'],
+        'Beneficios' => ['Beneficios'],
         'Comercios' => ['Comercios', 'Sedes', 'Categorías'],
         'Niveles y reglas' => ['Reglas', 'Simulador', 'Eventos calificados'],
         'Configuración' => ['Usuarios'],

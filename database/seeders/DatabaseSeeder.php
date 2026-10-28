@@ -29,6 +29,7 @@ class DatabaseSeeder extends Seeder
         $this->sembrarCategorias();
         $this->sembrarComercios();
         $this->sembrarUsuarios();
+        $this->call(BeneficiosSeeder::class);
 
         if (config('muestra.sembrar') !== true) {
             $this->seedReglas();

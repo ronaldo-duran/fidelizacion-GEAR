@@ -339,7 +339,8 @@ it('lets the cashier annul only their own purchase within the window', function 
             ->and(MovimientoPuntos::query()
                 ->where('transaccion_id', $registro->transaccion->id)
                 ->where('tipo', TipoMovimiento::Reversa->value)
-                ->sum('puntos'))->toBe(-85);
+                ->get()
+                ->sum(static fn (MovimientoPuntos $movimiento): int => $movimiento->puntos))->toBe(-85);
     }
 });
 

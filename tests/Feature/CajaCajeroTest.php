@@ -21,6 +21,8 @@ use App\Models\Transaccion;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Support\CajeroTestData;
@@ -126,27 +128,33 @@ it('rejects a wrong password with the same message and locks the email after too
 
 it('keeps the email lockout to the IP that failed, so nobody locks out another cashier', function (): void {
     $login = app(LoginCajero::class);
+    // Clave aleatoria: sin contraseñas escritas en la prueba.
+    $clave = Str::random(20);
+    $this->cajero->forceFill(['password' => Hash::make($clave)])->save();
 
     foreach (range(1, config('cajero.login_max_attempts')) as $ignored) {
-        expect(fn () => $login($this->cajero->email, 'otra', '10.0.0.1'))->toThrow(ValidationException::class);
+        expect(fn () => $login($this->cajero->email, Str::random(20), '10.0.0.1'))->toThrow(ValidationException::class);
     }
 
-    expect(fn () => $login($this->cajero->email, 'password', '10.0.0.1'))
+    expect(fn () => $login($this->cajero->email, $clave, '10.0.0.1'))
         ->toThrow(ValidationException::class, 'Hiciste demasiados intentos')
-        ->and($login($this->cajero->email, 'password', '10.0.0.2')->id)->toBe($this->cajero->id);
+        ->and($login($this->cajero->email, $clave, '10.0.0.2')->id)->toBe($this->cajero->id);
 });
 
 it('stops an IP that fails with too many different emails', function (): void {
     $login = app(LoginCajero::class);
+    // Clave aleatoria: sin contraseñas escritas en la prueba.
+    $clave = Str::random(20);
+    $this->cajero->forceFill(['password' => Hash::make($clave)])->save();
 
     foreach (range(1, config('cajero.login_max_attempts_per_ip')) as $intento) {
-        expect(fn () => $login("nadie{$intento}@example.com", 'otra', '10.0.0.1'))
+        expect(fn () => $login("nadie{$intento}@example.com", Str::random(20), '10.0.0.1'))
             ->toThrow(ValidationException::class, LoginCajero::NO_COINCIDEN);
     }
 
-    expect(fn () => $login($this->cajero->email, 'password', '10.0.0.1'))
+    expect(fn () => $login($this->cajero->email, $clave, '10.0.0.1'))
         ->toThrow(ValidationException::class, 'Hiciste demasiados intentos')
-        ->and($login($this->cajero->email, 'password', '10.0.0.2')->id)->toBe($this->cajero->id);
+        ->and($login($this->cajero->email, $clave, '10.0.0.2')->id)->toBe($this->cajero->id);
 });
 
 it('closes the session of a cashier deactivated while logged in', function (): void {

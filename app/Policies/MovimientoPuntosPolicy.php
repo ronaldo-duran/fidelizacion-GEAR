@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Compras\AnulacionCajero;
 use App\Models\MovimientoPuntos;
+use App\Models\Transaccion;
 use App\Models\User;
 
 /**
@@ -20,7 +22,7 @@ class MovimientoPuntosPolicy
 
     /**
      * The group administrator, or the administrator of the merchant where the
-     * purchase happened.
+     * purchase happened. El cajero, solo al anular su propia compra en plazo (E4-02).
      */
     public function reverse(User $user, MovimientoPuntos $original): bool
     {
@@ -29,6 +31,16 @@ class MovimientoPuntosPolicy
         }
 
         return $user->esAdministradorDelGrupo()
-            || ($user->esAdministradorDeComercio() && $user->comercio_id === $original->comercio_id);
+            || ($user->esAdministradorDeComercio() && $user->comercio_id === $original->comercio_id)
+            || $this->cajeroAnulaSuCompra($user, $original);
+    }
+
+    private function cajeroAnulaSuCompra(User $user, MovimientoPuntos $original): bool
+    {
+        $transaccion = $original->transaccion_id === null
+            ? null
+            : Transaccion::query()->find($original->transaccion_id);
+
+        return $transaccion !== null && AnulacionCajero::permite($user, $transaccion);
     }
 }

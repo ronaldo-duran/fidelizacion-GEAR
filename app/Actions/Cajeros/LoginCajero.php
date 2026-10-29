@@ -16,7 +16,11 @@ use SensitiveParameter;
  * error es el mismo para una cuenta que no existe, una contraseña errada o
  * una cuenta que no puede entrar, así no revela si la cuenta existe. Cada
  * intento se cuenta antes de comparar; tras el máximo, ese correo queda
- * bloqueado el tiempo de la configuración.
+ * bloqueado desde esa IP el tiempo de la configuración. La llave lleva la IP
+ * para que nadie deje sin ingresar a un cajero ajeno escribiendo su correo.
+ *
+ * Además se cuentan los intentos fallidos por IP, como en el ingreso del
+ * cliente, para que probar muchos correos desde un mismo origen se frene.
  */
 class LoginCajero
 {
@@ -29,15 +33,22 @@ class LoginCajero
         string $email,
         #[SensitiveParameter]
         string $password,
+        ?string $ip = null,
     ): User {
         $email = mb_strtolower(trim($email));
         $minutos = self::setting('login_lockout_minutes');
-        $key = "cajero-ingreso:{$email}";
+        $key = "cajero-ingreso:{$email}|{$ip}";
+        $keyIp = $ip === null ? null : "cajero-ingreso-ip:{$ip}";
+        $bloqueado = ValidationException::withMessages([
+            'email' => "Hiciste demasiados intentos. Espera {$minutos} minutos e intenta de nuevo.",
+        ]);
+
+        if ($keyIp !== null && RateLimiter::tooManyAttempts($keyIp, self::setting('login_max_attempts_per_ip'))) {
+            throw $bloqueado;
+        }
 
         if (RateLimiter::hit($key, $minutos * 60) > self::setting('login_max_attempts')) {
-            throw ValidationException::withMessages([
-                'email' => "Hiciste demasiados intentos. Espera {$minutos} minutos e intenta de nuevo.",
-            ]);
+            throw $bloqueado;
         }
 
         $user = User::query()->where('email', $email)->first();
@@ -46,6 +57,10 @@ class LoginCajero
         $valido = Hash::check($password, $user->password ?? self::hashFicticio());
 
         if (! $valido || $user === null || ! $user->puedeEntrarALaCaja()) {
+            if ($keyIp !== null) {
+                RateLimiter::hit($keyIp, $minutos * 60);
+            }
+
             throw ValidationException::withMessages(['email' => self::NO_COINCIDEN]);
         }
 

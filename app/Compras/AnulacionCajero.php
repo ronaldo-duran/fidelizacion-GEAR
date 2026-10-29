@@ -33,14 +33,13 @@ final class AnulacionCajero
      */
     public static function ultima(User $user): ?Transaccion
     {
-        $query = Transaccion::query()
+        return Transaccion::query()
             ->where('registrada_por', $user->id)
             ->where('sede_id', $user->sede_id)
             ->where('estado', '!=', EstadoTransaccion::Anulada->value)
-            ->where('created_at', '>=', self::desde());
-        $query->getQuery()->orderByDesc('id');
-
-        return $query->first();
+            ->where('created_at', '>=', self::desde())
+            ->latest('id')
+            ->first();
     }
 
     private static function desde(): CarbonImmutable

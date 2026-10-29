@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Cajeros\FindCliente;
 use App\Actions\Cajeros\LoginCajero;
 use App\Actions\Compras\AnnulCompra;
 use App\Actions\Compras\RegisterCompra;
@@ -20,6 +21,7 @@ use App\Models\Transaccion;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Support\CajeroTestData;
 use Tests\Support\ComprasTestData;
@@ -59,7 +61,9 @@ it('keeps the cashier settings in config equal to the fixture', function (): voi
         ->and(config('cajero.annul_hours'))->toBe($settings['cashier_annul_hours']['value'])
         ->and(config('cajero.annul_reason'))->toBe($settings['cashier_annul_reason'])
         ->and(config('cajero.login_max_attempts'))->toBe($settings['login_max_attempts']['value'])
-        ->and(config('cajero.login_lockout_minutes'))->toBe($settings['login_lockout_minutes']['value']);
+        ->and(config('cajero.login_lockout_minutes'))->toBe($settings['login_lockout_minutes']['value'])
+        ->and(config('cajero.login_max_attempts_per_ip'))->toBe($settings['login_max_attempts_per_ip']['value'])
+        ->and(config('cajero.search_max_per_minute'))->toBe($settings['search_max_per_minute']['value']);
 });
 
 it('lets in only active cashiers with a branch, with the same message for everyone else', function (
@@ -118,6 +122,31 @@ it('rejects a wrong password with the same message and locks the email after too
 
     $intentar('password')->assertHasErrors(['email'])->assertSee('Hiciste demasiados intentos');
     expect(auth()->check())->toBeFalse();
+});
+
+it('keeps the email lockout to the IP that failed, so nobody locks out another cashier', function (): void {
+    $login = app(LoginCajero::class);
+
+    foreach (range(1, config('cajero.login_max_attempts')) as $ignored) {
+        expect(fn () => $login($this->cajero->email, 'otra', '10.0.0.1'))->toThrow(ValidationException::class);
+    }
+
+    expect(fn () => $login($this->cajero->email, 'password', '10.0.0.1'))
+        ->toThrow(ValidationException::class, 'Hiciste demasiados intentos')
+        ->and($login($this->cajero->email, 'password', '10.0.0.2')->id)->toBe($this->cajero->id);
+});
+
+it('stops an IP that fails with too many different emails', function (): void {
+    $login = app(LoginCajero::class);
+
+    foreach (range(1, config('cajero.login_max_attempts_per_ip')) as $intento) {
+        expect(fn () => $login("nadie{$intento}@example.com", 'otra', '10.0.0.1'))
+            ->toThrow(ValidationException::class, LoginCajero::NO_COINCIDEN);
+    }
+
+    expect(fn () => $login($this->cajero->email, 'password', '10.0.0.1'))
+        ->toThrow(ValidationException::class, 'Hiciste demasiados intentos')
+        ->and($login($this->cajero->email, 'password', '10.0.0.2')->id)->toBe($this->cajero->id);
 });
 
 it('closes the session of a cashier deactivated while logged in', function (): void {
@@ -303,6 +332,27 @@ it('keeps the amount for an unknown document and each exit does what the design 
                 ->and($caja->get('enlace'))->toContain('signature=');
         }
     }
+});
+
+it('limits the document searches of each cashier per minute', function (): void {
+    $caja = Livewire::actingAs($this->cajero)->test(Caja::class)->call('continuar', 85000);
+    $buscar = fn (string $documento) => $caja
+        ->call('volverA', 'identificar')
+        ->set('form.documento', $documento)
+        ->call('buscar');
+
+    foreach (range(1, config('cajero.search_max_per_minute')) as $intento) {
+        $buscar((string) (1000000 + $intento))->assertSet('paso', 'no_registrado');
+    }
+
+    $buscar('1000999')
+        ->assertSet('paso', 'identificar')
+        ->assertHasErrors(['form.documento'])
+        ->assertSee(FindCliente::DEMASIADAS);
+
+    $this->travel(61)->seconds();
+
+    $buscar('1000999')->assertSet('paso', 'no_registrado');
 });
 
 it('lets the cashier annul only their own purchase within the window', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Cajero;
 
+use App\Actions\Cajeros\FindCliente;
 use App\Actions\Clientes\MakeEnlaceRegistro;
 use App\Actions\Compras\AnnulCompra;
 use App\Actions\Compras\RegisterCompra;
@@ -15,7 +16,6 @@ use App\Credenciales\QrRenderer;
 use App\Enums\CanalCompra;
 use App\Enums\PropositoCredencial;
 use App\Livewire\Forms\IdentificarForm;
-use App\Models\Cliente;
 use App\Models\User;
 use App\Niveles\ProximoNivel;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -104,7 +104,7 @@ class Caja extends Component
         $this->resetErrorBag();
     }
 
-    public function buscar(): void
+    public function buscar(FindCliente $find): void
     {
         if ($this->paso !== 'identificar') {
             return;
@@ -112,10 +112,7 @@ class Caja extends Component
 
         $this->form->validarDocumento();
 
-        $cliente = Cliente::query()
-            ->where('tipo_documento', $this->form->tipoDocumento)
-            ->where('documento', $this->form->documento)
-            ->first();
+        $cliente = $find($this->cajero(), $this->form->tipo(), $this->form->documento);
 
         $this->referencia = (string) Str::uuid();
         $this->clienteId = $cliente?->id;
@@ -223,7 +220,7 @@ class Caja extends Component
     public function render(ProximoNivel $proximo, QrRenderer $renderer): View
     {
         $cajero = $this->cajero()->load('sede.comercio');
-        $cliente = $this->clienteId === null ? null : Cliente::query()->find($this->clienteId);
+        $cliente = $this->form->cliente($this->clienteId);
 
         return view('livewire.cajero.caja', [
             'cajero' => $cajero,
@@ -245,8 +242,10 @@ class Caja extends Component
     {
         $cajero = $this->cajero();
 
-        if ($this->clienteId !== null) {
-            $this->form->usar(Cliente::query()->findOrFail($this->clienteId));
+        $cliente = $this->form->cliente($this->clienteId);
+
+        if ($cliente !== null) {
+            $this->form->usar($cliente);
         }
 
         try {

@@ -45,7 +45,7 @@ class Ingreso extends Component
         );
 
         try {
-            $user = $login($this->email, $this->password);
+            $user = $login($this->email, $this->password, request()->ip());
         } catch (ValidationException $e) {
             $this->addError('email', $e->validator->errors()->first());
             $this->password = '';

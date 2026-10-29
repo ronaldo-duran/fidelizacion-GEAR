@@ -55,6 +55,15 @@ class IdentificarForm extends Form
         return TipoDocumento::from($this->tipoDocumento);
     }
 
+    /**
+     * El cliente que se identificó, cargado de nuevo en cada petición: la
+     * caja solo guarda su id.
+     */
+    public function cliente(?int $id): ?Cliente
+    {
+        return $id === null ? null : Cliente::query()->find($id);
+    }
+
     public function usar(Cliente $cliente): void
     {
         $this->tipoDocumento = $cliente->tipo_documento->value;

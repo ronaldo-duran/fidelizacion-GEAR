@@ -15,4 +15,7 @@ return [
 
     'login_max_attempts' => 5,
     'login_lockout_minutes' => 15,
+    'login_max_attempts_per_ip' => 20,
+
+    'search_max_per_minute' => 20,
 ];

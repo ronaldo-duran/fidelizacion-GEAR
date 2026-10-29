@@ -1,0 +1,194 @@
+{
+    "_note": "Scenarios for E10-06 (admin panel: customers, points ledger and purchases). Today is 2026-10-29 in America/Bogota. Merchants are referred to by NIT (800100100 El Rancho de Javi, 800200200 Cervecería BBC). Each scenario starts from the customers below with only the base accrual rule (1 point per $1.000, no promotions). The reversal window comes from movimientos-escenarios.json (E3-02) and the level thresholds from reglas-validas.json (plata 500, oro 1500, diamante 3000). Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-10-29 10:00:00",
+    "settings": {
+        "level_change_reason_for_adjustment": {
+            "value": "ascenso_ajuste",
+            "_assumption": true,
+            "_source": "decision 1 of the spec"
+        },
+        "adjustment_max_points": { "value": null, "_assumption": true, "_source": "decision 2 of the spec: no cap" }
+    },
+    "customers": [
+        {
+            "key": "marcela",
+            "tipo_documento": "CC",
+            "documento": "1023456789",
+            "nombre_completo": "Marcela Gómez",
+            "nivel_por_membresia": "diamante",
+            "membresia_vigente_hasta": "2026-09-30",
+            "nivel_por_evento": "oro",
+            "evento_vigente_hasta": "2027-03-31",
+            "purchases": [
+                { "comercio_nit": "800200200", "monto": 450000, "dias_atras": 3, "estado": "acreditada" },
+                { "comercio_nit": "800100100", "monto": 120000, "dias_atras": 40, "estado": "acreditada" }
+            ],
+            "expected": {
+                "saldo_puntos": 570,
+                "nivel_por_puntos": "plata",
+                "nivel_efectivo": "oro",
+                "membresia_vencida": true,
+                "evento_vencido": false
+            },
+            "_reason": "1 point per $1.000 in both merchants; expired membership shows as expired, the event keeps her in oro"
+        },
+        {
+            "key": "yeferson",
+            "tipo_documento": "PPT",
+            "documento": "A1B2C3D4",
+            "nombre_completo": "Yeferson Pérez",
+            "purchases": [{ "comercio_nit": "800100100", "monto": 85000, "dias_atras": 1, "estado": "acreditada" }],
+            "expected": { "saldo_puntos": 85, "nivel_por_puntos": "bronce", "nivel_efectivo": "bronce" }
+        },
+        {
+            "key": "sin_compras",
+            "tipo_documento": "CE",
+            "documento": "1023456789",
+            "nombre_completo": "Andrea Salas",
+            "purchases": [],
+            "expected": { "saldo_puntos": 0, "nivel_por_puntos": "bronce", "nivel_efectivo": "bronce" },
+            "_reason": "same number as marcela with another document type: a different customer (CLAUDE.md 3.10)"
+        }
+    ],
+    "searches": [
+        { "tipo_documento": "CC", "term": "1023 456 789", "expected": ["marcela"] },
+        { "tipo_documento": "CE", "term": "1023456789", "expected": ["sin_compras"] },
+        { "tipo_documento": "PPT", "term": "a1b2 c3d4", "expected": ["yeferson"] },
+        { "tipo_documento": "CC", "term": "A1B2C3D4", "expected": [] },
+        { "term": "marcela", "expected": ["marcela"], "_reason": "name search ignores case on both engines" },
+        { "term": "GÓMEZ", "expected": ["marcela"] }
+    ],
+    "visibility": [
+        {
+            "role": "administrador_grupo",
+            "customers": ["marcela", "yeferson", "sin_compras"],
+            "ledger_of": { "marcela": { "movements": 2, "sum_equals_balance": true } },
+            "purchases": 3,
+            "sees_merchant_filter": true
+        },
+        {
+            "role": "administrador_comercio",
+            "comercio_nit": "800200200",
+            "customers": ["marcela"],
+            "ledger_of": { "marcela": { "movements": 1, "sum_equals_balance": false } },
+            "purchases": 1,
+            "sees_merchant_filter": false,
+            "forbidden_customers": ["yeferson", "sin_compras"],
+            "_reason": "decision 4: full balance and level, but only the movements of the merchant"
+        }
+    ],
+    "adjustments": [
+        {
+            "_description": "A positive adjustment that crosses the oro threshold raises the level in the same request.",
+            "customer": "marcela",
+            "role": "administrador_grupo",
+            "puntos": 1000,
+            "motivo": "Compra registrada en papel durante una caída del sistema",
+            "expected": {
+                "accepted": true,
+                "saldo_puntos": 1570,
+                "nivel_por_puntos": "oro",
+                "nivel_efectivo": "oro",
+                "cambio_nivel": null,
+                "_reason": "nivel_por_puntos goes up to oro; nivel_efectivo was already oro by the event, so there is no level change"
+            }
+        },
+        {
+            "_description": "A positive adjustment that raises the effective level writes the level change.",
+            "customer": "yeferson",
+            "role": "administrador_grupo",
+            "puntos": 500,
+            "motivo": "Compras de la sede nueva que no se registraron",
+            "expected": {
+                "accepted": true,
+                "saldo_puntos": 585,
+                "nivel_por_puntos": "plata",
+                "nivel_efectivo": "plata",
+                "cambio_nivel": { "anterior": "bronce", "nuevo": "plata", "motivo": "ascenso_ajuste" }
+            }
+        },
+        {
+            "_description": "A negative adjustment lowers the balance but never the level (only the nightly job does).",
+            "customer": "marcela",
+            "role": "administrador_grupo",
+            "puntos": -100,
+            "motivo": "Compra registrada dos veces",
+            "expected": {
+                "accepted": true,
+                "saldo_puntos": 470,
+                "nivel_por_puntos": "plata",
+                "nivel_efectivo": "oro",
+                "cambio_nivel": null,
+                "_reason": "470 is below plata, but nivel_por_puntos stays until the nightly job (hard rule 3.6)"
+            }
+        },
+        {
+            "customer": "yeferson",
+            "role": "administrador_grupo",
+            "puntos": -86,
+            "motivo": "Error de digitación",
+            "expected": { "accepted": false, "error_field": "puntos", "saldo_puntos": 85 },
+            "_reason": "the balance would go below zero"
+        },
+        {
+            "customer": "yeferson",
+            "role": "administrador_grupo",
+            "puntos": 50,
+            "motivo": "   ",
+            "expected": { "accepted": false, "error_field": "motivo", "saldo_puntos": 85 }
+        },
+        {
+            "customer": "yeferson",
+            "role": "administrador_grupo",
+            "puntos": 0,
+            "motivo": "Sin cambio",
+            "expected": { "accepted": false, "error_field": "puntos", "saldo_puntos": 85 }
+        },
+        {
+            "customer": "marcela",
+            "role": "administrador_comercio",
+            "comercio_nit": "800200200",
+            "puntos": 100,
+            "motivo": "Intento sin permiso",
+            "expected": { "accepted": false, "status": 403, "action_visible": false, "saldo_puntos": 570 }
+        }
+    ],
+    "annulments": [
+        {
+            "_description": "The merchant administrator annuls a purchase of their merchant within the window.",
+            "purchase": { "customer": "marcela", "comercio_nit": "800200200", "dias_atras": 3 },
+            "role": "administrador_comercio",
+            "comercio_nit": "800200200",
+            "motivo": "El cliente devolvió el producto",
+            "expected": { "action_visible": true, "accepted": true, "estado": "anulada", "reversa_puntos": -450 }
+        },
+        {
+            "_description": "Out of the reversal window: no action and a rejection.",
+            "purchase": { "customer": "marcela", "comercio_nit": "800100100", "dias_atras": 40 },
+            "role": "administrador_grupo",
+            "motivo": "Revisión tardía",
+            "expected": { "action_visible": false, "accepted": false }
+        },
+        {
+            "_description": "A purchase of another merchant: no action and a 403.",
+            "purchase": { "customer": "yeferson", "comercio_nit": "800100100", "dias_atras": 1 },
+            "role": "administrador_comercio",
+            "comercio_nit": "800200200",
+            "motivo": "Intento sin permiso",
+            "expected": { "action_visible": false, "accepted": false, "status": 403 }
+        },
+        {
+            "_description": "An annulment without a reason is rejected.",
+            "purchase": { "customer": "yeferson", "comercio_nit": "800100100", "dias_atras": 1 },
+            "role": "administrador_grupo",
+            "motivo": "",
+            "expected": { "action_visible": true, "accepted": false, "error_field": "motivo" }
+        },
+        {
+            "_description": "An already annulled purchase offers no action.",
+            "purchase": { "customer": "yeferson", "comercio_nit": "800100100", "dias_atras": 1, "estado": "anulada" },
+            "role": "administrador_grupo",
+            "expected": { "action_visible": false }
+        }
+    ]
+}

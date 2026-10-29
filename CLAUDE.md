@@ -211,10 +211,15 @@ movimientos_puntos id, cliente_id, comercio_id, transaccion_id,
                    tipo (acumulacion|caducidad|ajuste_manual|reversa),
                    puntos (+/-), regla_id, regla_version,
                    vigencia_hasta, motivo, usuario_id, created_at
-beneficios         id, comercio_id, nivel, tipo (porcentaje|monto_fijo),
-                   valor, vigencia, cupo, max_por_cliente_mes
-redenciones        id, cliente_id, beneficio_id, comercio_id,
+beneficios         id, comercio_id, nombre, condiciones_texto,
+                   tipo (porcentaje|monto_fijo), valores_por_nivel (json:
+                   nivel → valor), condiciones (json, esquema cerrado),
+                   max_por_cliente_ventana (mes|anio|vida),
+                   max_por_cliente_cantidad, cupo_global, requiere_soporte,
+                   vigente_desde, vigente_hasta, activo
+redenciones        id, cliente_id, beneficio_id, comercio_id, sede_id,
                    valor_otorgado_cop, validado_por, created_at
+                   (append-only)
 membresias         id, cliente_id, plan_id, vigente_hasta, estado
 eventos_calificados id, cliente_id, comercio_id, tipo, vigente_desde,
                    vigente_hasta, soporte_path, motivo_cierre,

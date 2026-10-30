@@ -1,0 +1,344 @@
+{
+    "_note": "Scenarios for E5-02 (benefit redemption at the cashier). Today is Thursday 2026-10-29 in America/Bogota. Benefits are the ones in beneficios-catalogo.json, referred to by name; merchants by NIT (800100100 El Rancho de Javi, 800500500 Peluquería Monarca, 800400400 Constructora Inmobiliaria Laura Rivera). Each cashier works at the 'Sede principal' of their merchant. Times in the qr scenarios are seconds after the code was issued; its lifetime and clock skew come from qr-escenarios.json (30 s and 5 s). Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-10-29 15:00:00",
+    "settings": {
+        "confirm_window_seconds": {
+            "value": 180,
+            "_assumption": true,
+            "_source": "decision 2 of the spec: time after the code expires in which a scanned code can still be confirmed"
+        },
+        "granted_value_rounding": {
+            "value": "floor",
+            "_assumption": true,
+            "_source": "decision 1 of the spec"
+        },
+        "support_max_length": { "value": 100, "_assumption": true, "_source": "decision 4 of the spec" }
+    },
+    "cashiers": [
+        { "key": "rancho", "comercio_nit": "800100100" },
+        { "key": "monarca", "comercio_nit": "800500500" },
+        { "key": "laura", "comercio_nit": "800400400" }
+    ],
+    "customers": [
+        {
+            "key": "andres",
+            "tipo_documento": "CC",
+            "documento": "1012345678",
+            "nombre_completo": "Andrés Rojas",
+            "nivel_efectivo": "plata",
+            "saldo_puntos": 620,
+            "fecha_nacimiento": "1990-10-29",
+            "_reason": "birthday today: the Monarca benefit is available"
+        },
+        {
+            "key": "lucia",
+            "tipo_documento": "PPT",
+            "documento": "B7K2M9Q4",
+            "nombre_completo": "Lucía Mendoza",
+            "nivel_efectivo": "bronce",
+            "saldo_puntos": 120,
+            "fecha_nacimiento": "2000-03-15"
+        },
+        {
+            "key": "carolina",
+            "tipo_documento": "CC",
+            "documento": "52987654",
+            "nombre_completo": "Carolina Pardo",
+            "nivel_efectivo": "diamante",
+            "saldo_puntos": 3400,
+            "fecha_nacimiento": "1985-06-02"
+        }
+    ],
+    "granted_value": [
+        {
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "nivel": "plata",
+            "monto_cuenta": 200000,
+            "expected": { "accepted": true, "valor_otorgado_cop": 40000 }
+        },
+        {
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "nivel": "bronce",
+            "monto_cuenta": 12345,
+            "expected": { "accepted": true, "valor_otorgado_cop": 1234 },
+            "_reason": "10 % of 12.345 is 1.234,5: pesos have no cents, so it rounds down"
+        },
+        {
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "nivel": "bronce",
+            "monto_cuenta": 9,
+            "expected": { "accepted": false, "error_field": "monto_cuenta" },
+            "_reason": "the granted value would be 0: every redemption is worth more than zero (hard rule 3.11)"
+        },
+        {
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "nivel": "plata",
+            "monto_cuenta": 0,
+            "expected": { "accepted": false, "error_field": "monto_cuenta" }
+        },
+        {
+            "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+            "nivel": "diamante",
+            "monto_cuenta": 85000,
+            "expected": { "accepted": true, "valor_otorgado_cop": 85000 },
+            "_reason": "100 % is still a discount: the granted value is the whole bill"
+        },
+        {
+            "beneficio": "Descuento en cuota inicial o administración con Constructora Inmobiliaria Laura Rivera",
+            "nivel": "diamante",
+            "monto_cuenta": 150000000,
+            "expected": { "accepted": true, "valor_otorgado_cop": 7500000 }
+        }
+    ],
+    "qr": [
+        {
+            "_description": "A valid code shows VÁLIDO and the confirmation writes the redemption without touching points.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "steps": [
+                {
+                    "action": "scan",
+                    "at_second": 3,
+                    "expected": { "result": "valido", "nivel": "plata", "valor": 20, "credential_used": false }
+                },
+                {
+                    "action": "confirm",
+                    "at_second": 60,
+                    "monto_cuenta": 200000,
+                    "expected": {
+                        "accepted": true,
+                        "valor_otorgado_cop": 40000,
+                        "sede": "Sede principal",
+                        "credential_used": true,
+                        "saldo_puntos": 620,
+                        "new_movements": 0
+                    }
+                },
+                {
+                    "action": "scan",
+                    "at_second": 70,
+                    "expected": {
+                        "result": "usado",
+                        "used_at": "2026-10-29 15:01:00",
+                        "used_in": "El Rancho de Javi · Sede principal",
+                        "vuelve": null
+                    },
+                    "_reason": "the same code again: YA USADO with when and where; the benefit is once in a lifetime, so it never comes back"
+                }
+            ]
+        },
+        {
+            "_description": "Cancelling does not burn the code.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "steps": [
+                { "action": "scan", "at_second": 2, "expected": { "result": "valido" } },
+                { "action": "cancel", "at_second": 8, "expected": { "redemptions": 0, "credential_used": false } },
+                { "action": "scan", "at_second": 12, "expected": { "result": "valido" } }
+            ]
+        },
+        {
+            "_description": "An expired code is rejected when scanned.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "steps": [{ "action": "scan", "at_second": 36, "expected": { "result": "vencido" } }]
+        },
+        {
+            "_description": "A scanned code that waits too long is not confirmed and is not burned.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "steps": [
+                { "action": "scan", "at_second": 5, "expected": { "result": "valido" } },
+                {
+                    "action": "confirm",
+                    "at_second": 211,
+                    "monto_cuenta": 200000,
+                    "expected": { "accepted": false, "result": "vencido", "redemptions": 0, "credential_used": false }
+                }
+            ],
+            "_reason": "the code expired at second 30; the window to confirm closes 180 seconds later"
+        },
+        {
+            "_description": "A code of another merchant's benefit is not valid here.",
+            "customer": "andres",
+            "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+            "cashier": "rancho",
+            "steps": [{ "action": "scan", "at_second": 2, "expected": { "result": "invalido" } }]
+        },
+        {
+            "_description": "A code to identify the customer is not a benefit code.",
+            "customer": "andres",
+            "proposito": "identificar",
+            "cashier": "rancho",
+            "steps": [{ "action": "scan", "at_second": 2, "expected": { "result": "invalido" } }]
+        },
+        {
+            "_description": "Two cashiers scan the same code: only the first confirmation counts.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashiers": ["rancho", "rancho"],
+            "steps": [
+                { "action": "scan", "cashier_index": 0, "at_second": 2, "expected": { "result": "valido" } },
+                { "action": "scan", "cashier_index": 1, "at_second": 3, "expected": { "result": "valido" } },
+                {
+                    "action": "confirm",
+                    "cashier_index": 0,
+                    "at_second": 20,
+                    "monto_cuenta": 100000,
+                    "expected": { "accepted": true }
+                },
+                {
+                    "action": "confirm",
+                    "cashier_index": 1,
+                    "at_second": 21,
+                    "monto_cuenta": 100000,
+                    "expected": { "accepted": false, "result": "usado", "redemptions": 1 }
+                }
+            ]
+        },
+        {
+            "_description": "The customer already used up the limit: YA USADO with the last use, even with a fresh code.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "previous_redemptions": [{ "date": "2026-09-12 19:42:00" }],
+            "steps": [
+                {
+                    "action": "scan",
+                    "at_second": 2,
+                    "expected": {
+                        "result": "usado",
+                        "used_at": "2026-09-12 19:42:00",
+                        "used_in": "El Rancho de Javi · Sede principal",
+                        "vuelve": null
+                    }
+                }
+            ]
+        },
+        {
+            "_description": "The benefit is deactivated between the scan and the confirmation.",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cashier": "rancho",
+            "steps": [
+                { "action": "scan", "at_second": 2, "expected": { "result": "valido" } },
+                { "action": "deactivate_benefit", "at_second": 10 },
+                {
+                    "action": "confirm",
+                    "at_second": 20,
+                    "monto_cuenta": 100000,
+                    "expected": {
+                        "accepted": false,
+                        "result": "no_disponible",
+                        "redemptions": 0,
+                        "credential_used": false
+                    }
+                }
+            ]
+        }
+    ],
+    "global_quota": [
+        {
+            "_description": "With one slot left, only the first of two customers gets it.",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "cupo_global": 1,
+            "cashier": "rancho",
+            "confirmations": [
+                { "customer": "andres", "monto_cuenta": 100000, "expected": { "accepted": true } },
+                {
+                    "customer": "lucia",
+                    "monto_cuenta": 100000,
+                    "expected": { "accepted": false, "result": "sin_cupos" }
+                }
+            ],
+            "expected_redemptions": 1
+        }
+    ],
+    "document": [
+        {
+            "_description": "The cashier only sees the benefits of their own merchant, with their state.",
+            "cashier": "rancho",
+            "search": { "tipo_documento": "CC", "documento": "1012 345 678" },
+            "expected": {
+                "customer": "andres",
+                "benefits": [{ "beneficio": "Kilo de carne en El Rancho de Javi", "estado": "disponible", "valor": 20 }]
+            }
+        },
+        {
+            "cashier": "monarca",
+            "search": { "tipo_documento": "CC", "documento": "1012345678" },
+            "expected": {
+                "customer": "andres",
+                "benefits": [
+                    {
+                        "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+                        "estado": "disponible",
+                        "valor": 50
+                    }
+                ]
+            }
+        },
+        {
+            "_description": "A benefit that is not available today is listed but cannot be chosen.",
+            "cashier": "monarca",
+            "search": { "tipo_documento": "PPT", "documento": "b7k2 m9q4" },
+            "expected": {
+                "customer": "lucia",
+                "benefits": [
+                    {
+                        "beneficio": "Descuento de cumpleaños en Peluquería Monarca",
+                        "estado": "no_disponible_hoy",
+                        "proxima_fecha": "2027-03-15",
+                        "selectable": false
+                    }
+                ]
+            }
+        },
+        {
+            "_description": "The same number with another document type is another person.",
+            "cashier": "rancho",
+            "search": { "tipo_documento": "CE", "documento": "1012345678" },
+            "expected": { "customer": null }
+        },
+        {
+            "_description": "A double tap on Confirmar entrega writes one redemption.",
+            "cashier": "rancho",
+            "search": { "tipo_documento": "CC", "documento": "1012345678" },
+            "choose": "Kilo de carne en El Rancho de Javi",
+            "confirm_times": 2,
+            "monto_cuenta": 100000,
+            "expected": { "redemptions": 1, "valor_otorgado_cop": 20000 }
+        }
+    ],
+    "support": [
+        {
+            "cashier": "laura",
+            "customer": "carolina",
+            "beneficio": "Descuento en cuota inicial o administración con Constructora Inmobiliaria Laura Rivera",
+            "monto_cuenta": 150000000,
+            "soporte": "",
+            "expected": { "accepted": false, "error_field": "soporte" }
+        },
+        {
+            "cashier": "laura",
+            "customer": "carolina",
+            "beneficio": "Descuento en cuota inicial o administración con Constructora Inmobiliaria Laura Rivera",
+            "monto_cuenta": 150000000,
+            "soporte": "  contrato 2026-118 ",
+            "expected": { "accepted": true, "soporte": "contrato 2026-118", "valor_otorgado_cop": 7500000 }
+        },
+        {
+            "cashier": "rancho",
+            "customer": "andres",
+            "beneficio": "Kilo de carne en El Rancho de Javi",
+            "monto_cuenta": 100000,
+            "soporte": "Factura 991",
+            "expected": { "accepted": true, "soporte": null },
+            "_reason": "a benefit without support ignores it"
+        }
+    ]
+}

@@ -20,10 +20,11 @@ use Illuminate\Support\Facades\RateLimiter;
  * corto) para el propósito que espera: firma, vencimiento con una pequeña
  * tolerancia de reloj, propósito y, para un beneficio, el comercio del cajero.
  *
- * Una credencial de beneficio se usa una vez: se marca con un UPDATE
- * condicionado a `usado_at IS NULL`, así de dos validaciones simultáneas solo
- * una pasa. Los códigos cortos fallidos se limitan por cajero contra la
- * fuerza bruta.
+ * Una credencial de beneficio se usa una vez, pero validarla no la gasta: la
+ * gasta la entrega (`RedeemBeneficio`, E5-02) en su misma transacción, así
+ * cancelar o una entrega fallida no le queman el código al cliente. Aquí una
+ * ya gastada vuelve como `usado`. Los códigos cortos fallidos se limitan por
+ * cajero contra la fuerza bruta.
  */
 class ValidateCredencial
 {
@@ -99,14 +100,15 @@ class ValidateCredencial
             return ValidacionCredencial::rechazada(ResultadoCredencial::Invalido);
         }
 
+        // Un código gastado dice dónde se usó aunque ya haya vencido.
+        if ($credencial->usado_at !== null) {
+            return ValidacionCredencial::usada($credencial);
+        }
+
         $limite = $credencial->vence_at->addSeconds(self::setting('clock_skew_seconds'));
 
         if (CarbonImmutable::now()->gt($limite)) {
             return ValidacionCredencial::rechazada(ResultadoCredencial::Vencido);
-        }
-
-        if ($esperado === PropositoCredencial::Beneficio && ! $this->markUsed($credencial, $cajero)) {
-            return ValidacionCredencial::rechazada(ResultadoCredencial::Usado);
         }
 
         return ValidacionCredencial::valida(Cliente::query()->findOrFail($credencial->cliente_id), $credencial);
@@ -117,22 +119,6 @@ class ValidateCredencial
         return $credencial->proposito !== PropositoCredencial::Beneficio
             || $cajero->esAdministradorDelGrupo()
             || $cajero->comercio_id === $credencial->comercio_id;
-    }
-
-    /**
-     * TODO(E5-02): la redención debe crearse en la misma `DB::transaction()`
-     * que esta marca, para que una redención fallida no queme el código de un
-     * solo uso del cliente.
-     */
-    private function markUsed(CredencialQr $credencial, User $cajero): bool
-    {
-        $now = CarbonImmutable::now();
-        $updated = CredencialQr::query()->toBase()
-            ->where('id', $credencial->id)
-            ->whereNull('usado_at')
-            ->update(['usado_at' => $now, 'usado_por' => $cajero->id]);
-
-        return $updated === 1;
     }
 
     private static function setting(string $key): int

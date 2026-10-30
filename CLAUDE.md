@@ -218,8 +218,9 @@ beneficios         id, comercio_id, nombre, condiciones_texto,
                    max_por_cliente_cantidad, cupo_global, requiere_soporte,
                    vigente_desde, vigente_hasta, activo
 redenciones        id, cliente_id, beneficio_id, comercio_id, sede_id,
-                   valor_otorgado_cop, validado_por, created_at
-                   (append-only)
+                   valor_otorgado_cop, monto_cuenta_cop, soporte,
+                   credencial_qr_id, referencia, validado_por, created_at
+                   UNIQUE (referencia) (append-only)
 membresias         id, cliente_id, plan_id, vigente_hasta, estado
 eventos_calificados id, cliente_id, comercio_id, tipo, vigente_desde,
                    vigente_hasta, soporte_path, motivo_cierre,

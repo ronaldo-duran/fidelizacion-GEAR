@@ -8,9 +8,11 @@ const formatoPesos = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }
 
 /**
  * Teclado del monto: "000" agrega tres ceros, borrar quita el último dígito y
- * no se pasa del máximo de dígitos. Los ceros a la izquierda no cuentan.
+ * no se pasa del máximo de dígitos. Los ceros a la izquierda no cuentan. Con
+ * un porcentaje (monto de la cuenta de un beneficio, E5-02) muestra el
+ * descuento redondeado hacia abajo; el servidor lo vuelve a calcular.
  */
-export function tecladoMonto({ maximo }) {
+export function tecladoMonto({ maximo, porcentaje = null }) {
     return {
         digitos: '',
 
@@ -20,6 +22,10 @@ export function tecladoMonto({ maximo }) {
 
         get texto() {
             return `$${formatoPesos.format(this.monto)}`;
+        },
+
+        get descuento() {
+            return `$${formatoPesos.format(Math.floor((this.monto * (porcentaje ?? 0)) / 100))}`;
         },
 
         tecla(valor) {
@@ -39,9 +45,10 @@ export function tecladoMonto({ maximo }) {
 /**
  * Lector del QR con la cámara trasera: `BarcodeDetector` donde exista (Chrome
  * en Android) y `jsqr` donde no (Safari en iPhone). Lo leído se manda tal cual
- * al servidor, que valida la firma y el vencimiento (E4-04).
+ * al servidor, que valida la firma y el vencimiento (E4-04): a `identificarQr`
+ * en registrar compra y a `validarCodigo` en validar beneficio (E5-02).
  */
-export function lectorQr() {
+export function lectorQr({ accion = 'identificarQr' } = {}) {
     return {
         error: null,
         activo: false,
@@ -94,7 +101,7 @@ export function lectorQr() {
 
             if (texto) {
                 this.detener();
-                this.$wire.identificarQr(texto);
+                this.$wire[accion](texto);
 
                 return;
             }

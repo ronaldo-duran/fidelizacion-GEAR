@@ -39,11 +39,13 @@
             "expected_customer_data": false
         },
         {
-            "_description": "A benefit code is accepted once; a second validation is already used.",
+            "_description": "A benefit code can be validated until the delivery spends it (E5-02); after that it is already used.",
             "_e4_04_criterion": "a benefit code is single use",
             "issue": { "purpose": "beneficio", "comercio": "own", "at": 0 },
             "validations": [
                 { "at": 5, "expected": "valid" },
+                { "at": 6, "expected": "valid" },
+                { "at": 7, "action": "spend" },
                 { "at": 8, "expected": "used" }
             ]
         },

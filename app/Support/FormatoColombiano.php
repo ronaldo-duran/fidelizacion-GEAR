@@ -24,6 +24,19 @@ final class FormatoColombiano
         return number_format($puntos, 0, ',', '.') . ' pts';
     }
 
+    /**
+     * "3 de septiembre", sin depender del idioma instalado en el servidor.
+     */
+    public static function fecha(DateTimeInterface $dia): string
+    {
+        $meses = [
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+        ];
+
+        return $dia->format('j') . ' de ' . $meses[(int) $dia->format('n') - 1];
+    }
+
     public static function hora(DateTimeInterface $momento): string
     {
         $hora = $momento->format('g');

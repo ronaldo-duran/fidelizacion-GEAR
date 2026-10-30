@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\Redencion;
 use App\Niveles\NivelEfectivo;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder;
 
@@ -37,8 +38,48 @@ class BeneficiosParaCliente
      */
     public function para(Cliente $cliente, ?CarbonImmutable $dia = null): array
     {
-        $dia = ($dia ?? CarbonImmutable::now())->startOfDay();
-        $beneficios = $this->vigentes($dia);
+        return $this->evaluar($cliente, ($dia ?? CarbonImmutable::now())->startOfDay(), Beneficio::query());
+    }
+
+    /**
+     * Los beneficios de un comercio para el cliente: lo que ve el cajero al
+     * buscar por documento (E5-02).
+     *
+     * @return list<BeneficioParaCliente>
+     */
+    public function delComercio(Cliente $cliente, int $comercioId, ?CarbonImmutable $dia = null): array
+    {
+        return $this->evaluar(
+            $cliente,
+            ($dia ?? CarbonImmutable::now())->startOfDay(),
+            Beneficio::query()->where('comercio_id', $comercioId),
+        );
+    }
+
+    /**
+     * El estado de un solo beneficio, con los conteos de ese momento: la
+     * entrega lo llama después de bloquear el beneficio (E5-02). Null si ya no
+     * está activo o vigente, si su comercio está inactivo o si el nivel del
+     * cliente no lo recibe.
+     */
+    public function deBeneficio(Cliente $cliente, int $beneficioId, ?CarbonImmutable $dia = null): ?BeneficioParaCliente
+    {
+        $estados = $this->evaluar(
+            $cliente,
+            ($dia ?? CarbonImmutable::now())->startOfDay(),
+            Beneficio::query()->whereKey($beneficioId),
+        );
+
+        return $estados[0] ?? null;
+    }
+
+    /**
+     * @param  EloquentBuilder<Beneficio>  $query
+     * @return list<BeneficioParaCliente>
+     */
+    private function evaluar(Cliente $cliente, CarbonImmutable $dia, EloquentBuilder $query): array
+    {
+        $beneficios = $this->vigentes($query, $dia);
         $usosGlobales = $this->usosGlobales($beneficios);
         $usosDelCliente = $this->usosDelCliente($cliente, $beneficios);
         $umbrales = $this->umbrales();
@@ -168,11 +209,12 @@ class BeneficiosParaCliente
      * Beneficios activos y vigentes ese día, de comercios activos: un comercio
      * desactivado no ofrece beneficios aunque sigan activos.
      *
+     * @param  EloquentBuilder<Beneficio>  $query
      * @return Collection<int, Beneficio>
      */
-    private function vigentes(CarbonImmutable $dia): Collection
+    private function vigentes(EloquentBuilder $query, CarbonImmutable $dia): Collection
     {
-        $query = Beneficio::query()->with('comercio')->whereRelation('comercio', 'activo', true);
+        $query->with('comercio')->whereRelation('comercio', 'activo', true);
         $query->getQuery()
             ->where('activo', true)
             ->where('vigente_desde', '<=', $dia->toDateString())

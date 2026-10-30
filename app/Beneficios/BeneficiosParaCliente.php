@@ -165,11 +165,14 @@ class BeneficiosParaCliente
     }
 
     /**
+     * Beneficios activos y vigentes ese día, de comercios activos: un comercio
+     * desactivado no ofrece beneficios aunque sigan activos.
+     *
      * @return Collection<int, Beneficio>
      */
     private function vigentes(CarbonImmutable $dia): Collection
     {
-        $query = Beneficio::query()->with('comercio');
+        $query = Beneficio::query()->with('comercio')->whereRelation('comercio', 'activo', true);
         $query->getQuery()
             ->where('activo', true)
             ->where('vigente_desde', '<=', $dia->toDateString())

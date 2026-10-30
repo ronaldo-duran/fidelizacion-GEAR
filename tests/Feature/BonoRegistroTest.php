@@ -28,7 +28,8 @@ use Tests\Support\LedgerTestData;
 use Tests\Support\NivelesTestData;
 
 beforeEach(function (): void {
-    $this->fixture = json_decode((string) file_get_contents(__DIR__ . '/../Fixtures/promociones-escenarios.json'), true);
+    $fixture = (string) file_get_contents(__DIR__ . '/../Fixtures/promociones-escenarios.json');
+    $this->fixture = json_decode($fixture, true);
     $this->travelTo(CarbonImmutable::parse('2026-10-29 10:00:00'));
     $this->admin = User::factory()->administradorDelGrupo()->create();
     LedgerTestData::acumulacionRegla();
@@ -41,7 +42,8 @@ beforeEach(function (): void {
 
         throw new RuntimeException("Fixture case not found: {$criterion}");
     };
-    $this->bono = fn (string $codigo, int $puntos, string $titulo = 'Bono de lanzamiento'): Regla => app(CreateRegla::class)(
+    $crear = app(CreateRegla::class);
+    $this->bono = fn (string $codigo, int $puntos, string $titulo = 'Bono de lanzamiento'): Regla => $crear(
         $this->admin,
         $codigo,
         TipoRegla::BonoRegistro,

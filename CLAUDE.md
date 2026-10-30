@@ -454,9 +454,11 @@ excluido por contrato:
 - Integración contable o facturación electrónica DIAN
 - Migración de datos históricos de clientes
 - Diseño de marca del programa (nombre, logotipo, manual de identidad)
-- Beneficios con cupo global limitado (por confirmar: el acta menciona
-  "cupos limitados"; ver issue de decisiones)
 - Producto gratis como tipo de beneficio (exige inventario)
+
+**Aprobado como ampliación (issue #1, punto 7, 2026-10-10):** los
+beneficios con cupo global limitado ya no están fuera de alcance. El cupo
+se define en E5-01 y se descuenta de forma atómica en E5-02.
 
 ---
 

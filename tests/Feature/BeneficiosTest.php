@@ -200,6 +200,21 @@ it('never lists an expired or inactive benefit', function (): void {
         ->and($nombres)->not->toBeEmpty();
 });
 
+it('never lists the benefits of an inactive merchant', function (): void {
+    $beneficio = BeneficiosTestData::beneficio('Martes de cerveza de línea básica en Cervecería BBC');
+    $cliente = BeneficiosTestData::cliente(['nivel_efectivo' => 'bronce', 'saldo_puntos' => 0]);
+    $nombres = static fn (): array => array_map(
+        static fn (BeneficioParaCliente $item): string => $item->beneficio->nombre,
+        app(BeneficiosParaCliente::class)->para($cliente),
+    );
+
+    expect($nombres())->toContain($beneficio->nombre);
+
+    $beneficio->comercio()->sole()->forceFill(['activo' => false])->save();
+
+    expect($nombres())->not->toContain($beneficio->nombre)->not->toBeEmpty();
+});
+
 it('runs the same number of queries no matter how many benefits there are', function (): void {
     $cliente = BeneficiosTestData::cliente(['nivel_efectivo' => 'oro', 'saldo_puntos' => 2000]);
     $contar = function () use ($cliente): int {

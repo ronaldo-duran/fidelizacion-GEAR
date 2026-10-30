@@ -109,6 +109,7 @@ class ReglaForm
             self::acumulacion(),
             self::niveles(),
             self::bonificacion(),
+            self::bonoRegistro(),
         ];
     }
 
@@ -202,6 +203,21 @@ class ReglaForm
                     Select::make('operador')->label('Operador')->options(self::OPERATORS)->required()->live(),
                     ...self::valorComponents(),
                 ]),
+        ]);
+    }
+
+    /**
+     * Puntos fijos al inscribirse (E3-06). Solo puede regir un bono a la vez.
+     */
+    private static function bonoRegistro(): Group
+    {
+        return self::guidedSection(TipoRegla::BonoRegistro, [
+            self::integerInput('puntos', 'Puntos que da', 1),
+            TextInput::make('titulo')
+                ->label('Título')
+                ->helperText('Lo ve el cliente, por ejemplo «Bono de lanzamiento».')
+                ->required()
+                ->maxLength(100),
         ]);
     }
 

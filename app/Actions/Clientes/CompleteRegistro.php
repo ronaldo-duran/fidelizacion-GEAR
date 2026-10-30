@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Clientes;
 
 use App\Actions\Compras\CreditPendingCompras;
+use App\Actions\Promociones\GrantBonoRegistro;
 use App\Actions\Verificacion\VerifyCode;
 use App\Enums\PropositoVerificacion;
 use App\Models\AutorizacionDatos;
@@ -18,8 +19,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Segundo paso del registro (E8-02): con el código del SMS correcto, en una
  * sola transacción crea el cliente, guarda su autorización de datos, le
- * acredita las compras pendientes de su tipo + número (E4-01) y borra el
- * registro pendiente. Si algo falla, no queda nada.
+ * acredita las compras pendientes de su tipo + número (E4-01), le abona el
+ * bono de registro si rige uno (E3-06) y borra el registro pendiente. Si
+ * algo falla, no queda nada.
  *
  * Un código equivocado no aborta la transacción: sus intentos fallidos deben
  * quedar contados (E8-06), así que el rechazo se lanza después de confirmarla.
@@ -34,10 +36,16 @@ class CompleteRegistro
 
     private readonly CreditPendingCompras $creditCompras;
 
-    public function __construct(VerifyCode $verifyCode, CreditPendingCompras $creditCompras)
-    {
+    private readonly GrantBonoRegistro $grantBono;
+
+    public function __construct(
+        VerifyCode $verifyCode,
+        CreditPendingCompras $creditCompras,
+        GrantBonoRegistro $grantBono,
+    ) {
         $this->verifyCode = $verifyCode;
         $this->creditCompras = $creditCompras;
+        $this->grantBono = $grantBono;
     }
 
     /**
@@ -96,7 +104,7 @@ class CompleteRegistro
 
         ($this->creditCompras)($cliente->id);
 
-        // TODO(E3-06): abonar el bono de registro con `GrantBonoRegistro` cuando exista.
+        ($this->grantBono)($cliente->id);
 
         $pendiente->delete();
 

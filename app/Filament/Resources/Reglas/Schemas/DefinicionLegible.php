@@ -64,6 +64,7 @@ final class DefinicionLegible
             TipoRegla::Acumulacion => self::acumulacion($definicion),
             TipoRegla::Niveles => self::niveles($definicion),
             TipoRegla::Bonificacion => self::bonificacion($definicion),
+            TipoRegla::BonoRegistro => self::bonoRegistro($definicion),
         };
     }
 
@@ -115,6 +116,20 @@ final class DefinicionLegible
         $lineas[] = 'Avisos de descenso: ' . implode(', ', array_map(self::numero(...), $avisos)) . ' días antes.';
 
         return $lineas;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definicion
+     * @return list<string>
+     */
+    private static function bonoRegistro(array $definicion): array
+    {
+        $puntos = self::cantidad($definicion['puntos'] ?? null, 'punto', 'puntos');
+
+        return [
+            '«' . self::texto($definicion['titulo'] ?? null) . '».',
+            "Da {$puntos} a quien se inscribe en el programa mientras rige.",
+        ];
     }
 
     /**

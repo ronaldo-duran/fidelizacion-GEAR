@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Reglas;
 
 use App\Enums\DefinicionSource;
+use App\Enums\TipoRegla;
 use App\Models\Regla;
 use App\Models\User;
+use App\Reglas\BonoRegistroVigente;
 use App\Reglas\ReglaAuditLogger;
 use App\Reglas\ReglaDefinitionValidator;
 use Carbon\CarbonImmutable;
@@ -30,10 +32,16 @@ class VersionRegla
 
     private readonly ReglaAuditLogger $auditLogger;
 
-    public function __construct(ReglaDefinitionValidator $validator, ReglaAuditLogger $auditLogger)
-    {
+    private readonly BonoRegistroVigente $bonos;
+
+    public function __construct(
+        ReglaDefinitionValidator $validator,
+        ReglaAuditLogger $auditLogger,
+        BonoRegistroVigente $bonos,
+    ) {
         $this->validator = $validator;
         $this->auditLogger = $auditLogger;
+        $this->bonos = $bonos;
     }
 
     /**
@@ -79,6 +87,10 @@ class VersionRegla
                             $latest->vigente_desde->format('Y-m-d H:i'),
                         ),
                     ]);
+                }
+
+                if ($latest->tipo === TipoRegla::BonoRegistro && $activa) {
+                    $this->bonos->assertNingunOtro($latest->codigo, $start);
                 }
 
                 $latest->vigente_hasta = $start;

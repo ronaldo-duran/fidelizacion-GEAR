@@ -69,6 +69,7 @@ class ReglaDefinitionValidator
             TipoRegla::Acumulacion => $this->acumulacionErrors($definicion),
             TipoRegla::Niveles => $this->nivelesErrors($definicion),
             TipoRegla::Bonificacion => $this->bonificacionErrors($definicion),
+            TipoRegla::BonoRegistro => $this->bonoRegistroErrors($definicion),
         };
     }
 
@@ -201,6 +202,19 @@ class ReglaDefinitionValidator
         }
 
         return $errors;
+    }
+
+    /**
+     * El título lo lee el cliente: no puede quedar en blanco.
+     *
+     * @param  array<array-key, mixed>  $definicion
+     * @return list<string>
+     */
+    private function bonoRegistroErrors(array $definicion): array
+    {
+        $titulo = $definicion['titulo'];
+
+        return is_string($titulo) && trim($titulo) === '' ? ['El bono necesita un título.'] : [];
     }
 
     /**

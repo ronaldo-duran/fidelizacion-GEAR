@@ -224,3 +224,25 @@ it('shows the definition as readable lines in the "Vista" tab and as JSON in "Mo
         ->assertSee('El monto es mayor o igual que $50.000.')
         ->assertSee('mayor_igual');
 });
+
+it('creates a registration bonus with the guided form and shows it as readable lines', function (): void {
+    $this->actingAs($this->admin);
+
+    Livewire::test(CreateRegla::class)
+        ->fillForm([
+            'codigo' => 'bono-lanzamiento',
+            'tipo' => 'bono_registro',
+            'definicion' => ['puntos' => '400', 'titulo' => '  Bono de lanzamiento '],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $regla = Regla::query()->where('codigo', 'bono-lanzamiento')->sole();
+
+    expect($regla->definicion)->toBe(['puntos' => 400, 'titulo' => 'Bono de lanzamiento']);
+
+    $this->get(ReglaResource::getUrl('view', ['record' => $regla]))
+        ->assertSuccessful()
+        ->assertSee('«Bono de lanzamiento».')
+        ->assertSee('Da 400 puntos a quien se inscribe en el programa mientras rige.');
+});

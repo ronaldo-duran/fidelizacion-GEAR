@@ -10,6 +10,7 @@ use App\Models\Categoria;
 use App\Models\Comercio;
 use App\Models\Sede;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -39,12 +40,14 @@ class DatabaseSeeder extends Seeder
 
         // Datos de muestra: las reglas base rigen desde el mes anterior, como si el
         // programa llevara ese tiempo andando, para que la historia de compras sume puntos.
+        // Al terminar vuelve el reloj de antes (el de una prueba con `travelTo`, o ninguno).
+        $relojPrevio = CarbonImmutable::hasTestNow() ? CarbonImmutable::now() : null;
         DatosDeMuestraSeeder::reloj(DatosDeMuestraSeeder::inicio());
 
         try {
             $this->seedReglas();
         } finally {
-            DatosDeMuestraSeeder::reloj(null);
+            DatosDeMuestraSeeder::reloj($relojPrevio);
         }
 
         $this->call(DatosDeMuestraSeeder::class);

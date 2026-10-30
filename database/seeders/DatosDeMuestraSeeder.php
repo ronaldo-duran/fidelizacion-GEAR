@@ -111,8 +111,16 @@ class DatosDeMuestraSeeder extends Seeder
      */
     private const ANULADA = 30;
 
+    /**
+     * El reloj que había antes de sembrar (el de una prueba con `travelTo`, o
+     * ninguno): al terminar se devuelve ese, no el reloj real.
+     */
+    private ?CarbonImmutable $relojPrevio = null;
+
     public function run(): void
     {
+        $this->relojPrevio = CarbonImmutable::hasTestNow() ? CarbonImmutable::now() : null;
+
         if (app()->isProduction()) {
             return;
         }
@@ -128,7 +136,7 @@ class DatosDeMuestraSeeder extends Seeder
             $this->sembrarClientes();
             $this->sembrarCompras($admin);
         } finally {
-            self::reloj(null);
+            self::reloj($this->relojPrevio);
         }
     }
 
@@ -169,7 +177,7 @@ class DatosDeMuestraSeeder extends Seeder
             );
         }
 
-        self::reloj(null);
+        self::reloj($this->relojPrevio);
     }
 
     private function sembrarCompras(User $admin): void

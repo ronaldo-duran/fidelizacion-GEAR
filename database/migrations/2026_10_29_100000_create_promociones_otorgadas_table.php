@@ -22,7 +22,7 @@ return new class extends Migration
             $table->foreignId('cliente_id')->constrained('clientes');
             $table->string('codigo', 100);
             $table->unsignedInteger('ocurrencia');
-            $table->foreignId('movimiento_id')->constrained('movimientos_puntos');
+            $table->foreignId('movimiento_id')->index()->constrained('movimientos_puntos');
             $table->timestamp('created_at');
 
             $table->unique(['cliente_id', 'codigo', 'ocurrencia']);

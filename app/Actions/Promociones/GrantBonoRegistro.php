@@ -15,6 +15,7 @@ use App\Reglas\BonoRegistroVigente;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use LogicException;
 
 /**
@@ -26,6 +27,10 @@ use LogicException;
  * la misma petición (regla dura 3.6). Que se abone una sola vez lo garantiza
  * la restricción única de `promociones_otorgadas` (regla dura 3.7): un abono
  * repetido choca en la base de datos, se deshace completo y devuelve null.
+ *
+ * Sin regla de acumulación vigente no se sabe cuándo vencerían los puntos: no
+ * se abona y queda un aviso en el log, pero el registro del cliente sigue.
+ * Guardar el bono ya exige esa regla; esto cubre un hueco posterior.
  */
 class GrantBonoRegistro
 {
@@ -43,7 +48,8 @@ class GrantBonoRegistro
     }
 
     /**
-     * @return MovimientoPuntos|null el movimiento abonado, o null si no rige un bono o ya se abonó
+     * @return MovimientoPuntos|null el movimiento abonado, o null si no rige un bono, no hay regla de
+     *                               acumulación o ya se abonó
      */
     public function __invoke(int $clienteId): ?MovimientoPuntos
     {
@@ -60,9 +66,20 @@ class GrantBonoRegistro
             throw new LogicException("The registration bonus {$bono->codigo} has no points.");
         }
 
+        $vigenciaHasta = $this->vigenciaHasta($now);
+
+        if ($vigenciaHasta === null) {
+            Log::warning('Bono de registro sin abonar: no hay regla de acumulación vigente.', [
+                'cliente_id' => $clienteId,
+                'codigo' => $bono->codigo,
+            ]);
+
+            return null;
+        }
+
         try {
-            return DB::transaction(function () use ($clienteId, $bono, $puntos, $now): MovimientoPuntos {
-                $movimiento = ($this->record)($clienteId, null, $puntos, $bono, $this->vigenciaHasta($now));
+            return DB::transaction(function () use ($clienteId, $bono, $puntos, $vigenciaHasta): MovimientoPuntos {
+                $movimiento = ($this->record)($clienteId, null, $puntos, $bono, $vigenciaHasta);
 
                 PromocionOtorgada::query()->create([
                     'cliente_id' => $clienteId,
@@ -82,15 +99,15 @@ class GrantBonoRegistro
 
     /**
      * Los puntos del bono vencen como los de una compra: a los meses de la
-     * regla de acumulación vigente (E3-05).
+     * regla de acumulación vigente (E3-05). Null si no rige ninguna.
      */
-    private function vigenciaHasta(CarbonImmutable $now): CarbonImmutable
+    private function vigenciaHasta(CarbonImmutable $now): ?CarbonImmutable
     {
         $acumulacion = Regla::inForceAt($now)->where('tipo', TipoRegla::Acumulacion->value)->first();
         $meses = $acumulacion?->definicion['vigencia_puntos_meses'] ?? null;
 
         if (! is_int($meses)) {
-            throw new LogicException('No accrual rule is in force to set when the bonus points expire.');
+            return null;
         }
 
         return $now->startOfDay()->addMonths($meses);

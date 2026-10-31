@@ -23,6 +23,7 @@ use App\Models\User;
 use App\Reglas\ReglaDefinitionValidator;
 use App\Sms\SmsSender;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Tests\Support\LedgerTestData;
 use Tests\Support\NivelesTestData;
@@ -176,6 +177,35 @@ it('rejects a second registration bonus in force', function (): void {
     expect($navidad->vigente_hasta)->toBeNull()
         ->and(fn (): Regla => app(VersionRegla::class)($this->admin, $inactivo, $bono->definicion))
         ->toThrow(ValidationException::class, 'Ya rige otro bono de registro («bono-navidad»)');
+});
+
+it('rejects a registration bonus without an accrual rule in force', function (): void {
+    // La regla de acumulación vigente es la fila que serializa dos bonos guardados a la vez.
+    Regla::query()->where('codigo', 'acumulacion-base')->toBase()->update(['vigente_hasta' => CarbonImmutable::now()]);
+
+    expect(fn (): Regla => ($this->bono)('bono-lanzamiento', 400))
+        ->toThrow(ValidationException::class, 'El bono necesita una regla de acumulación vigente')
+        ->and(Regla::query()->where('tipo', TipoRegla::BonoRegistro->value)->count())->toBe(0);
+});
+
+it('registers the customer without the bonus when no accrual rule is in force', function (): void {
+    ($this->bono)('bono-lanzamiento', 400);
+    // Un hueco posterior entre versiones de la acumulación: el bono sigue vigente sin ella.
+    $this->travel(1)->minutes();
+    Regla::query()->where('codigo', 'acumulacion-base')->toBase()->update(['vigente_hasta' => CarbonImmutable::now()]);
+    Log::spy();
+
+    $cliente = ($this->registrar)();
+
+    expect($cliente->exists)->toBeTrue()
+        ->and($cliente->saldo_puntos)->toBe(0)
+        ->and(MovimientoPuntos::query()->where('cliente_id', $cliente->id)->count())->toBe(0)
+        ->and(PromocionOtorgada::query()->count())->toBe(0);
+    Log::shouldHaveReceived('warning')->once()
+        ->with('Bono de registro sin abonar: no hay regla de acumulación vigente.', [
+            'cliente_id' => $cliente->id,
+            'codigo' => 'bono-lanzamiento',
+        ]);
 });
 
 it('keeps the registration bonus out of the purchase simulator', function (): void {

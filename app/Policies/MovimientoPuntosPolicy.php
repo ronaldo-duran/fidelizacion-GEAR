@@ -26,7 +26,7 @@ class MovimientoPuntosPolicy
 
     public function view(User $user, MovimientoPuntos $movimiento): bool
     {
-        return AlcancePanel::esAdministrador($user) && AlcancePanel::veMovimiento($user, $movimiento);
+        return AlcancePanel::esAdministrador($user) && AlcancePanel::veDeSuComercio($user, $movimiento->comercio_id);
     }
 
     public function update(): bool

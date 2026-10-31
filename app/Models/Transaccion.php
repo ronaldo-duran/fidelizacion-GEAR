@@ -97,6 +97,22 @@ class Transaccion extends Model
     }
 
     /**
+     * @return BelongsTo<Sede, $this>
+     */
+    public function sede(): BelongsTo
+    {
+        return $this->belongsTo(Sede::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function registrador(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'registrada_por');
+    }
+
+    /**
      * @return HasMany<MovimientoPuntos, $this>
      */
     public function movimientos(): HasMany

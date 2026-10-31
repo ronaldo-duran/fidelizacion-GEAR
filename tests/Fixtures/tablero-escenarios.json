@@ -9,9 +9,9 @@
         "clientes_inscritos": "customers created up to the end of the period; 'nuevos' are those created inside it",
         "clientes_que_compraron": "merchant admin only: distinct customers with a non-annulled credited purchase at that merchant in the period",
         "transacciones": "purchases created in the period whose estado is not anulada (pending ones count)",
-        "beneficios_entregados": "redemptions created in the period; zero until E5-02",
+        "beneficios_entregados": "redemptions created in the period",
         "beneficios_por_100_compras": "round(beneficios_entregados * 100 / transacciones); 0 when there are no purchases",
-        "valor_beneficios": "sum of valor_otorgado_cop of the redemptions in the period; zero until E5-02"
+        "valor_beneficios": "sum of valor_otorgado_cop of the redemptions in the period"
     },
     "diamante_origin_order": ["puntos", "membresia", "evento"],
     "formats": {

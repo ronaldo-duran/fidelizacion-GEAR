@@ -8,8 +8,9 @@ use App\Models\CredencialQr;
 
 /**
  * 5. Borra las credenciales QR vencidas antes del corte. Viven segundos y no
- * guardan historia: la redención de un beneficio tiene su propio registro
- * (E5-02). Sus reservas de código corto se borran en cascada.
+ * guardan historia. Se conservan las de beneficio ya gastadas: su redención
+ * guarda con qué código se hizo (E5-02). Sus reservas de código corto se
+ * borran en cascada.
  */
 class PurgeCredenciales extends NightlyJob
 {
@@ -17,6 +18,7 @@ class PurgeCredenciales extends NightlyJob
     {
         CredencialQr::query()->toBase()
             ->where('vence_at', '<', $this->corteDate()->toDateTimeString())
+            ->whereNull('usado_at')
             ->delete();
     }
 }

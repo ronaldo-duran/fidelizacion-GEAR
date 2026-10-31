@@ -9,6 +9,7 @@ use App\Http\Controllers\KitUiController;
 use App\Http\Middleware\EnsureCajero;
 use App\Livewire\Cajero\Caja;
 use App\Livewire\Cajero\Ingreso as CajeroIngreso;
+use App\Livewire\Cajero\ValidarBeneficio;
 use App\Livewire\Cliente\Ingreso;
 use App\Livewire\Cliente\RecuperarPin;
 use App\Livewire\Cliente\Registro;
@@ -44,6 +45,7 @@ Route::prefix('caja')->name('caja.')->group(function (): void {
 
     Route::middleware(['auth:web', EnsureCajero::class])->group(function (): void {
         Route::get('/', Caja::class)->name('inicio');
+        Route::get('/beneficios', ValidarBeneficio::class)->name('beneficios');
         Route::post('/salir', CajeroLogoutController::class)->name('salir');
     });
 });

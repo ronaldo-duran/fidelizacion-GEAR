@@ -18,4 +18,8 @@ return [
     'login_max_attempts_per_ip' => 20,
 
     'search_max_per_minute' => 20,
+
+    // Entrega de beneficios (E5-02), reflejado en tests/Fixtures/redencion-escenarios.json.
+    'redeem_confirm_window_seconds' => 180,
+    'support_max_length' => 100,
 ];

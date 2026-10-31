@@ -45,6 +45,11 @@ beforeEach(function (): void {
         $entrada,
         PropositoCredencial::from($purpose),
     );
+    // Lo que hace la entrega del beneficio (E5-02) con el código: gastarlo una sola vez.
+    $this->gastar = static fn (CredencialQr $credencial, User $cajero): int => CredencialQr::query()->toBase()
+        ->where('id', $credencial->id)
+        ->whereNull('usado_at')
+        ->update(['usado_at' => CarbonImmutable::now(), 'usado_por' => $cajero->id]);
     $this->case = function (string $criterion): array {
         foreach ($this->fixture['cases'] as $case) {
             if ($case['_e4_04_criterion'] === $criterion) {
@@ -72,6 +77,13 @@ it('validates each fixture timeline', function (string $criterion): void {
 
     foreach ($case['validations'] as $validation) {
         $this->travelTo($start->addSeconds($validation['at']));
+
+        if (($validation['action'] ?? null) === 'spend') {
+            ($this->gastar)($emitida->credencial, $this->cajero);
+
+            continue;
+        }
+
         $resultado = ($this->validate)($emitida->token, $validation['as_purpose'] ?? $case['issue']['purpose']);
 
         $esperado = ['valid' => 'valido', 'expired' => 'vencido', 'used' => 'usado', 'invalid' => 'invalido'];
@@ -187,7 +199,7 @@ it('gives a benefit short code the prefix of its merchant', function (): void {
         ->and(($this->issue)('beneficio', 'other')->codigoCorto)->toStartWith('CER-');
 });
 
-it('accepts a benefit code only once even for two cashiers of the merchant', function (): void {
+it('validates a benefit code without spending it, and spends it only once', function (): void {
     $emitida = ($this->issue)('beneficio');
     $otroCajero = User::factory()->cajero($this->comercio->id)->create();
 
@@ -195,7 +207,16 @@ it('accepts a benefit code only once even for two cashiers of the merchant', fun
     $second = app(ValidateCredencial::class)($otroCajero, $emitida->token, PropositoCredencial::Beneficio);
 
     expect($first->esValida())->toBeTrue()
-        ->and($second->resultado)->toBe(ResultadoCredencial::Usado)
+        ->and($second->esValida())->toBeTrue()
+        ->and(CredencialQr::query()->sole()->usado_at)->toBeNull()
+        ->and(($this->gastar)($emitida->credencial, $this->cajero))->toBe(1)
+        ->and(($this->gastar)($emitida->credencial, $otroCajero))->toBe(0);
+
+    $after = app(ValidateCredencial::class)($otroCajero, $emitida->token, PropositoCredencial::Beneficio);
+
+    expect($after->resultado)->toBe(ResultadoCredencial::Usado)
+        ->and($after->cliente)->toBeNull()
+        ->and($after->credencial?->id)->toBe($emitida->credencial->id)
         ->and(CredencialQr::query()->sole()->usado_por)->toBe($this->cajero->id);
 });
 
@@ -220,4 +241,16 @@ it('purges expired credentials at night', function (): void {
     Bus::dispatchSync(new PurgeCredenciales('2026-10-24'));
 
     expect(CredencialQr::query()->pluck('id')->all())->toBe([$vigente->credencial->id]);
+});
+
+it('keeps the spent benefit credentials at night: their redemption points to them', function (): void {
+    $gastada = ($this->issue)('beneficio');
+    ($this->gastar)($gastada->credencial, $this->cajero);
+    $vencida = ($this->issue)('beneficio');
+    $this->travelTo(CarbonImmutable::parse('2026-10-24 01:30:00'));
+
+    Bus::dispatchSync(new PurgeCredenciales('2026-10-24'));
+
+    expect(CredencialQr::query()->pluck('id')->all())->toBe([$gastada->credencial->id])
+        ->and(CredencialQr::query()->find($vencida->credencial->id))->toBeNull();
 });

@@ -9,9 +9,9 @@ use App\Models\Cliente;
 use App\Models\CredencialQr;
 
 /**
- * Resultado de una validación del cajero. El cliente y la credencial solo
- * vienen cuando es válida, así un código inválido nunca revela datos del
- * cliente.
+ * Resultado de una validación del cajero. El cliente solo viene cuando es
+ * válida, así un código inválido nunca revela datos del cliente. Un código de
+ * beneficio ya gastado trae su credencial, para decir dónde se usó (E5-02).
  */
 final class ValidacionCredencial
 {
@@ -31,6 +31,11 @@ final class ValidacionCredencial
     public static function valida(Cliente $cliente, CredencialQr $credencial): self
     {
         return new self(ResultadoCredencial::Valido, $cliente, $credencial);
+    }
+
+    public static function usada(CredencialQr $credencial): self
+    {
+        return new self(ResultadoCredencial::Usado, null, $credencial);
     }
 
     public static function rechazada(ResultadoCredencial $resultado): self

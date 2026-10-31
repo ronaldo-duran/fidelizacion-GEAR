@@ -1,5 +1,5 @@
 {
-    "_note": "Scenarios for E5-02 (benefit redemption at the cashier). Today is Thursday 2026-10-29 in America/Bogota. Benefits are the ones in beneficios-catalogo.json, referred to by name; merchants by NIT (800100100 El Rancho de Javi, 800500500 Peluquería Monarca, 800400400 Constructora Inmobiliaria Laura Rivera). Each cashier works at the 'Sede principal' of their merchant. Times in the qr scenarios are seconds after the code was issued; its lifetime and clock skew come from qr-escenarios.json (30 s and 5 s). Values the client has not confirmed carry \"_assumption\": true.",
+    "_note": "Scenarios for E5-02 (benefit redemption at the cashier). Today is Thursday 2026-10-29 in America/Bogota. Benefits are the ones in beneficios-catalogo.json plus the extra ones of beneficios-escenarios.json, referred to by name; merchants by NIT (800100100 El Rancho de Javi, 800500500 Peluquería Monarca, 800400400 Constructora Inmobiliaria Laura Rivera). Each cashier works at the 'Sede principal' of their merchant. Times in the qr scenarios are seconds after the code was issued; its lifetime and clock skew come from qr-escenarios.json (30 s and 5 s). Values the client has not confirmed carry \"_assumption\": true.",
     "today": "2026-10-29 15:00:00",
     "settings": {
         "confirm_window_seconds": {
@@ -265,8 +265,16 @@
             "search": { "tipo_documento": "CC", "documento": "1012 345 678" },
             "expected": {
                 "customer": "andres",
-                "benefits": [{ "beneficio": "Kilo de carne en El Rancho de Javi", "estado": "disponible", "valor": 20 }]
-            }
+                "benefits": [
+                    { "beneficio": "Kilo de carne en El Rancho de Javi", "estado": "disponible", "valor": 20 },
+                    {
+                        "beneficio": "Postre de la casa (solo Oro y Diamante)",
+                        "estado": "bloqueado",
+                        "selectable": false
+                    }
+                ]
+            },
+            "_reason": "the E5-01 seed adds an oro-only dessert at El Rancho: a plata customer sees it locked and cannot choose it"
         },
         {
             "cashier": "monarca",
@@ -311,7 +319,7 @@
             "choose": "Kilo de carne en El Rancho de Javi",
             "confirm_times": 2,
             "monto_cuenta": 100000,
-            "expected": { "redemptions": 1, "valor_otorgado_cop": 20000 }
+            "expected": { "customer": "andres", "redemptions": 1, "valor_otorgado_cop": 20000 }
         }
     ],
     "support": [

@@ -13,6 +13,7 @@ use App\Models\Redencion;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\BeneficiosSeeder;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -131,6 +132,7 @@ final class BeneficiosTestData
             'comercio_id' => $beneficio->comercio_id,
             'valor_otorgado_cop' => 10000,
             'validado_por' => $validador->id,
+            'referencia' => (string) Str::uuid(),
             'created_at' => CarbonImmutable::parse($fecha . ' 12:00:00'),
         ]);
     }

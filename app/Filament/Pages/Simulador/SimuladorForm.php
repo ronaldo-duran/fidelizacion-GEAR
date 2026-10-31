@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\Simulador;
 
-use App\Enums\TipoRegla;
 use App\Filament\Resources\Reglas\Schemas\DefinicionFormMapper;
 use App\Filament\Resources\Reglas\Schemas\ReglaForm;
 use App\Models\Comercio;
@@ -109,7 +108,7 @@ class SimuladorForm
     private static function reglaOptions(): array
     {
         return Regla::inForceAt(CarbonImmutable::now())->get()
-            ->filter(static fn (Regla $regla): bool => $regla->tipo !== TipoRegla::Niveles)
+            ->filter(static fn (Regla $regla): bool => $regla->tipo->appliesToPurchases())
             ->sortBy('codigo')
             ->mapWithKeys(static fn (Regla $regla): array => [
                 $regla->id => "{$regla->codigo} ({$regla->tipo->getLabel()}, v{$regla->version})",

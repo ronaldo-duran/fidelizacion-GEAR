@@ -8,7 +8,7 @@
     "required": ["tipo", "definicion"],
     "properties": {
         "tipo": {
-            "enum": ["acumulacion", "niveles", "bonificacion"]
+            "enum": ["acumulacion", "niveles", "bonificacion", "bono_registro"]
         },
         "definicion": {
             "type": "object"
@@ -59,6 +59,22 @@
                 "properties": {
                     "definicion": {
                         "$ref": "#/$defs/defBonificacion"
+                    }
+                }
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "tipo": {
+                        "const": "bono_registro"
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "definicion": {
+                        "$ref": "#/$defs/defBonoRegistro"
                     }
                 }
             }
@@ -215,6 +231,23 @@
                     "items": {
                         "$ref": "#/$defs/condicion"
                     }
+                }
+            }
+        },
+        "defBonoRegistro": {
+            "_note": "Fixed points when a customer joins the program while the rule is in force (E3-06). The title is shown to the customer and never evaluated. Only one registration bonus can be in force at a time.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["puntos", "titulo"],
+            "properties": {
+                "puntos": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "titulo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                 }
             }
         }

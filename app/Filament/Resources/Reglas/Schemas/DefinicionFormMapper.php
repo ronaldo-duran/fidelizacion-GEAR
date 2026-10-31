@@ -44,6 +44,7 @@ class DefinicionFormMapper
             TipoRegla::Acumulacion => self::acumulacion($state),
             TipoRegla::Niveles => self::niveles($state),
             TipoRegla::Bonificacion => self::bonificacion($state),
+            TipoRegla::BonoRegistro => self::bonoRegistro($state),
         };
 
         return [$definicion, DefinicionSource::Form];
@@ -166,6 +167,20 @@ class DefinicionFormMapper
                 ],
                 self::toListOfMaps($state['condiciones'] ?? null),
             ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private static function bonoRegistro(array $state): array
+    {
+        $titulo = $state['titulo'] ?? null;
+
+        return [
+            'puntos' => self::toInteger($state['puntos'] ?? null),
+            'titulo' => is_string($titulo) ? trim($titulo) : $titulo,
         ];
     }
 

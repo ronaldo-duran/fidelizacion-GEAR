@@ -1,7 +1,7 @@
 {
     "$schema": "https://www.schemastore.org/package.json",
     "name": "fidelizacion-gear",
-    "version": "0.22.1",
+    "version": "0.23.0",
     "private": true,
     "type": "module",
     "scripts": {
@@ -37,5 +37,8 @@
     },
     "dependencies": {
         "jsqr": "^1.4.0"
+    },
+    "overrides": {
+        "minimatch": "^11.0.1"
     }
 }

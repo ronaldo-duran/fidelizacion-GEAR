@@ -15,6 +15,7 @@ enum MotivoCambioNivel: string implements HasLabel
     case AscensoCompra = 'ascenso_compra';
     case AscensoEvento = 'ascenso_evento';
     case AscensoMembresia = 'ascenso_membresia';
+    case AscensoPromocion = 'ascenso_promocion';
     case DescensoNocturno = 'descenso_nocturno';
 
     public function isAscenso(): bool
@@ -28,6 +29,7 @@ enum MotivoCambioNivel: string implements HasLabel
             self::AscensoCompra => 'Ascenso por compra',
             self::AscensoEvento => 'Ascenso por evento',
             self::AscensoMembresia => 'Ascenso por membresía',
+            self::AscensoPromocion => 'Ascenso por promoción',
             self::DescensoNocturno => 'Descenso en la evaluación nocturna',
         };
     }

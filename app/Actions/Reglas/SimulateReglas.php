@@ -61,7 +61,7 @@ class SimulateReglas
             Gate::forUser($user)->authorize('editJson', Regla::class);
         }
 
-        if ($tipo === TipoRegla::Niveles) {
+        if (! $tipo->appliesToPurchases()) {
             throw ValidationException::withMessages([
                 'definicion' => 'El simulador solo prueba reglas de acumulación y bonificación.',
             ]);

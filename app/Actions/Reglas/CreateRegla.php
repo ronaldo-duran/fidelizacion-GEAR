@@ -8,6 +8,7 @@ use App\Enums\DefinicionSource;
 use App\Enums\TipoRegla;
 use App\Models\Regla;
 use App\Models\User;
+use App\Reglas\BonoRegistroVigente;
 use App\Reglas\ReglaAuditLogger;
 use App\Reglas\ReglaDefinitionValidator;
 use Carbon\CarbonImmutable;
@@ -26,10 +27,16 @@ class CreateRegla
 
     private readonly ReglaAuditLogger $auditLogger;
 
-    public function __construct(ReglaDefinitionValidator $validator, ReglaAuditLogger $auditLogger)
-    {
+    private readonly BonoRegistroVigente $bonos;
+
+    public function __construct(
+        ReglaDefinitionValidator $validator,
+        ReglaAuditLogger $auditLogger,
+        BonoRegistroVigente $bonos,
+    ) {
         $this->validator = $validator;
         $this->auditLogger = $auditLogger;
+        $this->bonos = $bonos;
     }
 
     /**
@@ -59,6 +66,10 @@ class CreateRegla
             return DB::transaction(function () use ($user, $codigo, $tipo, $definicion, $start): Regla {
                 if (Regla::query()->where('codigo', $codigo)->toBase()->exists()) {
                     throw $this->duplicateCodigo();
+                }
+
+                if ($tipo === TipoRegla::BonoRegistro) {
+                    $this->bonos->assertNingunOtro($codigo, $start);
                 }
 
                 $regla = Regla::query()->create([

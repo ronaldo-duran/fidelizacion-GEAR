@@ -8,13 +8,37 @@ use App\Compras\AnulacionCajero;
 use App\Models\MovimientoPuntos;
 use App\Models\Transaccion;
 use App\Models\User;
+use App\Panel\AlcancePanel;
 
 /**
  * Who can record manual ledger operations. Accruals, expiries and promotions
  * are system operations, authorized by the features that call them.
+ *
+ * En el panel el libro es de solo lectura (regla dura 3.4, E10-06): nadie lo
+ * edita ni lo borra, y cada administrador ve lo de su alcance.
  */
 class MovimientoPuntosPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return AlcancePanel::esAdministrador($user);
+    }
+
+    public function view(User $user, MovimientoPuntos $movimiento): bool
+    {
+        return AlcancePanel::esAdministrador($user) && AlcancePanel::veMovimiento($user, $movimiento);
+    }
+
+    public function update(): bool
+    {
+        return false;
+    }
+
+    public function delete(): bool
+    {
+        return false;
+    }
+
     public function recordAjusteManual(User $user): bool
     {
         return $user->activo && $user->esAdministradorDelGrupo();

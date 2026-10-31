@@ -78,6 +78,38 @@ class MovimientoPuntos extends Model
     }
 
     /**
+     * @return BelongsTo<Comercio, $this>
+     */
+    public function comercio(): BelongsTo
+    {
+        return $this->belongsTo(Comercio::class);
+    }
+
+    /**
+     * @return BelongsTo<Transaccion, $this>
+     */
+    public function transaccion(): BelongsTo
+    {
+        return $this->belongsTo(Transaccion::class);
+    }
+
+    /**
+     * @return BelongsTo<Regla, $this>
+     */
+    public function regla(): BelongsTo
+    {
+        return $this->belongsTo(Regla::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function usuario(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

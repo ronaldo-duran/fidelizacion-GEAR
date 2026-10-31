@@ -76,6 +76,14 @@ class Cliente extends Model implements AuthenticatableContract
     }
 
     /**
+     * @return HasMany<Transaccion, $this>
+     */
+    public function transacciones(): HasMany
+    {
+        return $this->hasMany(Transaccion::class);
+    }
+
+    /**
      * @return HasMany<CambioNivel, $this>
      */
     public function cambiosNivel(): HasMany

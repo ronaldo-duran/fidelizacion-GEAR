@@ -65,6 +65,7 @@ final class DefinicionLegible
             TipoRegla::Niveles => self::niveles($definicion),
             TipoRegla::Bonificacion => self::bonificacion($definicion),
             TipoRegla::BonoRegistro => self::bonoRegistro($definicion),
+            TipoRegla::Mision => self::mision($definicion),
         };
     }
 
@@ -129,6 +130,24 @@ final class DefinicionLegible
         return [
             '«' . self::texto($definicion['titulo'] ?? null) . '».',
             "Da {$puntos} a quien se inscribe en el programa mientras rige.",
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $definicion
+     * @return list<string>
+     */
+    private static function mision(array $definicion): array
+    {
+        $puntos = self::cantidad($definicion['puntos'] ?? null, 'punto', 'puntos');
+        $veces = self::cantidad($definicion['max_por_cliente'] ?? null, 'vez', 'veces');
+        $soporte = ($definicion['requiere_soporte'] ?? false) === true ? 'Pide' : 'No pide';
+
+        return [
+            '«' . self::texto($definicion['titulo'] ?? null) . '»: ' . self::texto($definicion['descripcion'] ?? null),
+            'De ' . self::valor('comercio_id', $definicion['comercio_id'] ?? null) . '.',
+            "Da {$puntos} por cumplimiento aprobado, hasta {$veces} por cliente.",
+            "{$soporte} pantallazo de soporte.",
         ];
     }
 

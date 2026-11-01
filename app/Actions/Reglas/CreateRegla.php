@@ -9,6 +9,7 @@ use App\Enums\TipoRegla;
 use App\Models\Regla;
 use App\Models\User;
 use App\Reglas\BonoRegistroVigente;
+use App\Reglas\LimitesMision;
 use App\Reglas\ReglaAuditLogger;
 use App\Reglas\ReglaDefinitionValidator;
 use Carbon\CarbonImmutable;
@@ -19,7 +20,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Creates version 1 of a new rule.
+ * Creates version 1 of a new rule. A mission (E3-06) is authorized for its
+ * merchant and must fit the limits the group enabled for it.
  */
 class CreateRegla
 {
@@ -29,14 +31,18 @@ class CreateRegla
 
     private readonly BonoRegistroVigente $bonos;
 
+    private readonly LimitesMision $limites;
+
     public function __construct(
         ReglaDefinitionValidator $validator,
         ReglaAuditLogger $auditLogger,
         BonoRegistroVigente $bonos,
+        LimitesMision $limites,
     ) {
         $this->validator = $validator;
         $this->auditLogger = $auditLogger;
         $this->bonos = $bonos;
+        $this->limites = $limites;
     }
 
     /**
@@ -52,7 +58,7 @@ class CreateRegla
         DefinicionSource $source = DefinicionSource::Form,
         ?CarbonInterface $vigenteDesde = null,
     ): Regla {
-        Gate::forUser($user)->authorize('create', Regla::class);
+        $this->authorize($user, $tipo, $definicion);
 
         if ($source === DefinicionSource::JsonEditor) {
             Gate::forUser($user)->authorize('editJson', Regla::class);
@@ -72,6 +78,10 @@ class CreateRegla
                     $this->bonos->assertNingunOtro($codigo, $start);
                 }
 
+                if ($tipo === TipoRegla::Mision) {
+                    $this->limites->assertPermite($definicion);
+                }
+
                 $regla = Regla::query()->create([
                     'codigo' => $codigo,
                     'tipo' => $tipo,
@@ -89,6 +99,31 @@ class CreateRegla
         } catch (UniqueConstraintViolationException) {
             throw $this->duplicateCodigo();
         }
+    }
+
+    /**
+     * Una misión se autoriza para su comercio. Sin un comercio válido no hay a
+     * quién autorizar: se rechaza primero la forma de la definición.
+     *
+     * @param  array<string, mixed>  $definicion
+     *
+     * @throws ValidationException
+     */
+    private function authorize(User $user, TipoRegla $tipo, array $definicion): void
+    {
+        if ($tipo !== TipoRegla::Mision) {
+            Gate::forUser($user)->authorize('create', Regla::class);
+
+            return;
+        }
+
+        $comercioId = $definicion['comercio_id'] ?? null;
+
+        if (! is_int($comercioId)) {
+            $this->validator->validate($tipo, $definicion);
+        }
+
+        Gate::forUser($user)->authorize('createMision', [Regla::class, is_int($comercioId) ? $comercioId : 0]);
     }
 
     /**

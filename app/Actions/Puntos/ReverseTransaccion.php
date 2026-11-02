@@ -10,6 +10,7 @@ use App\Models\MovimientoPuntos;
 use App\Models\User;
 use App\Puntos\Ledger;
 use App\Puntos\LoteCalculator;
+use App\Puntos\PlazoReversa;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -127,11 +128,9 @@ class ReverseTransaccion
      */
     private function assertWithinWindow(MovimientoPuntos $original): void
     {
-        $days = config('puntos.reversal_window_days');
-        $days = is_int($days) ? $days : 0;
-        $purchaseDay = ($original->created_at ?? CarbonImmutable::now())->startOfDay();
+        if (PlazoReversa::vencido($original->created_at ?? CarbonImmutable::now())) {
+            $days = PlazoReversa::dias();
 
-        if (CarbonImmutable::now()->startOfDay()->gt($purchaseDay->addDays($days))) {
             throw ValidationException::withMessages([
                 'transaccion' => "La compra tiene más de {$days} días y ya no se puede revertir.",
             ]);

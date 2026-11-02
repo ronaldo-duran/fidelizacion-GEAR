@@ -15,6 +15,7 @@ use App\Enums\TipoMovimiento;
 use App\Enums\TipoRegla;
 use App\Models\Auditoria;
 use App\Models\CambioNivel;
+use App\Models\Categoria;
 use App\Models\Comercio;
 use App\Models\ComercioPromocionLimite;
 use App\Models\CumplimientoMision;
@@ -268,8 +269,16 @@ it('requires the support the mission asks for and a mission in force', function 
 
     expect(fn (): CumplimientoMision => $enviar($this->cliente->id, 'instagram', '  '))
         ->toThrow(ValidationException::class, 'Adjunta el pantallazo que pide la misión.')
-        ->and(fn (): CumplimientoMision => $enviar($this->cliente->id, 'no-existe', 'x.png'))
+        ->and(fn (): CumplimientoMision => $enviar($this->cliente->id, 'no-existe', 'cumplimientos/x.png'))
         ->toThrow(ValidationException::class, 'Esta misión ya no está disponible.');
+
+    // La ruta la genera el servidor dentro de `cumplimientos/`: nada fuera de esa carpeta.
+    foreach (['x.png', '../.env', 'cumplimientos/../../.env', 'cumplimientos\..\.env'] as $ruta) {
+        expect(fn (): CumplimientoMision => $enviar($this->cliente->id, 'instagram', $ruta))
+            ->toThrow(ValidationException::class, 'El soporte no es válido.');
+    }
+
+    expect(CumplimientoMision::query()->count())->toBe(0);
 
     $this->travel(1)->minutes();
     $sinSoporte = app(VersionRegla::class)(
@@ -297,7 +306,7 @@ it('lets only a user of the owning merchant with the permission approve', functi
 
     foreach ($case['approvers'] as $i => $approver) {
         $cliente = LedgerTestData::cliente((string) (3000000000 + $i));
-        $cumplimiento = app(SubmitCumplimientoMision::class)($cliente->id, $mision->codigo, 'x.png');
+        $cumplimiento = app(SubmitCumplimientoMision::class)($cliente->id, $mision->codigo, 'cumplimientos/x.png');
         $usuario = match ($approver['rol']) {
             'administrador_grupo' => $this->admin,
             'administrador_comercio' => User::factory()
@@ -337,7 +346,14 @@ it('records the reason and the reviewer of a rejection and grants nothing', func
     $cumplimiento = ($this->enviar)($mision->codigo);
 
     expect(fn (): CumplimientoMision => app(RejectCumplimientoMision::class)($revisor, $cumplimiento->id, '   '))
-        ->toThrow(ValidationException::class, 'Escribe por qué se rechaza');
+        ->toThrow(ValidationException::class, 'Escribe por qué se rechaza')
+        ->and(fn (): CumplimientoMision => app(RejectCumplimientoMision::class)(
+            $revisor,
+            $cumplimiento->id,
+            str_repeat('a', 256),
+        ))
+        ->toThrow(ValidationException::class, 'El motivo no puede pasar de 255 caracteres.')
+        ->and($cumplimiento->fresh()?->estado)->toBe(EstadoCumplimiento::Pendiente);
 
     $rechazado = app(RejectCumplimientoMision::class)($revisor, $cumplimiento->id, " {$submission['motivo_rechazo']} ");
 
@@ -350,6 +366,24 @@ it('records the reason and the reviewer of a rejection and grants nothing', func
         ->and(MovimientoPuntos::query()->count())->toBe(0)
         // Un rechazo no cuenta para el máximo: el cliente puede volver a enviarla.
         ->and(($this->enviar)($mision->codigo)->estado)->toBe(EstadoCumplimiento::Pendiente);
+});
+
+it('does not approve while no accrual rule is in force and keeps the submission pending', function (): void {
+    $mision = ($this->mision)(['codigo' => 'instagram', 'comercio_id' => 2, 'puntos' => 10]);
+    $cumplimiento = ($this->enviar)($mision->codigo);
+    $acumulacion = Regla::query()->where('tipo', TipoRegla::Acumulacion->value)->whereNull('vigente_hasta')->sole();
+    // El motor valida que las categorías de la regla existan antes de versionarla.
+    Categoria::factory()->create(['slug' => 'restaurante']);
+    $this->travel(1)->minutes();
+    app(VersionRegla::class)($this->admin, $acumulacion, $acumulacion->definicion, false);
+
+    // Sin regla de acumulación no se sabe cuándo vencen los puntos: no se abona un lote sin vigencia.
+    expect(fn (): MovimientoPuntos => app(ApproveCumplimientoMision::class)(($this->revisor)(2), $cumplimiento->id))
+        ->toThrow(ValidationException::class, 'No hay una regla de acumulación vigente')
+        ->and($cumplimiento->fresh()?->estado)->toBe(EstadoCumplimiento::Pendiente)
+        ->and(MovimientoPuntos::query()->count())->toBe(0)
+        ->and(PromocionOtorgada::query()->count())->toBe(0)
+        ->and($this->cliente->fresh()?->saldo_puntos)->toBe(0);
 });
 
 it('grants the mission version of the submission', function (): void {

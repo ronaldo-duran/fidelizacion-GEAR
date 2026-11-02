@@ -25,6 +25,12 @@ use Illuminate\Validation\ValidationException;
  */
 class SubmitCumplimientoMision
 {
+    /**
+     * Carpeta del disco privado donde el servidor guarda los pantallazos. La
+     * ruta nunca la elige el cliente: el comercio descarga lo que haya aquí.
+     */
+    private const SOPORTE_DIRECTORIO = 'cumplimientos/';
+
     private readonly Ledger $ledger;
 
     public function __construct(Ledger $ledger)
@@ -33,7 +39,7 @@ class SubmitCumplimientoMision
     }
 
     /**
-     * @param  string|null  $soportePath  el pantallazo ya guardado en el disco privado
+     * @param  string|null  $soportePath  el pantallazo que el servidor ya guardó en `cumplimientos/` del disco privado
      *
      * @throws ValidationException
      */
@@ -76,7 +82,21 @@ class SubmitCumplimientoMision
             throw ValidationException::withMessages(['soporte' => 'Adjunta el pantallazo que pide la misión.']);
         }
 
-        return $soportePath === '' ? null : $soportePath;
+        if ($soportePath === '') {
+            return null;
+        }
+
+        $fueraDeLaCarpeta = ! str_starts_with($soportePath, self::SOPORTE_DIRECTORIO)
+            || str_contains($soportePath, '..')
+            || str_contains($soportePath, '\\');
+
+        if ($fueraDeLaCarpeta) {
+            throw ValidationException::withMessages([
+                'soporte' => 'El soporte no es válido. Adjunta de nuevo el pantallazo.',
+            ]);
+        }
+
+        return $soportePath;
     }
 
     /**

@@ -83,7 +83,7 @@ beforeEach(function (): void {
     $this->enviar = fn (string $codigo): CumplimientoMision => app(SubmitCumplimientoMision::class)(
         $this->cliente->id,
         $codigo,
-        'cumplimientos/pantallazo.png',
+        'cumplimientos/' . $this->cliente->id . '/pantallazo.png',
     );
 });
 
@@ -266,14 +266,18 @@ it('rejects a second submission while one is pending', function (): void {
 it('requires the support the mission asks for and a mission in force', function (): void {
     $mision = ($this->mision)(['codigo' => 'instagram', 'comercio_id' => 2, 'puntos' => 10]);
     $enviar = app(SubmitCumplimientoMision::class);
+    $propia = 'cumplimientos/' . $this->cliente->id . '/x.png';
 
     expect(fn (): CumplimientoMision => $enviar($this->cliente->id, 'instagram', '  '))
         ->toThrow(ValidationException::class, 'Adjunta el pantallazo que pide la misión.')
-        ->and(fn (): CumplimientoMision => $enviar($this->cliente->id, 'no-existe', 'cumplimientos/x.png'))
+        ->and(fn (): CumplimientoMision => $enviar($this->cliente->id, 'no-existe', $propia))
         ->toThrow(ValidationException::class, 'Esta misión ya no está disponible.');
 
-    // La ruta la genera el servidor dentro de `cumplimientos/`: nada fuera de esa carpeta.
-    foreach (['x.png', '../.env', 'cumplimientos/../../.env', 'cumplimientos\..\.env'] as $ruta) {
+    // La ruta la genera el servidor en la carpeta del cliente: ni fuera de ella ni la de otro cliente.
+    $ajena = 'cumplimientos/' . ($this->cliente->id + 1) . '/x.png';
+    $rutas = ['x.png', 'cumplimientos/x.png', $ajena, '../.env', 'cumplimientos/../../.env', 'cumplimientos\..\.env'];
+
+    foreach ($rutas as $ruta) {
         expect(fn (): CumplimientoMision => $enviar($this->cliente->id, 'instagram', $ruta))
             ->toThrow(ValidationException::class, 'El soporte no es válido.');
     }
@@ -306,7 +310,8 @@ it('lets only a user of the owning merchant with the permission approve', functi
 
     foreach ($case['approvers'] as $i => $approver) {
         $cliente = LedgerTestData::cliente((string) (3000000000 + $i));
-        $cumplimiento = app(SubmitCumplimientoMision::class)($cliente->id, $mision->codigo, 'cumplimientos/x.png');
+        $soporte = 'cumplimientos/' . $cliente->id . '/x.png';
+        $cumplimiento = app(SubmitCumplimientoMision::class)($cliente->id, $mision->codigo, $soporte);
         $usuario = match ($approver['rol']) {
             'administrador_grupo' => $this->admin,
             'administrador_comercio' => User::factory()

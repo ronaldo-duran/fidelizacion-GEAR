@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Actions\Promociones\SetPromocionLimites;
 use App\Actions\Reglas\CreateRegla;
 use App\Enums\TipoRegla;
 use App\Models\Categoria;
@@ -134,7 +135,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@example.com',
         ]);
 
-        User::factory()->administradorDeComercio($comercio->id)->create([
+        User::factory()->administradorDeComercio($comercio->id)->apruebaMisiones()->create([
             'name' => 'Administrador de comercio',
             'email' => 'comercio@clubaponterivera.co',
         ]);
@@ -179,6 +180,28 @@ class DatabaseSeeder extends Seeder
             ],
             'proteccion_meses' => 0,
             'avisos_dias_antes' => [30, 7, 1],
+        ]);
+
+        $this->seedMision($admin);
+    }
+
+    /**
+     * Una misión de El Rancho de Javi con los valores que dio el cliente (10
+     * puntos por seguir en Instagram, tests/Fixtures/promociones-escenarios.json).
+     * La usa la prueba E2E de la PWA; la aprueba el administrador de comercio.
+     */
+    private function seedMision(User $admin): void
+    {
+        $comercio = Comercio::query()->where('nit', '800100100')->sole();
+
+        app(SetPromocionLimites::class)($admin, $comercio->id, true, 50);
+        app(CreateRegla::class)($admin, 'instagram-rancho', TipoRegla::Mision, [
+            'comercio_id' => $comercio->id,
+            'titulo' => 'Síguenos en Instagram',
+            'descripcion' => 'Envía el pantallazo de que sigues a El Rancho de Javi en Instagram.',
+            'puntos' => 10,
+            'max_por_cliente' => 1,
+            'requiere_soporte' => true,
         ]);
     }
 }

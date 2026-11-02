@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Panel;
 
 use App\Models\Cliente;
-use App\Models\MovimientoPuntos;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -74,9 +73,12 @@ final class AlcancePanel
         return self::clientes(Cliente::query()->whereKey($cliente->id), $user)->toBase()->exists();
     }
 
-    public static function veMovimiento(User $user, MovimientoPuntos $movimiento): bool
+    /**
+     * Un movimiento o una compra: el administrador de comercio ve solo los de su comercio.
+     */
+    public static function veDeSuComercio(User $user, ?int $comercioId): bool
     {
-        return $user->esAdministradorDelGrupo() || $movimiento->comercio_id === $user->comercio_id;
+        return $user->esAdministradorDelGrupo() || ($comercioId !== null && $comercioId === $user->comercio_id);
     }
 
     /**

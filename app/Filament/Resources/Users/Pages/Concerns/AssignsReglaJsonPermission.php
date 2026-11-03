@@ -8,8 +8,9 @@ use App\Enums\RolUsuario;
 use App\Models\User;
 
 /**
- * `edita_reglas_json` is not mass assignable: only the user pages, which only
- * the group administrator reaches, set it explicitly.
+ * `edita_reglas_json` and `aprueba_misiones` are not mass assignable: only the
+ * user pages, which only the group administrator reaches, set them
+ * explicitly. El administrador del grupo no aprueba misiones (E3-06).
  *
  * El comercio y la sede ocultos para el rol no llegan en el formulario, así
  * que se limpian aquí: al pasar un cajero a administrador del grupo no le
@@ -24,6 +25,8 @@ trait AssignsReglaJsonPermission
     {
         $user->fill($data);
         $user->edita_reglas_json = ($data['edita_reglas_json'] ?? false) === true;
+        $user->aprueba_misiones = ($data['aprueba_misiones'] ?? false) === true
+            && $user->rol !== RolUsuario::AdministradorGrupo;
 
         if ($user->rol !== RolUsuario::Cajero) {
             $user->sede_id = null;

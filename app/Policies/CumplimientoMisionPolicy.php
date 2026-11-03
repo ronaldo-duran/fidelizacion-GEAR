@@ -14,12 +14,23 @@ use App\Models\User;
  */
 class CumplimientoMisionPolicy
 {
+    /**
+     * La cola de cumplimientos: solo quien puede revisarlos. El recurso la
+     * limita a los del comercio del usuario.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->activo && $user->aprueba_misiones && ! $user->esAdministradorDelGrupo();
+    }
+
+    public function view(User $user, CumplimientoMision $cumplimiento): bool
+    {
+        return $this->viewAny($user) && $user->comercio_id === $cumplimiento->comercio_id;
+    }
+
     public function review(User $user, CumplimientoMision $cumplimiento): bool
     {
-        return $user->activo
-            && $user->aprueba_misiones
-            && ! $user->esAdministradorDelGrupo()
-            && $user->comercio_id === $cumplimiento->comercio_id;
+        return $this->view($user, $cumplimiento);
     }
 
     public function update(): bool

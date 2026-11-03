@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Comercios\Schemas;
 
+use App\Models\ComercioPromocionLimite;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Gate;
 
 class ComercioForm
 {
@@ -34,6 +38,34 @@ class ComercioForm
                     ->label('Activo')
                     ->default(true)
                     ->helperText('Un comercio inactivo no puede registrar compras.'),
+                self::promociones(),
+            ]);
+    }
+
+    /**
+     * Lo que el comercio puede dar en misiones (E3-06). Solo lo ve y lo
+     * cambia el grupo; el comercio no edita sus propios límites.
+     */
+    private static function promociones(): Section
+    {
+        return Section::make('Promociones')
+            ->key('promocion')
+            ->description('Si el comercio puede crear misiones y cuántos puntos puede dar cada una.')
+            ->statePath('promocion')
+            ->columns(2)
+            ->columnSpanFull()
+            ->visible(static fn (string $operation): bool => $operation === 'edit'
+                && Gate::allows('update', ComercioPromocionLimite::class))
+            ->schema([
+                Toggle::make('permite_misiones')
+                    ->label('Puede crear misiones')
+                    ->live(),
+                TextInput::make('puntos_max_por_mision')
+                    ->label('Máximo de puntos por misión')
+                    ->helperText('Bajarlo no cambia las misiones guardadas: aplica a la próxima versión activa.')
+                    ->integer()
+                    ->minValue(static fn (Get $get): int => $get('permite_misiones') === true ? 1 : 0)
+                    ->required(),
             ]);
     }
 }

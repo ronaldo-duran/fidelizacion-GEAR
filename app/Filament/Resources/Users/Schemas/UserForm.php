@@ -79,6 +79,11 @@ class UserForm
                     ->label('Puede usar el editor JSON de reglas')
                     ->helperText('Solo aplica al administrador del grupo.')
                     ->default(false),
+                Toggle::make('aprueba_misiones')
+                    ->label('Puede aprobar misiones de su comercio')
+                    ->helperText('Revisa los cumplimientos que envían los clientes. No aplica al grupo.')
+                    ->default(false)
+                    ->visible(static fn (Get $get): bool => self::rol($get) !== RolUsuario::AdministradorGrupo),
             ]);
     }
 

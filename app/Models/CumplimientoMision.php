@@ -61,6 +61,22 @@ class CumplimientoMision extends Model
     }
 
     /**
+     * @return BelongsTo<Cliente, $this>
+     */
+    public function cliente(): BelongsTo
+    {
+        return $this->belongsTo(Cliente::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function revisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'revisado_por');
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

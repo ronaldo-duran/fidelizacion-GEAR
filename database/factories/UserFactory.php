@@ -80,6 +80,11 @@ class UserFactory extends Factory
         return $this->state(['edita_reglas_json' => true]);
     }
 
+    public function apruebaMisiones(): static
+    {
+        return $this->state(['aprueba_misiones' => true]);
+    }
+
     public function inactivo(): static
     {
         return $this->state(['activo' => false]);

@@ -71,7 +71,7 @@ class ReglaForm
                             ->disabledOn('edit'),
                         Select::make('tipo')
                             ->label('Tipo')
-                            ->options(TipoRegla::class)
+                            ->options(self::tipos())
                             ->required()
                             ->live()
                             ->disabledOn('edit'),
@@ -204,6 +204,25 @@ class ReglaForm
                     ...self::valorComponents(),
                 ]),
         ]);
+    }
+
+    /**
+     * Los tipos que se crean en esta pantalla. Las misiones tienen la suya,
+     * con el comercio y sus límites (E3-06).
+     *
+     * @return array<string, string>
+     */
+    private static function tipos(): array
+    {
+        $tipos = [];
+
+        foreach (TipoRegla::cases() as $tipo) {
+            if ($tipo !== TipoRegla::Mision) {
+                $tipos[$tipo->value] = $tipo->getLabel();
+            }
+        }
+
+        return $tipos;
     }
 
     /**

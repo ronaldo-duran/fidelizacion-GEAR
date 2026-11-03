@@ -17,23 +17,29 @@ test('la página de inicio no se desborda en celular', async ({ page }) => {
     expect(anchoDocumento).toBeLessThanOrEqual(anchoVentana);
 });
 
-test('un administrador entra al panel', async ({ page }) => {
-    await page.goto('/admin/login');
+// El ingreso al panel admite 5 intentos por minuto desde una IP (Filament) y todas las pruebas
+// salen de 127.0.0.1: con los dos proyectos y los reintentos, el panel quedaba bloqueado.
+test.describe('ingreso al panel', () => {
+    test.skip(({ isMobile }) => isMobile, 'El panel se prueba en escritorio.');
 
-    await page.getByLabel('Correo').fill('admin@example.com');
-    await page.locator('input[type="password"]').fill('password');
-    await page.getByRole('button', { name: 'Ingresar' }).click();
+    test('un administrador entra al panel', async ({ page }) => {
+        await page.goto('/admin/login');
 
-    await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByRole('heading', { name: 'Tablero del grupo' })).toBeVisible();
-});
+        await page.getByLabel('Correo').fill('admin@example.com');
+        await page.locator('input[type="password"]').fill('password');
+        await page.getByRole('button', { name: 'Ingresar' }).click();
 
-test('credenciales inválidas no dan acceso', async ({ page }) => {
-    await page.goto('/admin/login');
+        await expect(page).toHaveURL(/\/admin\/?$/);
+        await expect(page.getByRole('heading', { name: 'Tablero del grupo' })).toBeVisible();
+    });
 
-    await page.getByLabel('Correo').fill('admin@example.com');
-    await page.locator('input[type="password"]').fill('incorrecta');
-    await page.getByRole('button', { name: 'Ingresar' }).click();
+    test('credenciales inválidas no dan acceso', async ({ page }) => {
+        await page.goto('/admin/login');
 
-    await expect(page).toHaveURL(/\/admin\/login/);
+        await page.getByLabel('Correo').fill('admin@example.com');
+        await page.locator('input[type="password"]').fill('incorrecta');
+        await page.getByRole('button', { name: 'Ingresar' }).click();
+
+        await expect(page).toHaveURL(/\/admin\/login/);
+    });
 });

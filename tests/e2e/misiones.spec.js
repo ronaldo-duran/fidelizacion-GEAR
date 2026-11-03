@@ -27,7 +27,7 @@ test('el cliente envía el pantallazo de una misión y queda en revisión', asyn
     await sinDesborde(page);
 
     const mision = page.locator('article', { hasText: 'Síguenos en Instagram' });
-    await expect(mision.getByText('El Rancho de Javi')).toBeVisible();
+    await expect(mision.getByText('El Rancho de Javi', { exact: true })).toBeVisible();
     await expect(mision.getByText('+10 pts')).toBeVisible();
 
     await mision.getByRole('button', { name: 'Cumplir misión' }).click();

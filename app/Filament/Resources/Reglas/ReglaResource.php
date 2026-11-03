@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Reglas;
 
+use App\Enums\TipoRegla;
 use App\Filament\Resources\Reglas\Pages\CreateRegla;
 use App\Filament\Resources\Reglas\Pages\ListReglas;
 use App\Filament\Resources\Reglas\Pages\NewReglaVersion;
@@ -49,14 +50,14 @@ class ReglaResource extends Resource
 
     /**
      * Each rule appears once, by its latest version. Older versions live in
-     * the history.
+     * the history. Missions have their own screen (E3-06).
      *
      * @return Builder<Model>
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
-        $query->getQuery()->whereNull('vigente_hasta');
+        $query->getQuery()->whereNull('vigente_hasta')->where('tipo', '<>', TipoRegla::Mision->value);
 
         return $query;
     }

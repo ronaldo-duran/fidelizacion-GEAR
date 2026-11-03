@@ -7,10 +7,9 @@ namespace App\Actions\Promociones;
 use App\Actions\Niveles\RaiseNivelEfectivo;
 use App\Actions\Puntos\RecordPromocion;
 use App\Enums\MotivoCambioNivel;
-use App\Enums\TipoRegla;
 use App\Models\MovimientoPuntos;
 use App\Models\PromocionOtorgada;
-use App\Models\Regla;
+use App\Puntos\VigenciaPromocion;
 use App\Reglas\BonoRegistroVigente;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -40,11 +39,18 @@ class GrantBonoRegistro
 
     private readonly RaiseNivelEfectivo $raise;
 
-    public function __construct(BonoRegistroVigente $bonos, RecordPromocion $record, RaiseNivelEfectivo $raise)
-    {
+    private readonly VigenciaPromocion $vigencia;
+
+    public function __construct(
+        BonoRegistroVigente $bonos,
+        RecordPromocion $record,
+        RaiseNivelEfectivo $raise,
+        VigenciaPromocion $vigencia,
+    ) {
         $this->bonos = $bonos;
         $this->record = $record;
         $this->raise = $raise;
+        $this->vigencia = $vigencia;
     }
 
     /**
@@ -66,7 +72,7 @@ class GrantBonoRegistro
             throw new LogicException("The registration bonus {$bono->codigo} has no points.");
         }
 
-        $vigenciaHasta = $this->vigenciaHasta($now);
+        $vigenciaHasta = $this->vigencia->hasta($now);
 
         if ($vigenciaHasta === null) {
             Log::warning('Bono de registro sin abonar: no hay regla de acumulación vigente.', [
@@ -95,21 +101,5 @@ class GrantBonoRegistro
         } catch (UniqueConstraintViolationException) {
             return null;
         }
-    }
-
-    /**
-     * Los puntos del bono vencen como los de una compra: a los meses de la
-     * regla de acumulación vigente (E3-05). Null si no rige ninguna.
-     */
-    private function vigenciaHasta(CarbonImmutable $now): ?CarbonImmutable
-    {
-        $acumulacion = Regla::inForceAt($now)->where('tipo', TipoRegla::Acumulacion->value)->first();
-        $meses = $acumulacion?->definicion['vigencia_puntos_meses'] ?? null;
-
-        if (! is_int($meses)) {
-            return null;
-        }
-
-        return $now->startOfDay()->addMonths($meses);
     }
 }

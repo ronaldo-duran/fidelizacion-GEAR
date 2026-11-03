@@ -9,6 +9,7 @@ use App\Enums\TipoRegla;
 use App\Models\Regla;
 use App\Models\User;
 use App\Reglas\BonoRegistroVigente;
+use App\Reglas\LimitesMision;
 use App\Reglas\ReglaAuditLogger;
 use App\Reglas\ReglaDefinitionValidator;
 use Carbon\CarbonImmutable;
@@ -34,14 +35,18 @@ class VersionRegla
 
     private readonly BonoRegistroVigente $bonos;
 
+    private readonly LimitesMision $limites;
+
     public function __construct(
         ReglaDefinitionValidator $validator,
         ReglaAuditLogger $auditLogger,
         BonoRegistroVigente $bonos,
+        LimitesMision $limites,
     ) {
         $this->validator = $validator;
         $this->auditLogger = $auditLogger;
         $this->bonos = $bonos;
+        $this->limites = $limites;
     }
 
     /**
@@ -67,6 +72,7 @@ class VersionRegla
         }
 
         $this->validator->validate($base->tipo, $definicion);
+        $this->assertMismoComercio($base, $definicion);
         $start = $this->resolveStart($vigenteDesde);
 
         try {
@@ -93,6 +99,11 @@ class VersionRegla
                     $this->bonos->assertNingunOtro($latest->codigo, $start);
                 }
 
+                // Desactivar una misión siempre se puede, aunque el grupo haya bajado el tope.
+                if ($latest->tipo === TipoRegla::Mision && $activa) {
+                    $this->limites->assertPermite($definicion);
+                }
+
                 $latest->vigente_hasta = $start;
                 $latest->save();
 
@@ -112,6 +123,27 @@ class VersionRegla
             });
         } catch (UniqueConstraintViolationException) {
             throw $this->staleVersion($base);
+        }
+    }
+
+    /**
+     * Una misión es siempre del mismo comercio: cambiarlo en una versión le
+     * daría la misión a otro comercio por fuera de su autorización.
+     *
+     * @param  array<string, mixed>  $definicion
+     *
+     * @throws ValidationException
+     */
+    private function assertMismoComercio(Regla $base, array $definicion): void
+    {
+        if ($base->tipo !== TipoRegla::Mision) {
+            return;
+        }
+
+        if (($definicion['comercio_id'] ?? null) !== ($base->definicion['comercio_id'] ?? null)) {
+            throw ValidationException::withMessages([
+                'definicion' => 'Una misión no cambia de comercio. Crea una misión nueva para el otro comercio.',
+            ]);
         }
     }
 

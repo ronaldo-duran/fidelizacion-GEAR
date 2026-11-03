@@ -45,6 +45,7 @@ class DefinicionFormMapper
             TipoRegla::Niveles => self::niveles($state),
             TipoRegla::Bonificacion => self::bonificacion($state),
             TipoRegla::BonoRegistro => self::bonoRegistro($state),
+            TipoRegla::Mision => self::mision($state),
         };
 
         return [$definicion, DefinicionSource::Form];
@@ -181,6 +182,24 @@ class DefinicionFormMapper
         return [
             'puntos' => self::toInteger($state['puntos'] ?? null),
             'titulo' => is_string($titulo) ? trim($titulo) : $titulo,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private static function mision(array $state): array
+    {
+        $texto = static fn (mixed $valor): mixed => is_string($valor) ? trim($valor) : $valor;
+
+        return [
+            'comercio_id' => self::toInteger($state['comercio_id'] ?? null),
+            'titulo' => $texto($state['titulo'] ?? null),
+            'descripcion' => $texto($state['descripcion'] ?? null),
+            'puntos' => self::toInteger($state['puntos'] ?? null),
+            'max_por_cliente' => self::toInteger($state['max_por_cliente'] ?? null),
+            'requiere_soporte' => in_array($state['requiere_soporte'] ?? false, [true, 1, '1'], true),
         ];
     }
 

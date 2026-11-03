@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\TipoRegla;
+use App\Models\Regla;
 use App\Models\User;
 
 /**
  * Access to the rule engine. Only the group administrator creates
  * rules and versions; nobody deletes them or edits them in place (hard rule
- * 3.2). Abilities receive the model as an extra argument and ignore it: the
- * permission does not depend on which rule it is.
+ * 3.2). The exception is a mission (E3-06, decision 2): the administrator of
+ * a merchant also creates and versions the missions of that merchant.
  */
 class ReglaPolicy
 {
@@ -30,10 +32,26 @@ class ReglaPolicy
     }
 
     /**
+     * Una misión del comercio: el grupo para cualquiera, el administrador de
+     * comercio solo para el suyo.
+     */
+    public function createMision(User $user, int $comercioId): bool
+    {
+        return $this->managesReglas($user)
+            || ($user->activo && $user->esAdministradorDeComercio() && $user->comercio_id === $comercioId);
+    }
+
+    /**
      * "Updating" a rule means saving a new version, never editing it.
      */
-    public function update(User $user): bool
+    public function update(User $user, ?Regla $regla = null): bool
     {
+        $comercioId = $regla?->definicion['comercio_id'] ?? null;
+
+        if ($regla?->tipo === TipoRegla::Mision && is_int($comercioId)) {
+            return $this->createMision($user, $comercioId);
+        }
+
         return $this->managesReglas($user);
     }
 

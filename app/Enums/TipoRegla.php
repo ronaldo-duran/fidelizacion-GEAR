@@ -16,10 +16,11 @@ enum TipoRegla: string implements HasLabel
     case Niveles = 'niveles';
     case Bonificacion = 'bonificacion';
     case BonoRegistro = 'bono_registro';
+    case Mision = 'mision';
 
     /**
      * Si la regla entra en el cálculo de puntos de una compra. El bono de
-     * registro da puntos fijos al inscribirse, no por comprar (E3-06).
+     * registro y las misiones dan puntos fijos por otros hechos (E3-06).
      */
     public function appliesToPurchases(): bool
     {
@@ -33,6 +34,7 @@ enum TipoRegla: string implements HasLabel
             self::Niveles => 'Niveles',
             self::Bonificacion => 'Bonificación',
             self::BonoRegistro => 'Bono de registro',
+            self::Mision => 'Misión',
         };
     }
 }

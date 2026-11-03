@@ -70,6 +70,7 @@ class ReglaDefinitionValidator
             TipoRegla::Niveles => $this->nivelesErrors($definicion),
             TipoRegla::Bonificacion => $this->bonificacionErrors($definicion),
             TipoRegla::BonoRegistro => $this->bonoRegistroErrors($definicion),
+            TipoRegla::Mision => $this->misionErrors($definicion),
         };
     }
 
@@ -215,6 +216,25 @@ class ReglaDefinitionValidator
         $titulo = $definicion['titulo'];
 
         return is_string($titulo) && trim($titulo) === '' ? ['El bono necesita un título.'] : [];
+    }
+
+    /**
+     * El título y la descripción los lee el cliente: no pueden quedar en blanco.
+     *
+     * @param  array<array-key, mixed>  $definicion
+     * @return list<string>
+     */
+    private function misionErrors(array $definicion): array
+    {
+        $errors = [];
+
+        foreach (['titulo' => 'un título', 'descripcion' => 'una descripción'] as $clave => $nombre) {
+            if (is_string($definicion[$clave]) && trim($definicion[$clave]) === '') {
+                $errors[] = "La misión necesita {$nombre}.";
+            }
+        }
+
+        return $errors;
     }
 
     /**

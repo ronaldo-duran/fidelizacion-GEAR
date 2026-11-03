@@ -26,6 +26,7 @@ use Illuminate\Notifications\Notifiable;
  * @property int|null $sede_id
  * @property bool $activo
  * @property bool $edita_reglas_json
+ * @property bool $aprueba_misiones
  */
 #[Fillable(['name', 'email', 'password', 'rol', 'comercio_id', 'sede_id', 'activo'])]
 #[Hidden(['password', 'remember_token'])]
@@ -107,6 +108,7 @@ class User extends Authenticatable implements FilamentUser
             'rol' => RolUsuario::class,
             'activo' => 'boolean',
             'edita_reglas_json' => 'boolean',
+            'aprueba_misiones' => 'boolean',
         ];
     }
 }

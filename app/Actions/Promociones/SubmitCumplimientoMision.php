@@ -26,8 +26,9 @@ use Illuminate\Validation\ValidationException;
 class SubmitCumplimientoMision
 {
     /**
-     * Carpeta del disco privado donde el servidor guarda los pantallazos. La
-     * ruta nunca la elige el cliente: el comercio descarga lo que haya aquí.
+     * Carpeta del disco privado donde el servidor guarda los pantallazos, con
+     * una subcarpeta por cliente. La ruta nunca la elige el cliente: el
+     * comercio descarga lo que haya aquí.
      */
     private const SOPORTE_DIRECTORIO = 'cumplimientos/';
 
@@ -39,7 +40,7 @@ class SubmitCumplimientoMision
     }
 
     /**
-     * @param  string|null  $soportePath  el pantallazo que el servidor ya guardó en `cumplimientos/` del disco privado
+     * @param  string|null  $soportePath  el pantallazo que el servidor ya guardó en `cumplimientos/{cliente_id}/`
      *
      * @throws ValidationException
      */
@@ -54,7 +55,7 @@ class SubmitCumplimientoMision
             throw ValidationException::withMessages(['mision' => 'Esta misión ya no está disponible.']);
         }
 
-        $soportePath = $this->soporte($mision, $soportePath);
+        $soportePath = $this->soporte($clienteId, $mision, $soportePath);
 
         return DB::transaction(function () use ($clienteId, $mision, $soportePath): CumplimientoMision {
             $this->ledger->lockCliente($clienteId);
@@ -72,9 +73,12 @@ class SubmitCumplimientoMision
     }
 
     /**
+     * El soporte debe estar en la carpeta del propio cliente: así nadie envía
+     * como suyo el pantallazo de otro.
+     *
      * @throws ValidationException
      */
-    private function soporte(Regla $mision, ?string $soportePath): ?string
+    private function soporte(int $clienteId, Regla $mision, ?string $soportePath): ?string
     {
         $soportePath = trim((string) $soportePath);
 
@@ -86,7 +90,7 @@ class SubmitCumplimientoMision
             return null;
         }
 
-        $fueraDeLaCarpeta = ! str_starts_with($soportePath, self::SOPORTE_DIRECTORIO)
+        $fueraDeLaCarpeta = ! str_starts_with($soportePath, self::carpeta($clienteId))
             || str_contains($soportePath, '..')
             || str_contains($soportePath, '\\');
 
@@ -97,6 +101,14 @@ class SubmitCumplimientoMision
         }
 
         return $soportePath;
+    }
+
+    /**
+     * La carpeta de los pantallazos de un cliente, con la barra final.
+     */
+    public static function carpeta(int $clienteId): string
+    {
+        return self::SOPORTE_DIRECTORIO . $clienteId . '/';
     }
 
     /**

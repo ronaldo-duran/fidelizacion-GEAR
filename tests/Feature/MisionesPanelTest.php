@@ -58,7 +58,7 @@ beforeEach(function (): void {
     $this->enviar = fn (Regla $mision): CumplimientoMision => app(SubmitCumplimientoMision::class)(
         $this->cliente->id,
         $mision->codigo,
-        'cumplimientos/pantallazo.png',
+        'cumplimientos/' . $this->cliente->id . '/pantallazo.png',
     );
     $this->revisor = fn (Comercio $comercio, bool $aprueba = true): User => User::factory()
         ->administradorDeComercio($comercio->id)
@@ -201,7 +201,7 @@ it('rejects a submission from the queue with its reason and grants nothing', fun
 
 it('downloads the support of a submission from the private disk', function (): void {
     Storage::fake('local');
-    Storage::disk('local')->put('cumplimientos/pantallazo.png', 'imagen');
+    Storage::disk('local')->put('cumplimientos/' . $this->cliente->id . '/pantallazo.png', 'imagen');
     $cumplimiento = ($this->enviar)(($this->mision)($this->heladeria, 'instagram'));
     $this->actingAs(($this->revisor)($this->heladeria));
 

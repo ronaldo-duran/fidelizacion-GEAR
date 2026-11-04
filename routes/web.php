@@ -10,6 +10,7 @@ use App\Http\Middleware\EnsureCajero;
 use App\Livewire\Cajero\Caja;
 use App\Livewire\Cajero\Ingreso as CajeroIngreso;
 use App\Livewire\Cajero\ValidarBeneficio;
+use App\Livewire\Cliente\Avisos;
 use App\Livewire\Cliente\Ingreso;
 use App\Livewire\Cliente\Misiones;
 use App\Livewire\Cliente\RecuperarPin;
@@ -37,6 +38,7 @@ Route::name('cliente.')->group(function (): void {
         // TODO(E8-03): el inicio del cliente reemplaza esta vista provisional.
         Route::view('/inicio', 'cliente.inicio')->name('inicio');
         Route::get('/misiones', Misiones::class)->name('misiones');
+        Route::get('/avisos', Avisos::class)->name('avisos');
         Route::post('/salir', LogoutController::class)->name('salir');
     });
 });

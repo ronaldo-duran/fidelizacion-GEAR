@@ -1,0 +1,150 @@
+{
+    "_note": "Scenarios for E6-01 (memberships and online payments). Dates are relative to `hoy` in America/Bogota. Amounts are whole Colombian pesos; the conversion to the gateway's unit (cents) only happens inside the gateway adapter. A period's `vigente_hasta` is the last day it is valid (inclusive), the same as `clientes.membresia_vigente_hasta`. Values the client has not confirmed carry \"_assumption\": true.",
+    "plans": [
+        {
+            "_description": "Monthly Diamante plan (issue #1, decision 8).",
+            "nombre": "Diamante mensual",
+            "nivel": "diamante",
+            "duracion_meses": 1,
+            "precio_cop": 49900
+        },
+        {
+            "_description": "Yearly Diamante plan (issue #1, decision 8).",
+            "nombre": "Diamante anual",
+            "nivel": "diamante",
+            "duracion_meses": 12,
+            "precio_cop": 499000
+        }
+    ],
+    "renewal": {
+        "notice_days_before": { "value": [7, 1], "_assumption": true }
+    },
+    "periods": [
+        {
+            "_description": "First payment: the period starts the day the payment is approved and ends the day before the same date of the next month.",
+            "approved_on": "2026-11-03",
+            "current_vigente_hasta": null,
+            "duracion_meses": 1,
+            "expected_vigente_desde": "2026-11-03",
+            "expected_vigente_hasta": "2026-12-02"
+        },
+        {
+            "_description": "Yearly plan from the same date.",
+            "approved_on": "2026-11-03",
+            "current_vigente_hasta": null,
+            "duracion_meses": 12,
+            "expected_vigente_desde": "2026-11-03",
+            "expected_vigente_hasta": "2027-11-02"
+        },
+        {
+            "_description": "Renewal while the membership is still valid: the new period starts the day after the current one ends, so no day is lost.",
+            "approved_on": "2026-11-28",
+            "current_vigente_hasta": "2026-12-02",
+            "duracion_meses": 1,
+            "expected_vigente_desde": "2026-12-03",
+            "expected_vigente_hasta": "2027-01-02"
+        },
+        {
+            "_description": "Renewal after the membership expired: the new period starts the day the payment is approved.",
+            "approved_on": "2026-12-10",
+            "current_vigente_hasta": "2026-12-02",
+            "duracion_meses": 1,
+            "expected_vigente_desde": "2026-12-10",
+            "expected_vigente_hasta": "2027-01-09"
+        },
+        {
+            "_description": "A month without the start day: the period does not overflow into the following month.",
+            "approved_on": "2027-01-31",
+            "current_vigente_hasta": null,
+            "duracion_meses": 1,
+            "expected_vigente_desde": "2027-01-31",
+            "expected_vigente_hasta": "2027-02-27"
+        },
+        {
+            "_description": "Two approved payments for the same plan stack one after the other.",
+            "approved_on": "2026-11-03",
+            "current_vigente_hasta": "2026-12-02",
+            "duracion_meses": 1,
+            "expected_vigente_desde": "2026-12-03",
+            "expected_vigente_hasta": "2027-01-02"
+        }
+    ],
+    "notifications": [
+        {
+            "_description": "An approved payment with a valid signature and the expected amount grants the membership.",
+            "_e6_01_criterion": "a confirmed payment raises the customer to the plan's level in the same request",
+            "pago": { "precio_cop": 49900, "estado": "pendiente" },
+            "notification": { "signature_valid": true, "status": "aprobado", "amount_cop": 49900, "currency": "COP" },
+            "expected": {
+                "pago_estado": "aprobado",
+                "periods_created": 1,
+                "nivel_efectivo": "diamante",
+                "saldo_puntos_changed": false
+            }
+        },
+        {
+            "_description": "The same approved notification arriving twice extends the membership only once.",
+            "_e6_01_criterion": "a repeated webhook does not extend the validity twice",
+            "pago": { "precio_cop": 49900, "estado": "aprobado" },
+            "notification": { "signature_valid": true, "status": "aprobado", "amount_cop": 49900, "currency": "COP" },
+            "expected": { "pago_estado": "aprobado", "periods_created": 0, "response_status": 200 }
+        },
+        {
+            "_description": "A notification with an invalid signature is rejected and logged, and nothing changes.",
+            "_e6_01_criterion": "a webhook with an invalid signature is rejected and logged",
+            "pago": { "precio_cop": 49900, "estado": "pendiente" },
+            "notification": { "signature_valid": false, "status": "aprobado", "amount_cop": 49900, "currency": "COP" },
+            "expected": {
+                "pago_estado": "pendiente",
+                "periods_created": 0,
+                "response_status": 401,
+                "logged_as": "firma_invalida"
+            }
+        },
+        {
+            "_description": "An approved notification whose amount does not match the payment is logged and not applied.",
+            "pago": { "precio_cop": 49900, "estado": "pendiente" },
+            "notification": { "signature_valid": true, "status": "aprobado", "amount_cop": 4990, "currency": "COP" },
+            "expected": {
+                "pago_estado": "pendiente",
+                "periods_created": 0,
+                "response_status": 200,
+                "logged_as": "monto_distinto"
+            }
+        },
+        {
+            "_description": "An approved notification in another currency is logged and not applied.",
+            "pago": { "precio_cop": 49900, "estado": "pendiente" },
+            "notification": { "signature_valid": true, "status": "aprobado", "amount_cop": 49900, "currency": "USD" },
+            "expected": {
+                "pago_estado": "pendiente",
+                "periods_created": 0,
+                "response_status": 200,
+                "logged_as": "monto_distinto"
+            }
+        },
+        {
+            "_description": "A declined payment is marked declined and grants nothing.",
+            "pago": { "precio_cop": 49900, "estado": "pendiente" },
+            "notification": { "signature_valid": true, "status": "rechazado", "amount_cop": 49900, "currency": "COP" },
+            "expected": { "pago_estado": "rechazado", "periods_created": 0, "response_status": 200 }
+        },
+        {
+            "_description": "A late decline for a payment already approved does not undo it; it is logged for review.",
+            "pago": { "precio_cop": 49900, "estado": "aprobado" },
+            "notification": { "signature_valid": true, "status": "rechazado", "amount_cop": 49900, "currency": "COP" },
+            "expected": {
+                "pago_estado": "aprobado",
+                "periods_created": 0,
+                "response_status": 200,
+                "logged_as": "transicion_invalida"
+            }
+        },
+        {
+            "_description": "A notification for an unknown reference is logged and answered with 200 so the gateway stops retrying.",
+            "pago": null,
+            "notification": { "signature_valid": true, "status": "aprobado", "amount_cop": 49900, "currency": "COP" },
+            "expected": { "periods_created": 0, "response_status": 200, "logged_as": "referencia_desconocida" }
+        }
+    ]
+}

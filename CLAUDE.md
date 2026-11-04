@@ -472,7 +472,8 @@ el issue "Decisiones pendientes del cliente".
 - [ ] Tasas de acumulación por categoría (diseño supone 1 punto por $1.000)
 - [ ] Umbrales de puntos de cada nivel (diseño supone Plata 500, Oro 1.500, Diamante 3.000)
 - [ ] Vigencia de los puntos (diseño supone 12 meses)
-- [ ] Precio y periodicidad de las membresías (diseño supone solo Diamante: $49.900/mes o $499.000/año)
+- [x] Precio y periodicidad de las membresías: solo Diamante, $49.900/mes
+      o $499.000/año (issue #1, decisión 8; fixture de E6-01)
 - [ ] Catálogo inicial de beneficios por comercio y nivel
 - [ ] Nombre comercial del programa (trabajo: Club Aponte Rivera) y logo
 - [ ] Pasarela de pagos elegida

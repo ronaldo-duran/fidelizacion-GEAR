@@ -476,7 +476,9 @@ el issue "Decisiones pendientes del cliente".
       o $499.000/año (issue #1, decisión 8; fixture de E6-01)
 - [ ] Catálogo inicial de beneficios por comercio y nivel
 - [ ] Nombre comercial del programa (trabajo: Club Aponte Rivera) y logo
-- [ ] Pasarela de pagos elegida
+- [x] Pasarela de pagos elegida: **Wompi** (issue #1, punto 9, trabajado en
+      el #20; las opciones eran Wompi o Mercado Pago). Renovación por enlace
+      de pago, sin cobro recurrente (§8); cuenta de Wompi a nombre del cliente
 - [x] Cómo inicia sesión el cliente en la PWA: tipo + número de documento
       y PIN; el registro se verifica con un código por SMS (cambio de
       alcance frente al §8, decidido en #1 el 2026-10-10; E8-02 y E8-06)

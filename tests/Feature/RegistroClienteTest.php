@@ -8,14 +8,18 @@ use App\Actions\Clientes\RequestPinReset;
 use App\Actions\Clientes\ResetPin;
 use App\Actions\Clientes\StartRegistro;
 use App\Clientes\DatosRegistro;
+use App\Enums\CanalNotificacion;
 use App\Enums\CanalRegistro;
+use App\Enums\EstadoEnvio;
 use App\Enums\EstadoTransaccion;
+use App\Enums\EventoNotificacion;
 use App\Enums\TipoDocumento;
 use App\Jobs\Nocturno\PurgeRegistrosPendientes;
 use App\Livewire\Cliente\Registro;
 use App\Livewire\Cliente\VerificarRegistro;
 use App\Models\AutorizacionDatos;
 use App\Models\Cliente;
+use App\Models\EnvioNotificacion;
 use App\Models\RegistroPendiente;
 use App\Models\Transaccion;
 use App\Models\User;
@@ -124,6 +128,14 @@ it('creates the customer with its authorization and session once the phone is ve
         ->and($autorizacion->aceptada_at)->not->toBeNull()
         ->and(Auth::guard('cliente')->id())->toBe($cliente->id)
         ->and(RegistroPendiente::query()->count())->toBe(0);
+
+    // La bienvenida (E7-01): siempre en la app; por correo solo si dio uno.
+    $bienvenida = EnvioNotificacion::query()->where('evento', EventoNotificacion::Bienvenida->value)
+        ->where('cliente_id', $cliente->id)
+        ->pluck('estado', 'canal');
+    expect($bienvenida[CanalNotificacion::App->value])->toBe(EstadoEnvio::Enviado)
+        ->and($bienvenida[CanalNotificacion::Correo->value])
+        ->toBe($cliente->email === null ? EstadoEnvio::Omitido : EstadoEnvio::Enviado);
 });
 
 it('creates nothing without the authorization', function (): void {

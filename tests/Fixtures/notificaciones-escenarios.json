@@ -40,7 +40,7 @@
                 "enlace"
             ],
             "default": {
-                "asunto": "Tus puntos vencen en {dias_antes} días",
+                "asunto": "Tus puntos vencen el {fecha_vencimiento}",
                 "cuerpo": "Hola, {nombre}.\n\nEl {fecha_vencimiento} vencen {puntos_que_vencen} puntos. Si no sumas más antes de esa fecha, pasarás de {nivel} a {nivel_resultante}.\n\nRevisa tu historial: {enlace}"
             }
         },
@@ -60,7 +60,7 @@
             "origen": "avisos_renovacion",
             "variables": ["nombre", "nivel", "vigente_hasta", "dias_antes", "enlace"],
             "default": {
-                "asunto": "Tu membresía vence en {dias_antes} días",
+                "asunto": "Tu membresía vence el {vigente_hasta}",
                 "cuerpo": "Hola, {nombre}.\n\nTu membresía {nivel} vence el {vigente_hasta}. Si la renuevas antes, no pierdes ningún día.\n\nRenueva aquí: {enlace}"
             }
         },

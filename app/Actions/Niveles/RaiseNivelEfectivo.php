@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Actions\Niveles;
 
+use App\Actions\Notificaciones\Notify;
+use App\Enums\EventoNotificacion;
 use App\Enums\MotivoCambioNivel;
+use App\Models\CambioNivel;
 use App\Models\Cliente;
 use App\Niveles\NivelEfectivo;
 use Carbon\CarbonImmutable;
@@ -22,9 +25,12 @@ class RaiseNivelEfectivo
 {
     private readonly NivelEfectivo $niveles;
 
-    public function __construct(NivelEfectivo $niveles)
+    private readonly Notify $notifier;
+
+    public function __construct(NivelEfectivo $niveles, Notify $notifier)
     {
         $this->niveles = $niveles;
+        $this->notifier = $notifier;
     }
 
     public function __invoke(int $clienteId, MotivoCambioNivel $motivo): Cliente
@@ -42,7 +48,8 @@ class RaiseNivelEfectivo
             );
 
             if ($calculado->isAbove($cliente->nivel_efectivo)) {
-                $this->niveles->change($cliente, $calculado, $motivo);
+                $cambio = $this->niveles->change($cliente, $calculado, $motivo);
+                $this->notify($cliente, $cambio);
             }
 
             if (! $cliente->nivel_efectivo->isAbove($calculado)) {
@@ -53,5 +60,22 @@ class RaiseNivelEfectivo
 
             return $cliente;
         });
+    }
+
+    /**
+     * Avisa la subida (E7-01). Si viene de pagar una membresía, el aviso de
+     * membresía confirmada ya dice el nivel: no se manda un segundo correo.
+     */
+    private function notify(Cliente $cliente, CambioNivel $cambio): void
+    {
+        if ($cambio->motivo === MotivoCambioNivel::AscensoMembresia) {
+            return;
+        }
+
+        ($this->notifier)(EventoNotificacion::SubidaNivel, $cliente, $cambio->id, [
+            'nivel_anterior' => $cambio->nivel_anterior->getLabel(),
+            'nivel' => $cambio->nivel_nuevo->getLabel(),
+            'enlace' => route('cliente.inicio'),
+        ]);
     }
 }

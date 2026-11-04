@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Beneficios;
 
+use App\Actions\Notificaciones\Notify;
 use App\Beneficios\ChequeoBeneficio;
 use App\Beneficios\EntregaBeneficio;
 use App\Beneficios\EntregaRechazada;
 use App\Beneficios\RevisionBeneficio;
 use App\Beneficios\ValorOtorgado;
+use App\Enums\EventoNotificacion;
 use App\Enums\ResultadoBeneficio;
 use App\Enums\TipoBeneficio;
 use App\Models\Beneficio;
@@ -16,6 +18,7 @@ use App\Models\Cliente;
 use App\Models\CredencialQr;
 use App\Models\Redencion;
 use App\Models\User;
+use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -30,7 +33,8 @@ use Illuminate\Validation\ValidationException;
  * 2. gasta el código, si lo hay, con un UPDATE condicionado (E4-04);
  * 3. vuelve a calcular el estado del beneficio con los conteos de ese
  *    momento;
- * 4. inserta la redención con su valor otorgado (regla dura 3.11).
+ * 4. inserta la redención con su valor otorgado (regla dura 3.11);
+ * 5. le avisa al cliente el beneficio usado (E7-01).
  *
  * Si algo falla, nada queda escrito y el código sigue sin gastar. No toca los
  * puntos (regla dura 3.1). La referencia del intento tiene un índice único:
@@ -46,9 +50,12 @@ class RedeemBeneficio
 
     private readonly RevisionBeneficio $revision;
 
-    public function __construct(RevisionBeneficio $revision)
+    private readonly Notify $notify;
+
+    public function __construct(RevisionBeneficio $revision, Notify $notify)
     {
         $this->revision = $revision;
+        $this->notify = $notify;
     }
 
     /**
@@ -95,7 +102,8 @@ class RedeemBeneficio
             $this->gastar($cajero, $entrega, $beneficio);
         }
 
-        $chequeo = $this->revision->revisar(Cliente::query()->findOrFail($entrega->clienteId), $beneficio->id);
+        $cliente = Cliente::query()->findOrFail($entrega->clienteId);
+        $chequeo = $this->revision->revisar($cliente, $beneficio->id);
 
         if (! $chequeo->esValido() || $chequeo->estado?->valor === null) {
             throw new EntregaRechazada($chequeo);
@@ -108,7 +116,7 @@ class RedeemBeneficio
             throw ValidationException::withMessages(['monto_cuenta' => self::SIN_VALOR]);
         }
 
-        return Redencion::query()->create([
+        $redencion = Redencion::query()->create([
             'cliente_id' => $entrega->clienteId,
             'beneficio_id' => $beneficio->id,
             'comercio_id' => $beneficio->comercio_id,
@@ -120,6 +128,16 @@ class RedeemBeneficio
             'monto_cuenta_cop' => $monto,
             'soporte' => $soporte,
         ]);
+
+        ($this->notify)(EventoNotificacion::BeneficioUsado, $cliente, $redencion->id, [
+            'beneficio' => $beneficio->nombre,
+            'comercio' => $beneficio->comercio->razon_social ?? '',
+            'valor' => FormatoColombiano::pesos($valor),
+            'fecha' => FormatoColombiano::fecha($redencion->created_at),
+            'enlace' => route('cliente.inicio'),
+        ]);
+
+        return $redencion;
     }
 
     /**

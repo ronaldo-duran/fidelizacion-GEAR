@@ -79,9 +79,9 @@ class NivelEfectivo
     /**
      * Sets the new effective level (not saved yet) and records the change.
      */
-    public function change(Cliente $cliente, Nivel $nuevo, MotivoCambioNivel $motivo): void
+    public function change(Cliente $cliente, Nivel $nuevo, MotivoCambioNivel $motivo): CambioNivel
     {
-        CambioNivel::query()->create([
+        $cambio = CambioNivel::query()->create([
             'cliente_id' => $cliente->id,
             'nivel_anterior' => $cliente->nivel_efectivo,
             'nivel_nuevo' => $nuevo,
@@ -92,5 +92,7 @@ class NivelEfectivo
             'nivel_efectivo' => $nuevo,
             'nivel_efectivo_desde' => CarbonImmutable::now(),
         ]);
+
+        return $cambio;
     }
 }

@@ -23,8 +23,14 @@ export const codigoDelSms = async (celular) => {
     return lineas.at(-1).match(/es (\d{6})\./)[1];
 };
 
+// Mide con las fuentes del diseño ya cargadas: con la de respaldo del sistema, más ancha, las
+// pestañas pasan de 360 px por un instante y la prueba falla según cuánto tarde la carga.
 export const sinDesborde = async (page) => {
-    const ancho = await page.evaluate(() => document.documentElement.scrollWidth);
+    const ancho = await page.evaluate(async () => {
+        await document.fonts.ready;
+
+        return document.documentElement.scrollWidth;
+    });
     expect(ancho).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0);
 };
 

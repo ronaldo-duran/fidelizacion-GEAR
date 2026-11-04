@@ -1,0 +1,185 @@
+{
+    "_note": "Scenarios for E7-01 (notification engine). Event keys are the values of the `evento` column. `variables` is the whitelist each template may use; `{nombre}` style placeholders only, no code. Default texts are the seed for the editable templates (Spanish, tuteo, no exclamation marks). Values the client has not confirmed carry \"_assumption\": true.",
+    "delivery": {
+        "nightly_notices_send_at": { "value": "08:00", "_assumption": true },
+        "max_attempts": { "value": 3, "_assumption": true },
+        "in_app_list_limit": { "value": 30, "_assumption": true }
+    },
+    "events": [
+        {
+            "evento": "bienvenida",
+            "categoria": "transaccional",
+            "origen": "clientes",
+            "variables": ["nombre", "nivel", "enlace"],
+            "default": {
+                "asunto": "Te damos la bienvenida al Club Aponte Rivera",
+                "cuerpo": "Hola, {nombre}.\n\nYa eres parte del Club Aponte Rivera. Empiezas en el nivel {nivel} y cada compra en nuestros comercios te acerca al siguiente.\n\nEntra cuando quieras a ver tus beneficios: {enlace}"
+            }
+        },
+        {
+            "evento": "subida_nivel",
+            "categoria": "transaccional",
+            "origen": "cambios_nivel",
+            "variables": ["nombre", "nivel_anterior", "nivel", "enlace"],
+            "default": {
+                "asunto": "Subiste a {nivel}",
+                "cuerpo": "Hola, {nombre}.\n\nPasaste de {nivel_anterior} a {nivel}. Tus beneficios nuevos ya están disponibles en todos los comercios del Club.\n\nMíralos aquí: {enlace}"
+            }
+        },
+        {
+            "evento": "aviso_descenso",
+            "categoria": "transaccional",
+            "origen": "avisos_descenso",
+            "variables": [
+                "nombre",
+                "nivel",
+                "nivel_resultante",
+                "puntos_que_vencen",
+                "fecha_vencimiento",
+                "dias_antes",
+                "enlace"
+            ],
+            "default": {
+                "asunto": "Tus puntos vencen en {dias_antes} días",
+                "cuerpo": "Hola, {nombre}.\n\nEl {fecha_vencimiento} vencen {puntos_que_vencen} puntos. Si no sumas más antes de esa fecha, pasarás de {nivel} a {nivel_resultante}.\n\nRevisa tu historial: {enlace}"
+            }
+        },
+        {
+            "evento": "membresia_confirmada",
+            "categoria": "transaccional",
+            "origen": "pagos_membresia",
+            "variables": ["nombre", "nivel", "plan", "monto", "vigente_hasta", "enlace"],
+            "default": {
+                "asunto": "Tu membresía {plan} está activa",
+                "cuerpo": "Hola, {nombre}.\n\nRecibimos tu pago de {monto}. Eres {nivel} hasta el {vigente_hasta}, y tus puntos siguen contando.\n\nMira tus beneficios: {enlace}"
+            }
+        },
+        {
+            "evento": "membresia_por_vencer",
+            "categoria": "transaccional",
+            "origen": "avisos_renovacion",
+            "variables": ["nombre", "nivel", "vigente_hasta", "dias_antes", "enlace"],
+            "default": {
+                "asunto": "Tu membresía vence en {dias_antes} días",
+                "cuerpo": "Hola, {nombre}.\n\nTu membresía {nivel} vence el {vigente_hasta}. Si la renuevas antes, no pierdes ningún día.\n\nRenueva aquí: {enlace}"
+            }
+        },
+        {
+            "evento": "beneficio_usado",
+            "categoria": "transaccional",
+            "origen": "redenciones",
+            "variables": ["nombre", "beneficio", "comercio", "valor", "fecha", "enlace"],
+            "default": {
+                "asunto": "Usaste tu beneficio en {comercio}",
+                "cuerpo": "Hola, {nombre}.\n\nEl {fecha} usaste «{beneficio}» en {comercio} y te ahorraste {valor}.\n\nSi no fuiste tú, escríbenos respondiendo este correo.\n\nTus beneficios: {enlace}"
+            }
+        }
+    ],
+    "template_validation": [
+        {
+            "_description": "Only whitelisted variables of the event: saved.",
+            "evento": "subida_nivel",
+            "asunto": "Subiste a {nivel}",
+            "cuerpo": "Hola, {nombre}. Ahora eres {nivel}.",
+            "valid": true
+        },
+        {
+            "_description": "A variable of another event is not whitelisted here: rejected.",
+            "evento": "subida_nivel",
+            "asunto": "Subiste a {nivel}",
+            "cuerpo": "Hola, {nombre}. Vencen {puntos_que_vencen} puntos.",
+            "valid": false,
+            "error_variable": "puntos_que_vencen"
+        },
+        {
+            "_description": "An unknown variable in the subject: rejected.",
+            "evento": "bienvenida",
+            "asunto": "Hola, {documento}",
+            "cuerpo": "Hola, {nombre}.",
+            "valid": false,
+            "error_variable": "documento"
+        },
+        {
+            "_description": "Anything that looks like code inside braces is just an unknown variable: rejected.",
+            "evento": "bienvenida",
+            "asunto": "Hola",
+            "cuerpo": "Hola, {nombre.toUpperCase()} {{ $cliente->documento }}",
+            "valid": false
+        },
+        {
+            "_description": "An unclosed brace: rejected.",
+            "evento": "bienvenida",
+            "asunto": "Hola, {nombre",
+            "cuerpo": "Hola.",
+            "valid": false
+        },
+        {
+            "_description": "An empty subject or body: rejected.",
+            "evento": "bienvenida",
+            "asunto": "",
+            "cuerpo": "Hola, {nombre}.",
+            "valid": false
+        }
+    ],
+    "rendering": [
+        {
+            "_description": "Values are escaped: a name with HTML is shown as text, never as markup.",
+            "evento": "bienvenida",
+            "asunto": "Hola, {nombre}",
+            "values": { "nombre": "<b>Ana</b>" },
+            "expected_asunto": "Hola, <b>Ana</b>",
+            "expected_html_contains": "&lt;b&gt;Ana&lt;/b&gt;"
+        },
+        {
+            "_description": "A value that looks like a placeholder is not replaced again.",
+            "evento": "bienvenida",
+            "asunto": "Hola, {nombre}",
+            "values": { "nombre": "{nivel}" },
+            "expected_asunto": "Hola, {nivel}"
+        }
+    ],
+    "recipients": [
+        {
+            "_description": "A customer with an email gets the email and the in-app notice.",
+            "categoria": "transaccional",
+            "email": "ana@example.com",
+            "suppression": null,
+            "expected": { "correo": "enviado", "app": "enviado" }
+        },
+        {
+            "_description": "A customer without an email (it is optional in the registration) only gets the in-app notice.",
+            "categoria": "transaccional",
+            "email": null,
+            "suppression": null,
+            "expected": { "correo": "omitido_sin_correo", "app": "enviado" }
+        },
+        {
+            "_description": "An address that hard bounced gets no email at all, not even transactional.",
+            "categoria": "transaccional",
+            "email": "rebota@example.com",
+            "suppression": "rebote",
+            "expected": { "correo": "omitido_suprimido", "app": "enviado" }
+        },
+        {
+            "_description": "An address that complained gets no email at all.",
+            "categoria": "transaccional",
+            "email": "queja@example.com",
+            "suppression": "queja",
+            "expected": { "correo": "omitido_suprimido", "app": "enviado" }
+        },
+        {
+            "_description": "A marketing opt-out still gets transactional emails.",
+            "categoria": "transaccional",
+            "email": "baja@example.com",
+            "suppression": "baja_mercadeo",
+            "expected": { "correo": "enviado", "app": "enviado" }
+        },
+        {
+            "_description": "A marketing opt-out gets no marketing email.",
+            "categoria": "mercadeo",
+            "email": "baja@example.com",
+            "suppression": "baja_mercadeo",
+            "expected": { "correo": "omitido_suprimido", "app": "enviado" }
+        }
+    ]
+}

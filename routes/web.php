@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Cajero\LogoutController as CajeroLogoutController;
 use App\Http\Controllers\Cliente\LogoutController;
+use App\Http\Controllers\Cliente\PagoSimuladoController;
 use App\Http\Controllers\Cliente\RegistroCajaController;
 use App\Http\Controllers\KitUiController;
 use App\Http\Middleware\EnsureCajero;
@@ -11,7 +12,9 @@ use App\Livewire\Cajero\Caja;
 use App\Livewire\Cajero\Ingreso as CajeroIngreso;
 use App\Livewire\Cajero\ValidarBeneficio;
 use App\Livewire\Cliente\Avisos;
+use App\Livewire\Cliente\EstadoPago;
 use App\Livewire\Cliente\Ingreso;
+use App\Livewire\Cliente\Membresia;
 use App\Livewire\Cliente\Misiones;
 use App\Livewire\Cliente\RecuperarPin;
 use App\Livewire\Cliente\Registro;
@@ -39,6 +42,14 @@ Route::name('cliente.')->group(function (): void {
         Route::view('/inicio', 'cliente.inicio')->name('inicio');
         Route::get('/misiones', Misiones::class)->name('misiones');
         Route::get('/avisos', Avisos::class)->name('avisos');
+        Route::get('/membresia', Membresia::class)->name('membresia');
+        Route::get('/membresia/pago/{referencia}', EstadoPago::class)->name('membresia.pago');
+
+        // Pasarela simulada de E6-01: solo local y E2E (PAGOS_SIMULADA), nunca en producción.
+        Route::controller(PagoSimuladoController::class)->group(function (): void {
+            Route::get('/pagos/simulada/{referencia}', 'show')->name('pagos.simulada');
+            Route::post('/pagos/simulada/{referencia}', 'store');
+        });
         Route::post('/salir', LogoutController::class)->name('salir');
     });
 });

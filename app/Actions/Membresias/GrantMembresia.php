@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Membresias;
 
 use App\Actions\Niveles\RaiseNivelEfectivo;
+use App\Actions\Notificaciones\Notify;
+use App\Enums\EventoNotificacion;
 use App\Enums\MotivoCambioNivel;
 use App\Membresias\PeriodoCalculator;
 use App\Models\Membresia;
 use App\Models\PagoMembresia;
 use App\Niveles\NivelEfectivo;
+use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -20,7 +23,8 @@ use Illuminate\Support\Facades\DB;
  * No toca `saldo_puntos` ni el libro (regla dura 3.1).
  *
  * El `pago_id` único de `membresias` impide un segundo periodo para el mismo
- * pago aunque esta acción se llame dos veces.
+ * pago aunque esta acción se llame dos veces. El aviso de «membresía
+ * confirmada» (E7-01) nace en la misma transacción: si algo falla, no sale.
  */
 class GrantMembresia
 {
@@ -30,11 +34,18 @@ class GrantMembresia
 
     private readonly RaiseNivelEfectivo $raise;
 
-    public function __construct(NivelEfectivo $niveles, PeriodoCalculator $periodos, RaiseNivelEfectivo $raise)
-    {
+    private readonly Notify $notify;
+
+    public function __construct(
+        NivelEfectivo $niveles,
+        PeriodoCalculator $periodos,
+        RaiseNivelEfectivo $raise,
+        Notify $notify,
+    ) {
         $this->niveles = $niveles;
         $this->periodos = $periodos;
         $this->raise = $raise;
+        $this->notify = $notify;
     }
 
     public function __invoke(PagoMembresia $pago): Membresia
@@ -57,7 +68,15 @@ class GrantMembresia
             ]);
 
             $cliente->forceFill(['nivel_por_membresia' => $pago->nivel, 'membresia_vigente_hasta' => $hasta])->save();
-            ($this->raise)($cliente->id, MotivoCambioNivel::AscensoMembresia);
+            $cliente = ($this->raise)($cliente->id, MotivoCambioNivel::AscensoMembresia);
+
+            ($this->notify)(EventoNotificacion::MembresiaConfirmada, $cliente, $pago->id, [
+                'nivel' => $pago->nivel->getLabel(),
+                'plan' => $pago->plan->nombre,
+                'monto' => FormatoColombiano::pesos($pago->monto_cop),
+                'vigente_hasta' => FormatoColombiano::fechaConAnio($hasta),
+                'enlace' => route('cliente.inicio'),
+            ]);
 
             return $membresia;
         });

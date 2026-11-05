@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Jobs\Nocturno\NightlyJob;
 use App\Jobs\Nocturno\ProcesosNocturnos;
+use App\Jobs\SendAvisosNocturnos;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -37,6 +38,14 @@ Artisan::command('nocturno:correr {fecha? : Fecha de corte, AAAA-MM-DD; hoy si s
 
     $this->info("Procesos nocturnos del {$corte->toDateString()} terminados.");
 })->purpose('Corre los procesos nocturnos de una fecha de corte');
+
+// Avisos registrados de noche (E7-01): salen de mañana, no de madrugada.
+Schedule::job(SendAvisosNocturnos::class)
+    ->name('avisos-nocturnos')
+    ->dailyAt(is_string(config('notificaciones.hora_avisos')) ? config('notificaciones.hora_avisos') : '08:00')
+    ->timezone('America/Bogota')
+    ->withoutOverlapping()
+    ->onOneServer();
 
 Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()

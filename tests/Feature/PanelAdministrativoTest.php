@@ -86,7 +86,7 @@ it('orders the navigation as in 1z and hides groups without resources', function
         'Beneficios' => ['Beneficios'],
         'Comercios' => ['Comercios', 'Sedes', 'Categorías'],
         'Niveles y reglas' => ['Reglas', 'Simulador', 'Eventos calificados', 'Misiones'],
-        'Configuración' => ['Usuarios'],
+        'Configuración' => ['Usuarios', 'Plantillas de avisos', 'Avisos enviados'],
     ]);
 });
 

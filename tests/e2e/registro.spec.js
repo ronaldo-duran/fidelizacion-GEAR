@@ -14,10 +14,24 @@ const registrar = async (page, cliente) => {
     await completarRegistro(page, cliente);
 };
 
-test('el cliente se registra, verifica su celular y queda con sesión', async ({ page }) => {
+// También cubre la bandeja de avisos (E7-01) sin gastar otro SMS: la bienvenida llega al registrarse.
+test('el cliente se registra, verifica su celular, queda con sesión y ve la bienvenida en sus avisos', async ({
+    page,
+}) => {
     await registrar(page, nuevoCliente());
 
     await expect(page).toHaveURL(/\/inicio$/);
+
+    await page.getByRole('link', { name: 'Avisos, 1 sin leer' }).click();
+    await expect(page.getByRole('heading', { name: 'Avisos', exact: true })).toBeVisible();
+    const bienvenida = page.locator('article', { hasText: 'Te damos la bienvenida al Club Aponte Rivera' });
+    await expect(bienvenida.getByText('Nuevo')).toBeVisible();
+    await sinDesborde(page);
+
+    // Al volver, el aviso ya está leído.
+    await page.reload();
+    await expect(page.locator('article', { hasText: 'Te damos la bienvenida' }).getByText('Nuevo')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Avisos', exact: true })).toBeVisible();
 });
 
 test('el cliente ingresa con su documento y su PIN', async ({ page }) => {

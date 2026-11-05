@@ -14,6 +14,7 @@ use App\Models\Comercio;
 use App\Models\EnvioNotificacion;
 use App\Models\PlantillaNotificacion;
 use App\Models\User;
+use App\Notificaciones\EjemplosPlantilla;
 use Carbon\CarbonImmutable;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Mail;
@@ -129,4 +130,27 @@ it('shows an empty inbox and asks a guest to sign in', function (): void {
     $this->actingAs($this->cliente, 'cliente');
 
     $this->get('/avisos')->assertOk()->assertSee('No tienes avisos');
+});
+
+it('writes the panel titles in Spanish sentence case', function (): void {
+    $this->actingAs($this->admin);
+
+    $this->get('/admin/plantillas-avisos')
+        ->assertOk()
+        ->assertSee('Plantillas de avisos')
+        ->assertDontSee('Plantillas De Avisos');
+    $this->get("/admin/plantillas-avisos/{$this->plantilla->id}/edit")
+        ->assertOk()
+        ->assertSee('Editar Subida de nivel')
+        ->assertDontSee('Plantilla De Aviso');
+    $this->get('/admin/avisos-enviados')->assertOk()->assertDontSee('Avisos Enviados');
+});
+
+it('previews the membership templates with a consistent example', function (): void {
+    $valores = EjemplosPlantilla::para(EventoNotificacion::MembresiaConfirmada);
+
+    expect($valores['nivel'])->toBe('Diamante')
+        ->and($valores['plan'])->toBe('Diamante mensual')
+        ->and($valores['vigente_hasta'])->toBe('3 de enero de 2027')
+        ->and(EjemplosPlantilla::para(EventoNotificacion::SubidaNivel)['nivel'])->toBe('Oro');
 });

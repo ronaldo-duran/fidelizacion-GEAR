@@ -41,16 +41,6 @@ final class MembresiasTestData
         ]);
     }
 
-    /**
-     * Vuelve a sembrar los planes iniciales después de vaciar la base (pruebas de concurrencia).
-     */
-    public static function sembrarPlanes(): void
-    {
-        foreach ((array) config('pagos.planes_iniciales') as $plan) {
-            PlanMembresia::query()->create($plan);
-        }
-    }
-
     public static function plan(int $duracionMeses = 1): PlanMembresia
     {
         return PlanMembresia::query()->where('duracion_meses', $duracionMeses)->firstOrFail();

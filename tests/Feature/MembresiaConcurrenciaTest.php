@@ -21,7 +21,6 @@ uses(SinTransaccionDePrueba::class);
 
 afterEach(function (): void {
     BloqueoTestData::vaciar();
-    MembresiasTestData::sembrarPlanes();
 });
 
 it('waits for the payment lock, so a parallel webhook finds it approved and adds no period', function (): void {

@@ -18,6 +18,9 @@ final class BloqueoTestData
 {
     private const CONEXION = 'segunda';
 
+    /** Tablas que llenan las migraciones (catálogos): vaciarlas dejaría sin datos al resto de la suite. */
+    private const SEMBRADAS = ['migrations', 'planes_membresia', 'plantillas_notificacion'];
+
     public static function segundaConexion(): Connection
     {
         $default = config('database.default');
@@ -40,7 +43,8 @@ final class BloqueoTestData
     }
 
     /**
-     * Suelta la segunda conexión y borra lo que la prueba dejó guardado.
+     * Suelta la segunda conexión y borra lo que la prueba dejó guardado, sin
+     * tocar los catálogos que siembran las migraciones.
      */
     public static function vaciar(): void
     {
@@ -55,7 +59,7 @@ final class BloqueoTestData
 
         Schema::withoutForeignKeyConstraints(static function (): void {
             foreach (Schema::getTables() as $tabla) {
-                if ($tabla['name'] !== 'migrations') {
+                if (! in_array($tabla['name'], self::SEMBRADAS, true)) {
                     DB::table($tabla['name'])->truncate();
                 }
             }

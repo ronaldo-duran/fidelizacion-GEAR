@@ -10,8 +10,11 @@ use App\Sms\LogSmsSender;
 use App\Sms\ProveedorSmsSender;
 use App\Sms\SmsSender;
 use App\Support\FormatoColombiano;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -38,6 +41,12 @@ class AppServiceProvider extends ServiceProvider
     {
         // Las acciones de la caja también pasan por el middleware: un cajero desactivado no registra más.
         Livewire::addPersistentMiddleware([EnsureCajero::class]);
+
+        // Webhooks de la pasarela (E6-01): un tope amplio por IP, para frenar abusos sin perder reintentos.
+        RateLimiter::for(
+            'webhooks',
+            static fn (Request $request): Limit => Limit::perMinute(120)->by((string) $request->ip()),
+        );
 
         $formato = '\\' . FormatoColombiano::class;
 

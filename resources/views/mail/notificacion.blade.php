@@ -8,7 +8,10 @@
 </head>
 <body style="margin: 0; padding: 24px 16px; font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5;">
     <div style="max-width: 560px; margin: 0 auto;">
-        <p style="margin: 0 0 24px; font-size: 14px; font-weight: bold;">Club Aponte Rivera</p>
+        <p style="margin: 0 0 24px; font-size: 14px; font-weight: bold;">
+            <img src="{{ asset('icons/icon-192.png') }}" width="40" height="40" alt="" style="vertical-align: middle; margin-right: 8px;">
+            Club Aponte Rivera
+        </p>
 
         {!! $cuerpoHtml !!}
 

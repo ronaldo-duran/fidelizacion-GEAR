@@ -22,6 +22,7 @@ final class ProcesosNocturnos
             new ExpirePuntos($fecha),
             new ReevaluateNiveles($fecha),
             new RegisterAvisosDescenso($fecha),
+            new RegisterAvisosRenovacion($fecha),
             new VerifySaldos($fecha),
             new PurgeCredenciales($fecha),
             new PurgeCodigosVerificacion($fecha),

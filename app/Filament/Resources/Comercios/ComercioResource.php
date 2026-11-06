@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Comercios;
 
-use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Comercios\Pages\CreateComercio;
 use App\Filament\Resources\Comercios\Pages\EditComercio;
 use App\Filament\Resources\Comercios\Pages\ListComercios;
 use App\Filament\Resources\Comercios\Schemas\ComercioForm;
 use App\Filament\Resources\Comercios\Tables\ComerciosTable;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Models\Comercio;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -22,8 +23,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
-class ComercioResource extends BaseResource
+class ComercioResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = Comercio::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingStorefront;

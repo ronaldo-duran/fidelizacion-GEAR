@@ -42,6 +42,10 @@ return [
     // toque, reintento o volver atrás desde la pasarela) en lugar de abrir otro.
     'reusar_pendiente_minutos' => 30,
 
+    // Días antes del fin de la membresía en que se avisa de la renovación (E6-01, regla 10).
+    // TODO(cliente): supuesto del fixture (renewal.notice_days_before), pendiente de confirmar.
+    'avisos_renovacion_dias' => [7, 1],
+
     'planes_iniciales' => [
         ['nombre' => 'Diamante mensual', 'nivel' => 'diamante', 'duracion_meses' => 1, 'precio_cop' => 49900],
         ['nombre' => 'Diamante anual', 'nivel' => 'diamante', 'duracion_meses' => 12, 'precio_cop' => 499000],

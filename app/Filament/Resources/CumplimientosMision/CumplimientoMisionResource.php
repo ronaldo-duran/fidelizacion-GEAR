@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources\CumplimientosMision;
 
 use App\Enums\EstadoCumplimiento;
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\CumplimientosMision\Pages\ListCumplimientosMision;
 use App\Filament\Resources\CumplimientosMision\Tables\CumplimientosMisionTable;
 use App\Models\CumplimientoMision;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +25,7 @@ use UnitEnum;
  * rechazar pasan por las Actions de promociones. No se crean ni se editan
  * aquí: los envía el cliente desde la PWA.
  */
-class CumplimientoMisionResource extends Resource
+class CumplimientoMisionResource extends BaseResource
 {
     protected static ?string $model = CumplimientoMision::class;
 

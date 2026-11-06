@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Beneficios;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Beneficios\Pages\CreateBeneficio;
 use App\Filament\Resources\Beneficios\Pages\EditBeneficio;
 use App\Filament\Resources\Beneficios\Pages\ListBeneficios;
@@ -13,7 +14,6 @@ use App\Models\Beneficio;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
-use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -27,7 +27,7 @@ use UnitEnum;
  * guardar pasa por `SaveBeneficio`, que valida todo; el recurso no tiene
  * lógica de negocio.
  */
-class BeneficioResource extends Resource
+class BeneficioResource extends BaseResource
 {
     protected static ?string $model = Beneficio::class;
 

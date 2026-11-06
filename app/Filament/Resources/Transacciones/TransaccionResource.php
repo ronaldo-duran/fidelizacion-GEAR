@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Transacciones;
 
+use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Transacciones\Pages\ListTransacciones;
 use App\Filament\Resources\Transacciones\Tables\TransaccionesTable;
 use App\Models\Transaccion;
@@ -12,7 +13,6 @@ use App\Panel\AlcancePanel;
 use App\Panel\AnulacionPanel;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Auth;
  * fila. El acceso lo decide `TransaccionPolicy`, el alcance `AlcancePanel` y
  * la anulación va por `AnnulCompra`.
  */
-class TransaccionResource extends Resource
+class TransaccionResource extends BaseResource
 {
     protected static ?string $model = Transaccion::class;
 

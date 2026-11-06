@@ -68,7 +68,10 @@ y que el sistema la active solo cuando la pasarela confirme el pago.
 
 8. **Un pago aprobado no se deshace solo.** Un rechazo o anulación que
    llegue después de aprobado se registra para revisión. No acorta la
-   membresía ni baja el nivel.
+   membresía ni baja el nivel. Un segundo cobro aprobado de la misma
+   referencia (otra transacción) también va a revisión, sin otro periodo.
+   Un rechazo, en cambio, no es final: Wompi deja reintentar con la misma
+   referencia, y si ese intento se aprueba, el pago se aplica.
 9. **Dos pagos aprobados** del mismo cliente se apilan como periodos
    consecutivos. Es dinero real que el cliente pagó, así que no se
    descarta. Un plan de otro nivel se rechaza mientras haya una membresía

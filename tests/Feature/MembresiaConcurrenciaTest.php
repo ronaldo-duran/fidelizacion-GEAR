@@ -28,7 +28,15 @@ it('waits for the payment lock, so a parallel webhook finds it approved and adds
     NivelesTestData::nivelesRegla();
     $cliente = NivelesTestData::cliente([]);
     $pago = MembresiasTestData::pago($cliente, MembresiasTestData::plan());
-    $aprobado = new NotificacionPasarela($pago->referencia, 'tx-1', EstadoPago::Aprobado, 'APPROVED', 49900, 'COP', []);
+    $aprobado = new NotificacionPasarela(
+        $pago->referencia,
+        'tx-1',
+        EstadoPago::Aprobado,
+        'APPROVED',
+        $pago->monto_cop,
+        'COP',
+        [],
+    );
     $aplicar = static fn (): ResultadoNotificacionPago => app(ApplyNotificacionPago::class)('wompi', $aprobado);
 
     // Otro webhook tiene el pago bloqueado: este espera ahí, antes de leer su estado.
@@ -49,7 +57,9 @@ it('waits for the payment lock, so a parallel webhook finds it approved and adds
         ->and(Membresia::query()->count())->toBe(0);
 
     // El otro webhook aprueba el pago y suelta el bloqueo: este lo encuentra aprobado.
-    $segunda->table('pagos_membresia')->where('id', $pago->id)->update(['estado' => 'aprobado']);
+    $segunda->table('pagos_membresia')
+        ->where('id', $pago->id)
+        ->update(['estado' => 'aprobado', 'id_externo' => 'tx-1']);
     $segunda->commit();
 
     expect($aplicar())->toBe(ResultadoNotificacionPago::Repetido)

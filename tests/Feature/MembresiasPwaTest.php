@@ -13,18 +13,30 @@ use App\Models\EnvioNotificacion;
 use App\Models\Membresia as PeriodoMembresia;
 use App\Models\PagoMembresia;
 use App\Models\PlanMembresia;
+use App\Niveles\NivelCalculator;
+use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\Support\MembresiasTestData;
 use Tests\Support\NivelesTestData;
 
-// La compra de la membresía en la PWA y su estado (E6-01, PR 2).
+// La compra de la membresía en la PWA y su estado (E6-01, PR 2). Precios y umbrales salen de los
+// fixtures: cambiar un precio en tests/Fixtures/membresias-escenarios.json no rompe estas pruebas.
 
 beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-11-05 10:00:00'));
     MembresiasTestData::configurarWompi();
-    NivelesTestData::nivelesRegla();
+    $regla = NivelesTestData::nivelesRegla();
+    $planes = collect(MembresiasTestData::fixture()['plans'])->keyBy('duracion_meses');
+    $this->mensual = $planes[1]['precio_cop'];
+    $this->anual = $planes[12]['precio_cop'];
+    $this->umbral = (int) app(NivelCalculator::class)->umbral(Nivel::Diamante, $regla->definicion);
+    $this->pesos = static fn (int $monto): string => FormatoColombiano::pesos($monto);
+    $this->aprobar = fn (PagoMembresia $pago) => $this->postJson(
+        route('webhooks.pagos', 'wompi'),
+        MembresiasTestData::evento($pago->referencia, 'aprobado', $this->mensual),
+    )->assertOk();
     $this->cliente = NivelesTestData::cliente(['saldo_puntos' => 1160, 'nivel_por_puntos' => 'plata']);
     $this->actingAs($this->cliente, 'cliente');
     $this->simulada = static fn () => config([
@@ -45,10 +57,10 @@ it('starts a pending payment with a copy of the plan and sends the customer to W
     expect($pago->estado)->toBe(EstadoPago::Pendiente)
         ->and($pago->referencia)->toMatch('/^M[0-9A-Z]{26}$/')
         ->and($pago->pasarela)->toBe('wompi')
-        ->and([$pago->nivel, $pago->duracion_meses, $pago->monto_cop])->toBe([Nivel::Diamante, 1, 49900])
+        ->and([$pago->nivel, $pago->duracion_meses, $pago->monto_cop])->toBe([Nivel::Diamante, 1, $this->mensual])
         ->and($url)->toStartWith('https://checkout.wompi.co/p/?')
         ->and($query['reference'])->toBe($pago->referencia)
-        ->and($query['amount-in-cents'])->toBe('4990000')
+        ->and($query['amount-in-cents'])->toBe((string) ($this->mensual * 100))
         ->and($query['redirect-url'])->toBe(route('cliente.membresia.pago', $pago->referencia))
         ->and(PeriodoMembresia::query()->count())->toBe(0)
         ->and($this->cliente->fresh()?->nivel_efectivo)->toBe(Nivel::Plata);
@@ -58,9 +70,9 @@ it('keeps the price of the payment when the plan changes later', function (): vo
     $plan = MembresiasTestData::plan();
     app(StartPagoMembresia::class)($this->cliente, $plan->id);
 
-    $plan->update(['precio_cop' => 59900]);
+    $plan->update(['precio_cop' => $this->mensual + 10000]);
 
-    expect(PagoMembresia::query()->sole()->monto_cop)->toBe(49900);
+    expect(PagoMembresia::query()->sole()->monto_cop)->toBe($this->mensual);
 });
 
 it('refuses an inactive plan and a plan of another level while a membership is valid', function (): void {
@@ -89,10 +101,10 @@ it('shows the plans, the points that keep counting and the price of the chosen p
         ->assertSee('Mensual')
         ->assertSee('Anual')
         ->assertSee('Tus 1.160 puntos siguen contando.')
-        ->assertSee('Si llegas a 3.000 comprando, conservas Diamante sin pagar.')
-        ->assertSee('Continuar al pago · $49.900')
+        ->assertSee('Si llegas a ' . number_format($this->umbral, 0, ',', '.') . ' comprando, conservas Diamante')
+        ->assertSee('Continuar al pago · ' . ($this->pesos)($this->mensual))
         ->set('plan', $anual->id)
-        ->assertSee('Continuar al pago · $499.000');
+        ->assertSee('Continuar al pago · ' . ($this->pesos)($this->anual));
 });
 
 it('redirects to the gateway when the customer continues to the payment', function (): void {
@@ -110,8 +122,7 @@ it('shows the pending payment and refreshes itself until the webhook arrives', f
         ->assertSee('Estamos confirmando tu pago')
         ->assertSeeHtml('wire:poll.3s');
 
-    $this->postJson(route('webhooks.pagos', 'wompi'), MembresiasTestData::evento($pago->referencia, 'aprobado', 49900))
-        ->assertOk();
+    ($this->aprobar)($pago);
 
     $pantalla->call('$refresh')
         ->assertSee('Ya eres Diamante')
@@ -137,8 +148,7 @@ it('shows only the customer\'s own payments', function (): void {
 it('sends the membership confirmed notice in the same transaction as the period', function (): void {
     $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
 
-    $this->postJson(route('webhooks.pagos', 'wompi'), MembresiasTestData::evento($pago->referencia, 'aprobado', 49900))
-        ->assertOk();
+    ($this->aprobar)($pago);
 
     $aviso = EnvioNotificacion::query()
         ->where('evento', EventoNotificacion::MembresiaConfirmada->value)
@@ -147,7 +157,9 @@ it('sends the membership confirmed notice in the same transaction as the period'
 
     expect($aviso->origen_id)->toBe($pago->id)
         ->and($aviso->asunto)->toBe('Tu membresía Diamante mensual está activa')
-        ->and($aviso->cuerpo)->toContain('Recibimos tu pago de $49.900. Eres Diamante hasta el 4 de diciembre de 2026');
+        ->and($aviso->cuerpo)->toContain(
+            'Recibimos tu pago de ' . ($this->pesos)($this->mensual) . '. Eres Diamante hasta el 4 de diciembre',
+        );
 });
 
 it('approves a payment through the simulated gateway only when it is enabled', function (): void {
@@ -200,5 +212,33 @@ it('links the subscription from the home screen', function (): void {
     $this->get(route('cliente.inicio'))
         ->assertOk()
         ->assertSee(route('cliente.membresia'))
-        ->assertSee('Desde $49.900 al mes, sin cobro automático.');
+        ->assertSee('Suscripción Diamante');
+});
+
+it('reuses the recent pending payment of the same plan instead of opening another one', function (): void {
+    $mensual = MembresiasTestData::plan();
+
+    $primera = app(StartPagoMembresia::class)($this->cliente, $mensual->id);
+    $segunda = app(StartPagoMembresia::class)($this->cliente, $mensual->id);
+    Livewire::test(Membresia::class)->call('pagar');
+
+    expect(PagoMembresia::query()->count())->toBe(1)
+        ->and($segunda)->toBe($primera);
+
+    // Otro plan, o un pendiente viejo, abren un pago nuevo.
+    app(StartPagoMembresia::class)($this->cliente, MembresiasTestData::plan(12)->id);
+    $this->travel(31)->minutes();
+    app(StartPagoMembresia::class)($this->cliente, $mensual->id);
+
+    expect(PagoMembresia::query()->count())->toBe(3);
+});
+
+it('opens a new payment after the previous one was declined', function (): void {
+    $mensual = MembresiasTestData::plan();
+    MembresiasTestData::pago($this->cliente, $mensual, EstadoPago::Rechazado);
+
+    app(StartPagoMembresia::class)($this->cliente, $mensual->id);
+
+    expect(PagoMembresia::query()->where('estado', EstadoPago::Pendiente->value)->count())->toBe(1)
+        ->and(PagoMembresia::query()->count())->toBe(2);
 });

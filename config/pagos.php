@@ -38,6 +38,10 @@ return [
         'secreto_eventos' => env('WOMPI_SECRETO_EVENTOS', ''),
     ],
 
+    // Un pago pendiente del mismo plan se reutiliza durante estos minutos (doble
+    // toque, reintento o volver atrás desde la pasarela) en lugar de abrir otro.
+    'reusar_pendiente_minutos' => 30,
+
     'planes_iniciales' => [
         ['nombre' => 'Diamante mensual', 'nivel' => 'diamante', 'duracion_meses' => 1, 'precio_cop' => 49900],
         ['nombre' => 'Diamante anual', 'nivel' => 'diamante', 'duracion_meses' => 12, 'precio_cop' => 499000],

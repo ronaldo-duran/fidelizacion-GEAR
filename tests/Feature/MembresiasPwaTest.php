@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Membresias\SimulatePago;
 use App\Actions\Membresias\StartPagoMembresia;
 use App\Enums\CanalNotificacion;
 use App\Enums\EstadoPago;
@@ -14,6 +15,7 @@ use App\Models\Membresia as PeriodoMembresia;
 use App\Models\PagoMembresia;
 use App\Models\PlanMembresia;
 use App\Niveles\NivelCalculator;
+use App\Pagos\SimuladaPasarela;
 use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +44,7 @@ beforeEach(function (): void {
     $this->simulada = static fn () => config([
         'pagos.pasarela' => 'simulada',
         'pagos.simulada' => true,
-        'pagos.pasarelas.simulada' => App\Pagos\SimuladaPasarela::class,
+        'pagos.pasarelas.simulada' => SimuladaPasarela::class,
     ]);
 });
 
@@ -126,7 +128,7 @@ it('shows the pending payment and refreshes itself until the webhook arrives', f
 
     $pantalla->call('$refresh')
         ->assertSee('Ya eres Diamante')
-        ->assertSee('Tu membresía va hasta el 4 de diciembre de 2026.')
+        ->assertSee('Este pago te da membresía hasta el 4 de diciembre de 2026.')
         ->assertDontSeeHtml('wire:poll.3s');
 });
 
@@ -241,4 +243,36 @@ it('opens a new payment after the previous one was declined', function (): void 
 
     expect(PagoMembresia::query()->where('estado', EstadoPago::Pendiente->value)->count())->toBe(1)
         ->and(PagoMembresia::query()->count())->toBe(2);
+});
+
+it('never runs the simulated gateway in production, even when it is enabled', function (): void {
+    ($this->simulada)();
+    app()->detectEnvironment(static fn (): string => 'production');
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $pago->forceFill(['pasarela' => 'simulada'])->save();
+
+    $this->get(route('cliente.pagos.simulada', $pago->referencia))->assertNotFound();
+    // El POST pasa por la misma guarda que el GET; en producción además lo frena el token CSRF.
+
+    expect(fn () => app(SimulatePago::class)($pago, true))->toThrow(LogicException::class)
+        ->and(fn () => app(SimuladaPasarela::class)->checkout($pago, route('cliente.inicio')))
+        ->toThrow(LogicException::class)
+        ->and($pago->fresh()?->estado)->toBe(EstadoPago::Pendiente)
+        ->and(PeriodoMembresia::query()->count())->toBe(0);
+});
+
+it('lets a customer with a valid membership renew the same level', function (): void {
+    $this->cliente->forceFill(['nivel_por_membresia' => 'diamante', 'membresia_vigente_hasta' => '2026-11-20'])->save();
+
+    app(StartPagoMembresia::class)($this->cliente, MembresiasTestData::plan(12)->id);
+
+    expect(PagoMembresia::query()->sole()->nivel)->toBe(Nivel::Diamante);
+});
+
+it('tells a voided payment apart from a declined one', function (): void {
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan(), EstadoPago::Anulado);
+
+    Livewire::test(PantallaEstadoPago::class, ['referencia' => $pago->referencia])
+        ->assertSee('Este pago fue anulado')
+        ->assertDontSee('No se te cobró');
 });

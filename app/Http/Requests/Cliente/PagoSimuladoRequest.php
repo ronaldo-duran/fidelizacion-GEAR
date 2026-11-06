@@ -23,4 +23,15 @@ class PagoSimuladoRequest extends FormRequest
     {
         return $this->input('resultado') === 'aprobar';
     }
+
+    /**
+     * La URL de regreso, como la de la pasarela real, solo si es de esta
+     * aplicación: nunca una redirección abierta a otro sitio.
+     */
+    public function regreso(): ?string
+    {
+        $regreso = $this->query('regreso');
+
+        return is_string($regreso) && str_starts_with($regreso, url('/') . '/') ? $regreso : null;
+    }
 }

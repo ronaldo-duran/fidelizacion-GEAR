@@ -29,10 +29,9 @@ class PagoSimuladoController
         $pago = $this->pago($request, $referencia);
         $simulate($pago, $request->aprobar());
 
-        // Como la pasarela real, vuelve a la URL de regreso, pero solo si es de esta aplicación.
-        $regreso = $request->query('regreso');
+        $regreso = $request->regreso();
 
-        return is_string($regreso) && str_starts_with($regreso, url('/') . '/')
+        return $regreso !== null
             ? redirect()->to($regreso)
             : redirect()->route('cliente.membresia.pago', $pago->referencia);
     }

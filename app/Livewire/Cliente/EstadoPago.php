@@ -23,6 +23,9 @@ class EstadoPago extends Component
 {
     public string $referencia;
 
+    /** El pago de esta petición: mount y render lo leen una sola vez. */
+    private ?PagoMembresia $pago = null;
+
     public function mount(string $referencia): void
     {
         $this->referencia = $referencia;
@@ -33,15 +36,19 @@ class EstadoPago extends Component
     {
         $pago = $this->pago();
 
-        return view('livewire.cliente.estado-pago', ['pago' => $pago, 'cliente' => $pago->cliente]);
+        return view('livewire.cliente.estado-pago', ['pago' => $pago]);
     }
 
     private function pago(): PagoMembresia
     {
-        $query = PagoMembresia::query()->with(['plan', 'cliente']);
+        if ($this->pago !== null) {
+            return $this->pago;
+        }
+
+        $query = PagoMembresia::query()->with(['plan', 'membresia']);
         $query->getQuery()->where('referencia', $this->referencia)->where('cliente_id', $this->cliente()->id);
 
-        return $query->firstOrFail();
+        return $this->pago = $query->firstOrFail();
     }
 
     private function cliente(): Cliente

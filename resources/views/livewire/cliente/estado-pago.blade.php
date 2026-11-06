@@ -18,8 +18,8 @@
                     <h1 class="font-display text-3xl font-extrabold">Ya eres {{ $pago->nivel->getLabel() }}</h1>
                     <p class="text-md">
                         Recibimos tu pago de @pesos($pago->monto_cop).
-                        @if ($cliente->membresia_vigente_hasta)
-                            Tu membresía va hasta el {{ \App\Support\FormatoColombiano::fechaConAnio($cliente->membresia_vigente_hasta) }}.
+                        @if ($pago->membresia)
+                            Este pago te da membresía hasta el {{ \App\Support\FormatoColombiano::fechaConAnio($pago->membresia->vigente_hasta) }}.
                         @endif
                     </p>
                 </section>
@@ -37,6 +37,17 @@
                         La pasarela nos avisa en unos segundos. Esta pantalla se actualiza sola; no tienes que pagar otra vez.
                     </p>
                 </section>
+                @break
+
+            @case(\App\Enums\EstadoPago::Anulado)
+                <section class="flex flex-col items-center gap-3 rounded-xl border border-line bg-surface p-6 text-center" role="status">
+                    <x-heroicon-o-no-symbol class="size-10 text-ink-2" />
+                    <h1 class="font-display text-2xl">Este pago fue anulado</h1>
+                    <p class="text-md text-ink-2">Si tienes dudas sobre un cobro, escríbenos con la referencia de abajo.</p>
+                </section>
+                <div class="mt-auto">
+                    <x-button :href="route('cliente.membresia')">Volver a la suscripción</x-button>
+                </div>
                 @break
 
             @default

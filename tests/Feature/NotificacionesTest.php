@@ -110,6 +110,20 @@ it('replaces the values once and escapes them in the email', function (): void {
         ->toBe("<p>Uno<br>\nsigue.</p>\n<p>Dos: <a href=\"https://club.test/inicio\">https://club.test/inicio</a></p>");
 });
 
+it('escapes HTML in the body and only links http and https addresses', function (): void {
+    $html = app(RenderPlantilla::class)->html(
+        "<script>alert(1)</script> <a href=\"javascript:alert(1)\">x</a> javascript:alert(1)\n\n"
+        . 'https://club.test/"onmouseover="alert(1)',
+    );
+
+    expect($html)->not->toContain('<script')
+        ->not->toContain('<a href="javascript:')
+        ->not->toContain('"onmouseover')
+        ->toContain('&lt;script&gt;')
+        ->toContain('<a href="https://club.test/&quot;onmouseover=&quot;alert(1)">')
+        ->and(substr_count($html, '<a '))->toBe(1);
+});
+
 it('decides each channel by the email and the suppression list', function (array $caso): void {
     config(['notificaciones.eventos.bienvenida.categoria' => $caso['categoria']]);
     $cliente = ($this->cliente)($caso['email']);

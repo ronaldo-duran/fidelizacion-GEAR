@@ -29,7 +29,9 @@ return new class extends Migration
             $table->timestamp('aprobado_at')->nullable();
             $table->timestamps();
 
-            $table->unique(['pasarela', 'id_externo']);
+            // Sin único: un pago pendiente no tiene id externo, y SQL Server solo admite un NULL por
+            // índice único (regla 3.13). ApplyNotificacionPago revisa que el id no sea de otro pago.
+            $table->index(['pasarela', 'id_externo']);
             $table->index(['cliente_id', 'estado']);
         });
     }

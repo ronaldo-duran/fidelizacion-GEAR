@@ -42,14 +42,11 @@ class AppServiceProvider extends ServiceProvider
         // Las acciones de la caja también pasan por el middleware: un cajero desactivado no registra más.
         Livewire::addPersistentMiddleware([EnsureCajero::class]);
 
-        // Webhooks de la pasarela (E6-01): un tope amplio por IP, para frenar abusos sin perder reintentos,
-        // y uno global, porque detrás del proxy la IP sale de X-Forwarded-For y quien ataca puede rotarla.
+        // Webhooks de la pasarela (E6-01): un tope amplio por IP, para frenar abusos sin perder reintentos.
+        // Sin cupo global: lo agotaría tráfico con firma falsa y dejaría por fuera los webhooks de Wompi.
         RateLimiter::for(
             'webhooks',
-            static fn (Request $request): array => [
-                Limit::perMinute(120)->by('ip:' . $request->ip()),
-                Limit::perMinute(600)->by('global'),
-            ],
+            static fn (Request $request): Limit => Limit::perMinute(120)->by((string) $request->ip()),
         );
 
         $formato = '\\' . FormatoColombiano::class;

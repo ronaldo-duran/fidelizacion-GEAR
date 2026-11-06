@@ -142,7 +142,10 @@ documentación oficial de la pasarela.
     | `anulado`), `aprobado_at`, timestamps;
   - copia del plan al iniciar el pago: `nivel`, `duracion_meses` y
     `monto_cop`;
-  - restricción única `(pasarela, id_externo)`.
+  - índice `(pasarela, id_externo)`, no único: un pago pendiente no tiene
+    id externo y SQL Server admite un solo NULL por índice único (regla
+    dura 3.13). Al aplicar una notificación se revisa que ese id no sea de
+    otro pago; si lo es, va a revisión.
 - **`membresias`** (un periodo por pago aprobado, append-only): `id`,
   `cliente_id`, `plan_id`, `pago_id` (único), `nivel`, `vigente_desde`,
   `vigente_hasta`, `created_at`. CLAUDE.md §4 lista una columna `estado`;

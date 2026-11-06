@@ -240,3 +240,28 @@ it('answers 404 to an unknown gateway and needs no session or CSRF token', funct
     $response->assertOk()->assertCookieMissing(config('session.cookie'));
     expect(PagoMembresia::query()->sole()->estado)->toBe(EstadoPago::Aprobado);
 });
+
+it('keeps many pending payments without an external id side by side', function (): void {
+    $otro = NivelesTestData::cliente([]);
+
+    MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    MembresiasTestData::pago($this->cliente, MembresiasTestData::plan(12));
+    MembresiasTestData::pago($otro, MembresiasTestData::plan());
+
+    expect(PagoMembresia::query()->whereNull('id_externo')->count())->toBe(3);
+});
+
+it('logs only a few invalid signatures per minute and keeps answering 401', function (): void {
+    $evento = MembresiasTestData::evento('MNOEXISTE', 'aprobado', 49900, firmaValida: false);
+
+    foreach (range(1, 31) as $intento) {
+        ($this->webhook)($evento)->assertStatus(401);
+    }
+
+    expect(NotificacionPago::query()->count())->toBe(30);
+
+    $this->travel(61)->seconds();
+    ($this->webhook)($evento)->assertStatus(401);
+
+    expect(NotificacionPago::query()->count())->toBe(31);
+});

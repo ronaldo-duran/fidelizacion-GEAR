@@ -155,16 +155,61 @@ it('never creates a second period for the same payment', function (): void {
         ->and(Membresia::query()->count())->toBe(1);
 });
 
-it('keeps a declined payment without a period and logs a late void for review', function (): void {
+it('applies an approved retry of a declined payment with the same reference', function (): void {
     $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $evento = static fn (string $estado, string $idExterno): array => MembresiasTestData::evento(
+        $pago->referencia,
+        $estado,
+        $pago->monto_cop,
+        idExterno: $idExterno,
+    );
 
-    ($this->webhook)(MembresiasTestData::evento($pago->referencia, 'anulado', 49900))->assertOk();
-    ($this->webhook)(MembresiasTestData::evento($pago->referencia, 'aprobado', 49900))->assertOk();
+    ($this->webhook)($evento('rechazado', 'tx-1'))->assertOk();
+    ($this->webhook)($evento('rechazado', 'tx-1'))->assertOk();
+    ($this->webhook)($evento('aprobado', 'tx-2'))->assertOk();
 
-    expect($pago->fresh()?->estado)->toBe(EstadoPago::Anulado)
-        ->and(Membresia::query()->count())->toBe(0)
-        ->and(NotificacionPago::query()->orderBy('id')->pluck('resultado')->all())
-        ->toBe([ResultadoNotificacionPago::Rechazado, ResultadoNotificacionPago::TransicionInvalida]);
+    expect($pago->fresh()?->estado)->toBe(EstadoPago::Aprobado)
+        ->and($pago->fresh()?->id_externo)->toBe('tx-2')
+        ->and(Membresia::query()->sole()->pago_id)->toBe($pago->id)
+        ->and(NotificacionPago::query()->orderBy('id')->pluck('resultado')->all())->toBe([
+            ResultadoNotificacionPago::Rechazado,
+            ResultadoNotificacionPago::Repetido,
+            ResultadoNotificacionPago::Aplicado,
+        ]);
+});
+
+it('logs for review a second charge, an unknown status and the transaction of another payment', function (): void {
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $otro = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan(12));
+    $aprobar = fn (string $idExterno, string $estado = 'aprobado') => ($this->webhook)(
+        MembresiasTestData::evento($pago->referencia, $estado, $pago->monto_cop, idExterno: $idExterno),
+    )->assertOk();
+
+    ($this->webhook)(MembresiasTestData::evento($otro->referencia, 'rechazado', $otro->monto_cop, idExterno: 'tx-otro'))
+        ->assertOk();
+    $aprobar('tx-otro');
+    $aprobar('tx-1', 'SOMETHING_NEW');
+    $aprobar('tx-1');
+    $aprobar('tx-2');
+
+    expect(Membresia::query()->count())->toBe(1)
+        ->and($pago->fresh()?->id_externo)->toBe('tx-1')
+        ->and(NotificacionPago::query()->orderBy('id')->pluck('resultado')->all())->toBe([
+            ResultadoNotificacionPago::Rechazado,
+            ResultadoNotificacionPago::TransicionInvalida,
+            ResultadoNotificacionPago::TransicionInvalida,
+            ResultadoNotificacionPago::Aplicado,
+            ResultadoNotificacionPago::TransicionInvalida,
+        ]);
+});
+
+it('does not store a large body with an invalid signature', function (): void {
+    $evento = MembresiasTestData::evento('MNOEXISTE', 'aprobado', 49900, firmaValida: false);
+    $evento['relleno'] = str_repeat('x', 20000);
+
+    ($this->webhook)($evento)->assertStatus(401);
+
+    expect(NotificacionPago::query()->sole()->payload)->toMatchArray(['truncado' => true]);
 });
 
 it('logs an invalid signature with the payload and changes nothing', function (): void {

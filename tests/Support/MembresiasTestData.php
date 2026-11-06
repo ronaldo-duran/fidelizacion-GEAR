@@ -18,6 +18,9 @@ final class MembresiasTestData
 {
     public const SECRETO_EVENTOS = 'test_events_secreto_de_prueba';
 
+    /** El id de la transacción en Wompi de los eventos de prueba, salvo que se pida otro. */
+    public const ID_EXTERNO = '12345-1700000000-10001';
+
     public const SECRETO_INTEGRIDAD = 'test_integrity_secreto_de_prueba';
 
     private const ESTADOS_WOMPI = ['aprobado' => 'APPROVED', 'rechazado' => 'DECLINED', 'anulado' => 'VOIDED'];
@@ -50,6 +53,7 @@ final class MembresiasTestData
         Cliente $cliente,
         PlanMembresia $plan,
         EstadoPago $estado = EstadoPago::Pendiente,
+        string $idExterno = self::ID_EXTERNO,
     ): PagoMembresia {
         $pago = PagoMembresia::query()->create([
             'cliente_id' => $cliente->id,
@@ -62,7 +66,7 @@ final class MembresiasTestData
         ]);
 
         if ($estado !== EstadoPago::Pendiente) {
-            $pago->forceFill(['estado' => $estado, 'id_externo' => 'previo-' . $pago->id])->save();
+            $pago->forceFill(['estado' => $estado, 'id_externo' => $idExterno])->save();
         }
 
         return $pago;
@@ -80,7 +84,7 @@ final class MembresiasTestData
         int $montoCop,
         string $moneda = 'COP',
         bool $firmaValida = true,
-        string $idExterno = '12345-1700000000-10001',
+        string $idExterno = self::ID_EXTERNO,
     ): array {
         $evento = [
             'event' => 'transaction.updated',

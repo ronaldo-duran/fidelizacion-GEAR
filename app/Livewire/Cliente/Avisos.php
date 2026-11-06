@@ -26,6 +26,13 @@ class Avisos extends Component
     /** @var list<int> */
     public array $nuevos = [];
 
+    /**
+     * Los avisos de esta petición: mount y render los leen una sola vez.
+     *
+     * @var Collection<int, EnvioNotificacion>|null
+     */
+    private ?Collection $avisos = null;
+
     public function mount(MarkAvisosLeidos $marcar): void
     {
         $this->nuevos = array_values($this->avisos()
@@ -46,7 +53,7 @@ class Avisos extends Component
      */
     private function avisos(): Collection
     {
-        return app(AvisosDelCliente::class)->recientes($this->cliente()->id);
+        return $this->avisos ??= app(AvisosDelCliente::class)->recientes($this->cliente()->id);
     }
 
     private function cliente(): Cliente

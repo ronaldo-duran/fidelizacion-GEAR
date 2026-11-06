@@ -10,10 +10,14 @@ use App\Pagos\FirmaInvalida;
 
 /**
  * Deja registrada una notificación con firma inválida (E6-01, regla 4.1).
- * Los datos del cuerpo no se usan para nada más: no son confiables.
+ * Los datos del cuerpo no se usan para nada más: no son confiables. Un
+ * cuerpo grande no se guarda entero, para que quien envíe basura no llene la
+ * tabla.
  */
 class RecordFirmaInvalida
 {
+    private const MAX_BYTES = 16384;
+
     public function __invoke(string $pasarela, FirmaInvalida $error): NotificacionPago
     {
         $referencia = data_get($error->payload, 'data.transaction.reference');
@@ -23,7 +27,18 @@ class RecordFirmaInvalida
             'referencia' => is_string($referencia) ? mb_substr($referencia, 0, 80) : null,
             'firma_valida' => false,
             'resultado' => ResultadoNotificacionPago::FirmaInvalida,
-            'payload' => $error->payload,
+            'payload' => self::payload($error->payload),
         ]);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $payload
+     * @return array<array-key, mixed>
+     */
+    private static function payload(array $payload): array
+    {
+        $bytes = strlen((string) json_encode($payload));
+
+        return $bytes > self::MAX_BYTES ? ['truncado' => true, 'bytes' => $bytes] : $payload;
     }
 }

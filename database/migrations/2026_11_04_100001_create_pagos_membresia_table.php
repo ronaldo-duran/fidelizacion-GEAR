@@ -30,7 +30,10 @@ return new class extends Migration
             $table->timestamps();
 
             // Sin único: un pago pendiente no tiene id externo, y SQL Server solo admite un NULL por
-            // índice único (regla 3.13). ApplyNotificacionPago revisa que el id no sea de otro pago.
+            // índice único (regla 3.13). ApplyNotificacionPago revisa que el id no sea de otro pago, pero
+            // es defensa en profundidad, no la garantía: esa revisión puede perder una carrera entre dos
+            // pagos distintos. Lo que impide un doble periodo es el pago bloqueado (lockForUpdate) y el
+            // único de membresias.pago_id.
             $table->index(['pasarela', 'id_externo']);
             $table->index(['cliente_id', 'estado']);
         });

@@ -33,6 +33,26 @@ class PlanMembresia extends Model
     protected $fillable = ['nombre', 'nivel', 'duracion_meses', 'precio_cop', 'activo'];
 
     /**
+     * «Mensual» o «Anual» para mostrar el plan; otra duración usa el nombre del plan.
+     */
+    public function periodicidad(): string
+    {
+        return match ($this->duracion_meses) {
+            1 => 'Mensual',
+            12 => 'Anual',
+            default => $this->nombre,
+        };
+    }
+
+    /**
+     * La duración en palabras: «Un mes» o «12 meses».
+     */
+    public function duracionEnPalabras(): string
+    {
+        return $this->duracion_meses === 1 ? 'Un mes' : "{$this->duracion_meses} meses";
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

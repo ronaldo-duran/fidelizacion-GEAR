@@ -39,9 +39,9 @@
                         <input type="radio" wire:model.live="plan" value="{{ $opcion->id }}" class="sr-only" name="plan">
                         <span class="size-[22px] shrink-0 rounded-full {{ $opcion->id === $plan ? 'border-[7px] border-brand' : 'border-2 border-ink-2' }}" aria-hidden="true"></span>
                         <span class="flex min-w-0 flex-1 flex-col">
-                            <span class="text-md font-bold">{{ $opcion->duracion_meses === 1 ? 'Mensual' : ($opcion->duracion_meses === 12 ? 'Anual' : $opcion->nombre) }}</span>
+                            <span class="text-md font-bold">{{ $opcion->periodicidad() }}</span>
                             <span class="text-sm text-ink-2">
-                                {{ $opcion->duracion_meses === 1 ? 'Un mes' : $opcion->duracion_meses . ' meses' }}, sin cobro automático
+                                {{ $opcion->duracionEnPalabras() }}, sin cobro automático
                             </span>
                         </span>
                         <span class="text-lg font-bold tabular-nums">@pesos($opcion->precio_cop)</span>

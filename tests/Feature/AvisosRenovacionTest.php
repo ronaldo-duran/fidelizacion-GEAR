@@ -87,6 +87,19 @@ it('sends the renewal notice in the morning with the link to the subscription, o
         ->and($envio->cuerpo)->toContain(route('cliente.membresia'));
 });
 
+it('does not send the renewal notice to a customer who renewed after it was registered', function (): void {
+    $cliente = ($this->conMembresia)('2026-11-12');
+    ($this->registrar)();
+
+    // Pagó la renovación antes del envío de la mañana: su membresía ya va un mes más.
+    $cliente->forceFill(['membresia_vigente_hasta' => '2026-12-12'])->save();
+    $this->travelTo(CarbonImmutable::parse('2026-11-05 08:00:00'));
+    app(SendAvisosNocturnos::class)->handle(app(Notify::class));
+
+    expect(AvisoRenovacion::query()->sole()->enviado_at)->toBeNull()
+        ->and(EnvioNotificacion::query()->count())->toBe(0);
+});
+
 it('does not send late the renewal notices of a missed morning', function (): void {
     ($this->conMembresia)('2026-11-12');
     ($this->registrar)();

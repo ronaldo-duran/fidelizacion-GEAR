@@ -8,6 +8,7 @@ use App\Actions\Notificaciones\Notify;
 use App\Enums\EventoNotificacion;
 use App\Models\AvisoDescenso;
 use App\Models\AvisoRenovacion;
+use App\Models\Cliente;
 use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -77,13 +78,15 @@ class SendAvisosNocturnos implements ShouldQueue
 
         $query->chunkById(self::CHUNK, static function (Collection $avisos) use ($notify): void {
             foreach ($avisos as $aviso) {
-                $nivel = $aviso->cliente?->nivel_por_membresia;
+                $cliente = $aviso->cliente;
+                $nivel = $cliente?->nivel_por_membresia;
 
-                if ($aviso->cliente === null || $nivel === null) {
+                // Si el cliente ya no tiene membresía, o renovó entre el registro de la noche y este
+                // envío (su fin ya no es el del aviso), el aviso no aplica y no se envía. Se deja sin
+                // `enviado_at` porque no se envió; el filtro de 24 horas lo descarta mañana.
+                if ($cliente === null || $nivel === null || ! self::mismoFin($cliente, $aviso)) {
                     continue;
                 }
-
-                $cliente = $aviso->cliente;
 
                 DB::transaction(static function () use ($notify, $aviso, $cliente, $nivel): void {
                     $notify(EventoNotificacion::MembresiaPorVencer, $cliente, $aviso->id, [
@@ -97,5 +100,10 @@ class SendAvisosNocturnos implements ShouldQueue
                 });
             }
         });
+    }
+
+    private static function mismoFin(Cliente $cliente, AvisoRenovacion $aviso): bool
+    {
+        return $cliente->membresia_vigente_hasta?->toDateString() === $aviso->vigente_hasta->toDateString();
     }
 }

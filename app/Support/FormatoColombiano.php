@@ -37,6 +37,15 @@ final class FormatoColombiano
         return $dia->format('j') . ' de ' . $meses[(int) $dia->format('n') - 1];
     }
 
+    /**
+     * "4 de noviembre de 2027": para fechas que pueden caer en otro año, como
+     * el fin de una membresía anual.
+     */
+    public static function fechaConAnio(DateTimeInterface $dia): string
+    {
+        return self::fecha($dia) . ' de ' . $dia->format('Y');
+    }
+
     public static function hora(DateTimeInterface $momento): string
     {
         $hora = $momento->format('g');

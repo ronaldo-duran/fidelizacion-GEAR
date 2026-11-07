@@ -37,8 +37,10 @@ y que el sistema la active solo cuando la pasarela confirme el pago.
    del cliente desde la pasarela nunca activa nada: solo muestra el estado
    que ya tiene el pago en la base de datos.
 4. **Verificación de cada notificación**, en este orden:
-   1. La firma es válida con el secreto de eventos de la pasarela. Si no,
-      se rechaza (401) y se registra.
+   1. La firma es válida con el secreto de eventos de la pasarela y cubre
+      al menos el id, el estado y el monto de la transacción. Si no, se
+      rechaza (401) y se registra solo la referencia que dice traer y el
+      tamaño del cuerpo, sin el cuerpo.
    2. La referencia corresponde a un pago nuestro. Si no, se registra y se
       responde 200 para que la pasarela deje de reintentar.
    3. Si el estado es aprobado, el monto y la moneda (COP) coinciden con
@@ -145,7 +147,10 @@ documentación oficial de la pasarela.
   - índice `(pasarela, id_externo)`, no único: un pago pendiente no tiene
     id externo y SQL Server admite un solo NULL por índice único (regla
     dura 3.13). Al aplicar una notificación se revisa que ese id no sea de
-    otro pago; si lo es, va a revisión.
+    otro pago; si lo es, va a revisión. Esa revisión es defensa en
+    profundidad, no la garantía: puede perder una carrera entre dos pagos
+    distintos. Lo que impide un doble periodo es el pago bloqueado y el
+    `pago_id` único de `membresias`.
 - **`membresias`** (un periodo por pago aprobado, append-only): `id`,
   `cliente_id`, `plan_id`, `pago_id` (único), `nivel`, `vigente_desde`,
   `vigente_hasta`, `created_at`. CLAUDE.md §4 lista una columna `estado`;
@@ -157,7 +162,11 @@ documentación oficial de la pasarela.
   `resultado` (`aplicado` | `repetido` | `rechazado` | `firma_invalida` |
   `referencia_desconocida` | `monto_distinto` | `transicion_invalida`),
   `payload` (json), `created_at`. Es el registro de toda notificación,
-  válida o no.
+  válida o no. De una válida, `payload` guarda el evento con una lista
+  blanca de campos de la transacción, sin los datos del pagador (correo,
+  nombre, teléfono, documento, direcciones; Ley 1581). De una inválida,
+  solo el tamaño del cuerpo. El proceso nocturno borra las inválidas más
+  viejas que la retención del fixture; las válidas nunca se borran.
 - **`avisos_renovacion`**: `id`, `cliente_id`, `vigente_hasta`,
   `dias_antes`, `enviado_at` (nullable, lo llena E7-01), `created_at`.
   Restricción única `(cliente_id, vigente_hasta, dias_antes)`, como
@@ -188,7 +197,8 @@ documentación oficial de la pasarela.
   200 en todo lo que no sea firma inválida, para que la pasarela no
   reintente algo que no va a cambiar.
 - **Proceso nocturno**: un job `RegisterAvisosRenovacion` en la cola
-  `nocturno`, después de los de E3-05.
+  `nocturno`, después de los de E3-05, y `PurgeFirmasInvalidas`, que borra
+  las notificaciones con firma inválida pasada la retención.
 - **PWA**:
   - `/membresia`, pantalla 1s: planes activos, aviso de que los puntos
     siguen contando, "Continuar al pago · $49.900";

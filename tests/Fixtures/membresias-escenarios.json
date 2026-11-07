@@ -19,6 +19,10 @@
     "renewal": {
         "notice_days_before": { "value": [7, 1], "_assumption": true }
     },
+    "retention": {
+        "_description": "Notifications with an invalid signature are deleted by the nightly process after these days; valid ones are kept.",
+        "invalid_signature_days": { "value": 90, "_assumption": true }
+    },
     "periods": [
         {
             "_description": "First payment: the period starts the day the payment is approved and ends the day before the same date of the next month.",

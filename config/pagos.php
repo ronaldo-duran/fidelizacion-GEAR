@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Pagos\SimuladaPasarela;
 use App\Pagos\WompiPasarela;
 
 /*
@@ -12,14 +13,23 @@ use App\Pagos\WompiPasarela;
 | Los planes iniciales replican tests/Fixtures/membresias-escenarios.json;
 | una prueba verifica que coincidan. Después de la migración se administran
 | desde el panel.
+|
+| La pasarela simulada existe solo para local y las pruebas E2E: aprueba o
+| rechaza un pago desde una pantalla propia, sin dinero real. Nunca se
+| habilita en producción (SimuladaPasarela lo verifica otra vez).
 */
+
+$simulada = (bool) env('PAGOS_SIMULADA', false);
 
 return [
     'pasarela' => env('PAGOS_PASARELA', 'wompi'),
 
-    'pasarelas' => [
+    'simulada' => $simulada,
+
+    'pasarelas' => array_filter([
         'wompi' => WompiPasarela::class,
-    ],
+        'simulada' => $simulada ? SimuladaPasarela::class : null,
+    ]),
 
     'wompi' => [
         'checkout_url' => env('WOMPI_CHECKOUT_URL', 'https://checkout.wompi.co/p/'),
@@ -27,6 +37,10 @@ return [
         'secreto_integridad' => env('WOMPI_SECRETO_INTEGRIDAD', ''),
         'secreto_eventos' => env('WOMPI_SECRETO_EVENTOS', ''),
     ],
+
+    // Un pago pendiente del mismo plan se reutiliza durante estos minutos (doble
+    // toque, reintento o volver atrás desde la pasarela) en lugar de abrir otro.
+    'reusar_pendiente_minutos' => 30,
 
     // Días que se guardan las notificaciones con firma inválida antes de que el proceso nocturno las borre.
     // TODO(cliente): supuesto del fixture (retention.invalid_signature_days), pendiente de confirmar.

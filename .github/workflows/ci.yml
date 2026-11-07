@@ -279,6 +279,9 @@ jobs:
           poner DB_DATABASE e2e
           poner CACHE_STORE file
           poner QUEUE_CONNECTION sync
+          # Pagos de membresías con la pasarela simulada (E6-01): sin dinero ni llaves reales.
+          poner PAGOS_PASARELA simulada
+          poner PAGOS_SIMULADA true
           php artisan key:generate
           php artisan migrate:fresh --seed --force
       - name: Playwright

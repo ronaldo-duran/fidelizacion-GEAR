@@ -76,6 +76,26 @@ class NivelCalculator
     }
 
     /**
+     * Los puntos que pide un nivel en la regla, o null si la regla no lo trae.
+     *
+     * @param  array<array-key, mixed>  $definicionNiveles
+     */
+    public function umbral(Nivel $nivel, array $definicionNiveles): ?int
+    {
+        $umbrales = is_array($definicionNiveles['umbrales'] ?? null) ? $definicionNiveles['umbrales'] : [];
+
+        foreach ($umbrales as $umbral) {
+            $puntos = is_array($umbral) ? ($umbral['umbral_puntos'] ?? null) : null;
+
+            if (is_array($umbral) && ($umbral['nivel'] ?? null) === $nivel->value && is_int($puntos)) {
+                return $puntos;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * A level that lasts until a date counts that whole day.
      */
     private function vigente(?Nivel $nivel, ?CarbonImmutable $hasta, CarbonImmutable $day): ?Nivel

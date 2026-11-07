@@ -24,3 +24,8 @@ it('formatea la hora en estilo colombiano de 12 horas', function (): void {
         ->and(FormatoColombiano::hora(Carbon::create(2026, 10, 17, 0, 0)))->toBe('12:00 a. m.')
         ->and(FormatoColombiano::hora(Carbon::create(2026, 10, 17, 12, 0)))->toBe('12:00 p. m.');
 });
+
+it('formatea una fecha con el año para las que pueden caer en otro año', function (): void {
+    expect(FormatoColombiano::fechaConAnio(Carbon::create(2027, 11, 4)))->toBe('4 de noviembre de 2027')
+        ->and(FormatoColombiano::fecha(Carbon::create(2027, 11, 4)))->toBe('4 de noviembre');
+});

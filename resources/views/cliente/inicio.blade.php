@@ -20,6 +20,18 @@
             <x-heroicon-o-chevron-right class="size-5 shrink-0 text-ink-2" />
         </a>
 
+        {{-- Enlace a la suscripción (E6-01): E8-03 lo lleva a la pantalla de niveles. --}}
+        <a href="{{ route('cliente.membresia') }}" class="flex min-h-touch items-center gap-3 rounded-lg border border-line bg-surface p-4">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-sm" style="background: var(--color-tier-diamante-bg); color: var(--color-tier-diamante-accent)">
+                <x-heroicon-o-sparkles class="size-5" />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col">
+                <span class="text-md font-bold">Suscripción Diamante</span>
+                <span class="text-sm text-ink-2">Diamante sin esperar los puntos, sin cobro automático.</span>
+            </span>
+            <x-heroicon-o-chevron-right class="size-5 shrink-0 text-ink-2" />
+        </a>
+
         <form method="POST" action="{{ route('cliente.salir') }}">
             @csrf
             <x-button type="submit" variant="secundario">Cerrar sesión</x-button>

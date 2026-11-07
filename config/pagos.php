@@ -28,6 +28,10 @@ return [
         'secreto_eventos' => env('WOMPI_SECRETO_EVENTOS', ''),
     ],
 
+    // Días que se guardan las notificaciones con firma inválida antes de que el proceso nocturno las borre.
+    // TODO(cliente): supuesto del fixture (retention.invalid_signature_days), pendiente de confirmar.
+    'retencion_firmas_invalidas_dias' => 90,
+
     'planes_iniciales' => [
         ['nombre' => 'Diamante mensual', 'nivel' => 'diamante', 'duracion_meses' => 1, 'precio_cop' => 49900],
         ['nombre' => 'Diamante anual', 'nivel' => 'diamante', 'duracion_meses' => 12, 'precio_cop' => 499000],

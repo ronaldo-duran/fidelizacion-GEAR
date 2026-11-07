@@ -10,7 +10,9 @@ return new class extends Migration
 {
     /**
      * Registro append-only de toda notificación de la pasarela (E6-01),
-     * válida o no, con lo que se hizo con ella.
+     * válida o no, con lo que se hizo con ella. De una válida se guarda la
+     * transacción sin los datos del pagador; de una inválida, solo el tamaño
+     * del cuerpo, y el proceso nocturno la borra pasada la retención.
      */
     public function up(): void
     {

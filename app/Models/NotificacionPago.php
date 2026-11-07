@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Registro append-only de una notificación de la pasarela (E6-01), válida o
- * no, con lo que se hizo con ella.
+ * no, con lo que se hizo con ella. Solo el proceso nocturno borra las de firma
+ * inválida viejas (PurgeFirmasInvalidas); las válidas nunca se borran.
  *
  * @property int $id
  * @property string $pasarela

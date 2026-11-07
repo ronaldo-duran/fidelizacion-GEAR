@@ -122,6 +122,17 @@ it('rejects an event with a wrong signature, a tampered amount or no secret conf
 
         return $evento;
     }],
+    // Una firma correcta de una lista que no cubre el estado: con ella se podría cambiar el estado sin tocar la firma.
+    'propiedades sin el estado' => [static function (array $evento): array {
+        $evento['signature']['properties'] = ['transaction.id', 'transaction.amount_in_cents'];
+        $evento['signature']['checksum'] = hash(
+            'sha256',
+            $evento['data']['transaction']['id'] . $evento['data']['transaction']['amount_in_cents']
+                . $evento['timestamp'] . MembresiasTestData::SECRETO_EVENTOS,
+        );
+
+        return $evento;
+    }],
     'sin secreto' => [static function (array $evento): array {
         config(['pagos.wompi.secreto_eventos' => '']);
 

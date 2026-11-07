@@ -7,6 +7,7 @@ use App\Enums\EstadoPago;
 use App\Enums\MotivoCambioNivel;
 use App\Enums\Nivel;
 use App\Enums\ResultadoNotificacionPago;
+use App\Jobs\Nocturno\PurgeFirmasInvalidas;
 use App\Models\CambioNivel;
 use App\Models\Membresia;
 use App\Models\MovimientoPuntos;
@@ -15,6 +16,7 @@ use App\Models\PagoMembresia;
 use App\Models\PlanMembresia;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Bus;
 use Tests\Support\MembresiasTestData;
 use Tests\Support\NivelesTestData;
 
@@ -203,27 +205,70 @@ it('logs for review a second charge, an unknown status and the transaction of an
         ]);
 });
 
-it('does not store a large body with an invalid signature', function (): void {
-    $evento = MembresiasTestData::evento('MNOEXISTE', 'aprobado', 49900, firmaValida: false);
-    $evento['relleno'] = str_repeat('x', 20000);
+it('logs an invalid signature without its body and changes nothing', function (): void {
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $evento = MembresiasTestData::evento($pago->referencia, 'aprobado', 49900, firmaValida: false);
+    $evento['data']['transaction']['customer_email'] = 'pagador@example.com';
 
     ($this->webhook)($evento)->assertStatus(401);
-
-    expect(NotificacionPago::query()->sole()->payload)->toMatchArray(['truncado' => true]);
-});
-
-it('logs an invalid signature with the payload and changes nothing', function (): void {
-    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
-
-    ($this->webhook)(MembresiasTestData::evento($pago->referencia, 'aprobado', 49900, firmaValida: false))
-        ->assertStatus(401);
 
     $registro = NotificacionPago::query()->sole();
 
     expect($registro->firma_valida)->toBeFalse()
         ->and($registro->referencia)->toBe($pago->referencia)
-        ->and($registro->payload['data']['transaction']['status'])->toBe('APPROVED')
+        ->and($registro->payload)->toBe(['bytes' => strlen((string) json_encode($evento))])
         ->and($pago->fresh()?->estado)->toBe(EstadoPago::Pendiente);
+});
+
+it('stores a valid notification without the payer data', function (): void {
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $evento = MembresiasTestData::evento($pago->referencia, 'aprobado', 49900);
+    $evento['data']['transaction'] += [
+        'customer_email' => 'pagador@example.com',
+        'customer_data' => ['full_name' => 'Ana Pérez', 'phone_number' => '+573001234567', 'legal_id' => '1012345678'],
+        'billing_data' => ['address_line_1' => 'Calle 1 # 2-3'],
+        'shipping_address' => ['phone_number' => '3001234567'],
+    ];
+
+    ($this->webhook)($evento)->assertOk();
+
+    $payload = NotificacionPago::query()->sole()->payload;
+
+    // JSONB no conserva el orden de las claves: se compara sin orden.
+    expect($payload['transaction'])->toEqual([
+        'id' => MembresiasTestData::ID_EXTERNO,
+        'amount_in_cents' => 4990000,
+        'reference' => $pago->referencia,
+        'currency' => 'COP',
+        'payment_method_type' => 'CARD',
+        'status' => 'APPROVED',
+    ])
+        ->and($payload['event'])->toBe('transaction.updated')
+        ->and(json_encode($payload))->not->toContain('pagador@example.com')
+        ->and(json_encode($payload))->not->toContain('1012345678');
+});
+
+it('keeps the invalid signature retention of the configuration equal to the fixture', function (): void {
+    expect(config('pagos.retencion_firmas_invalidas_dias'))
+        ->toBe(MembresiasTestData::fixture()['retention']['invalid_signature_days']['value']);
+});
+
+it('deletes at night only the old notifications with an invalid signature', function (): void {
+    $dias = config('pagos.retencion_firmas_invalidas_dias');
+    $pago = MembresiasTestData::pago($this->cliente, MembresiasTestData::plan());
+    $vieja = MembresiasTestData::evento('MNOEXISTE', 'aprobado', 49900, firmaValida: false);
+
+    ($this->webhook)($vieja)->assertStatus(401);
+    ($this->webhook)(MembresiasTestData::evento($pago->referencia, 'aprobado', 49900))->assertOk();
+
+    $this->travel(is_int($dias) ? $dias : 0)->days();
+    ($this->webhook)($vieja)->assertStatus(401);
+
+    $this->travel(1)->days();
+    Bus::dispatchSync(new PurgeFirmasInvalidas(CarbonImmutable::today()->toDateString()));
+
+    expect(NotificacionPago::query()->where('firma_valida', false)->count())->toBe(1)
+        ->and(NotificacionPago::query()->where('firma_valida', true)->count())->toBe(1);
 });
 
 it('answers 404 to an unknown gateway and needs no session or CSRF token', function (): void {

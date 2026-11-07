@@ -25,6 +25,29 @@ final class WompiPasarela implements PasarelaPagos
         'PENDING' => EstadoPago::Pendiente,
     ];
 
+    /**
+     * Lo que la firma debe cubrir sí o sí: con esto se decide si un pago se
+     * aplica. Un evento que firme otra lista se rechaza.
+     */
+    private const PROPIEDADES_FIRMADAS = ['transaction.id', 'transaction.status', 'transaction.amount_in_cents'];
+
+    /**
+     * Los campos de la transacción que se guardan en `notificaciones_pago`.
+     * Nada del pagador (correo, nombre, teléfono, documento, direcciones):
+     * no hace falta para defender un pago y no se guarda (Ley 1581).
+     */
+    private const CAMPOS_GUARDADOS = [
+        'id',
+        'reference',
+        'status',
+        'status_message',
+        'amount_in_cents',
+        'currency',
+        'payment_method_type',
+        'created_at',
+        'finalized_at',
+    ];
+
     public function checkout(PagoMembresia $pago, string $urlRegreso): string
     {
         $centavos = $pago->monto_cop * 100;
@@ -62,7 +85,7 @@ final class WompiPasarela implements PasarelaPagos
             $estado,
             is_int($centavos) && $centavos % 100 === 0 ? intdiv($centavos, 100) : null,
             self::texto($transaccion['currency'] ?? null),
-            $payload,
+            self::resumen($payload, $transaccion),
         );
     }
 
@@ -78,8 +101,9 @@ final class WompiPasarela implements PasarelaPagos
     /**
      * Checksum de un evento: SHA256 de los valores de `signature.properties`
      * en su orden, el `timestamp` y el secreto de eventos. Las propiedades se
-     * leen de cada evento porque Wompi puede cambiarlas. Null si el evento no
-     * trae lo necesario o no hay secreto configurado.
+     * leen de cada evento porque Wompi puede cambiarlas, pero deben incluir el
+     * id, el estado y el monto. Null si el evento no trae lo necesario, si la
+     * lista no cubre esas tres o si no hay secreto configurado.
      *
      * @param  array<array-key, mixed>  $payload
      */
@@ -88,8 +112,14 @@ final class WompiPasarela implements PasarelaPagos
         $propiedades = data_get($payload, 'signature.properties');
         $timestamp = $payload['timestamp'] ?? null;
 
-        if ($secreto === '' || ! is_array($propiedades) || $propiedades === [] || ! is_scalar($timestamp)) {
+        if ($secreto === '' || ! is_array($propiedades) || ! is_scalar($timestamp)) {
             return null;
+        }
+
+        foreach (self::PROPIEDADES_FIRMADAS as $requerida) {
+            if (! in_array($requerida, $propiedades, true)) {
+                return null;
+            }
         }
 
         $cadena = '';
@@ -105,6 +135,25 @@ final class WompiPasarela implements PasarelaPagos
         }
 
         return hash('sha256', $cadena . $timestamp . $secreto);
+    }
+
+    /**
+     * El evento sin los datos del pagador: solo el tipo, las fechas de envío y
+     * los campos de la transacción de la lista blanca.
+     *
+     * @param  array<array-key, mixed>  $payload
+     * @param  array<array-key, mixed>  $transaccion
+     * @return array<string, mixed>
+     */
+    private static function resumen(array $payload, array $transaccion): array
+    {
+        return [
+            'event' => $payload['event'] ?? null,
+            'environment' => $payload['environment'] ?? null,
+            'sent_at' => $payload['sent_at'] ?? null,
+            'timestamp' => $payload['timestamp'] ?? null,
+            'transaction' => array_intersect_key($transaccion, array_flip(self::CAMPOS_GUARDADOS)),
+        ];
     }
 
     private static function texto(mixed $valor): ?string

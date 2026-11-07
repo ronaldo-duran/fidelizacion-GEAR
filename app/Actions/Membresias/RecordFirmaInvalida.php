@@ -11,15 +11,14 @@ use Illuminate\Support\Facades\RateLimiter;
 
 /**
  * Deja registrada una notificación con firma inválida (E6-01, regla 4.1).
- * Los datos del cuerpo no se usan para nada más: no son confiables. Para
- * que quien envíe basura no llene la tabla, un cuerpo grande no se guarda
- * entero y se registran como máximo unas cuantas por minuto y pasarela; las
- * demás solo reciben el 401.
+ * Su cuerpo no es confiable y puede traer datos personales, así que no se
+ * guarda: solo la referencia que dice traer y el tamaño del cuerpo. Para que
+ * quien envíe basura no llene la tabla, se registran como máximo unas
+ * cuantas por minuto y pasarela; las demás solo reciben el 401. El proceso
+ * nocturno borra las viejas (PurgeFirmasInvalidas).
  */
 class RecordFirmaInvalida
 {
-    private const MAX_BYTES = 16384;
-
     private const MAX_POR_MINUTO = 30;
 
     public function __invoke(string $pasarela, FirmaInvalida $error): ?NotificacionPago
@@ -41,18 +40,7 @@ class RecordFirmaInvalida
             'referencia' => is_string($referencia) ? mb_substr($referencia, 0, 80) : null,
             'firma_valida' => false,
             'resultado' => ResultadoNotificacionPago::FirmaInvalida,
-            'payload' => self::payload($error->payload),
+            'payload' => ['bytes' => strlen((string) json_encode($error->payload))],
         ]);
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $payload
-     * @return array<array-key, mixed>
-     */
-    private static function payload(array $payload): array
-    {
-        $bytes = strlen((string) json_encode($payload));
-
-        return $bytes > self::MAX_BYTES ? ['truncado' => true, 'bytes' => $bytes] : $payload;
     }
 }

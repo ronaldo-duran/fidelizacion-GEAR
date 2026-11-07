@@ -95,6 +95,32 @@ it('refuses an inactive plan and a plan of another level while a membership is v
     expect(PagoMembresia::query()->count())->toBe(0);
 });
 
+it('checks the membership level with the locked customer row, not the one loaded before', function (): void {
+    $oro = PlanMembresia::query()->create([
+        'nombre' => 'Oro mensual', 'nivel' => 'oro', 'duracion_meses' => 1, 'precio_cop' => 19900,
+    ]);
+    $cargado = $this->cliente->fresh();
+
+    // Un webhook le dio Diamante después de que la pantalla cargó al cliente.
+    $this->cliente->forceFill(['nivel_por_membresia' => 'diamante', 'membresia_vigente_hasta' => '2026-11-20'])->save();
+
+    expect(fn () => app(StartPagoMembresia::class)($cargado, $oro->id))
+        ->toThrow(ValidationException::class, 'Tu membresía Diamante va hasta el 20 de noviembre de 2026');
+
+    expect(PagoMembresia::query()->count())->toBe(0);
+});
+
+it('names each plan by its period and its length', function (): void {
+    $otro = app(PlanMembresia::class)->forceFill(['nombre' => 'Diamante semestral', 'duracion_meses' => 6]);
+
+    expect(MembresiasTestData::plan()->periodicidad())->toBe('Mensual')
+        ->and(MembresiasTestData::plan()->duracionEnPalabras())->toBe('Un mes')
+        ->and(MembresiasTestData::plan(12)->periodicidad())->toBe('Anual')
+        ->and(MembresiasTestData::plan(12)->duracionEnPalabras())->toBe('12 meses')
+        ->and($otro->periodicidad())->toBe('Diamante semestral')
+        ->and($otro->duracionEnPalabras())->toBe('6 meses');
+});
+
 it('shows the plans, the points that keep counting and the price of the chosen plan', function (): void {
     $anual = MembresiasTestData::plan(12);
 

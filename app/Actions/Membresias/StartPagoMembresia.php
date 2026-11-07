@@ -45,8 +45,6 @@ class StartPagoMembresia
             throw ValidationException::withMessages(['plan' => 'Elige uno de los planes disponibles.']);
         }
 
-        $this->validateNivel($cliente, $plan);
-
         $nombre = $this->pasarelas->nombreActual();
         $pasarela = $this->pasarelas->para($nombre)
             ?? throw new LogicException("La pasarela «{$nombre}» no está configurada.");
@@ -60,11 +58,15 @@ class StartPagoMembresia
      * El pago pendiente del mismo plan que el cliente abrió hace poco, o uno
      * nuevo. Así un doble toque, un reintento o volver atrás desde la pasarela
      * no dejan varios pagos abiertos con referencias distintas. La fila del
-     * cliente queda bloqueada: dos peticiones a la vez no crean dos pagos.
+     * cliente queda bloqueada: dos peticiones a la vez no crean dos pagos, y
+     * la regla 9 se valida con la membresía de ese momento, no con la que
+     * había al cargar la pantalla.
+     *
+     * @throws ValidationException
      */
     private function pago(Cliente $cliente, PlanMembresia $plan, string $pasarela): PagoMembresia
     {
-        $this->niveles->lockCliente($cliente->id);
+        $this->validateNivel($this->niveles->lockCliente($cliente->id), $plan);
         $minutos = config('pagos.reusar_pendiente_minutos');
         $query = PagoMembresia::query();
         $query->getQuery()

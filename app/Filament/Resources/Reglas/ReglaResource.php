@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Reglas;
 
 use App\Enums\TipoRegla;
-use App\Filament\Resources\BaseResource;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Filament\Resources\Reglas\Pages\CreateRegla;
 use App\Filament\Resources\Reglas\Pages\ListReglas;
 use App\Filament\Resources\Reglas\Pages\NewReglaVersion;
@@ -18,6 +18,7 @@ use App\Models\Regla;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -30,8 +31,10 @@ use UnitEnum;
  * administrator. There is no in-place editing or deleting: "editing" means
  * saving a new version through the actions.
  */
-class ReglaResource extends BaseResource
+class ReglaResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = Regla::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedAdjustmentsHorizontal;

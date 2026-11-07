@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Clientes;
 
-use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Clientes\Pages\ListClientes;
 use App\Filament\Resources\Clientes\Pages\ViewCliente;
 use App\Filament\Resources\Clientes\RelationManagers\CambiosNivelRelationManager;
+use App\Filament\Resources\Clientes\RelationManagers\MembresiasRelationManager;
 use App\Filament\Resources\Clientes\RelationManagers\MovimientosRelationManager;
 use App\Filament\Resources\Clientes\Schemas\ClienteInfolist;
 use App\Filament\Resources\Clientes\Tables\ClientesTable;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Models\Cliente;
 use App\Models\User;
 use App\Panel\AlcancePanel;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -29,8 +31,10 @@ use Illuminate\Support\Facades\Auth;
  * de puntos y los cambios de nivel. El acceso lo decide `ClientePolicy` y el
  * alcance por rol `AlcancePanel`; el ajuste manual va por `ApplyAjusteManual`.
  */
-class ClienteResource extends BaseResource
+class ClienteResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = Cliente::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
@@ -77,6 +81,7 @@ class ClienteResource extends BaseResource
         return [
             MovimientosRelationManager::class,
             CambiosNivelRelationManager::class,
+            MembresiasRelationManager::class,
         ];
     }
 

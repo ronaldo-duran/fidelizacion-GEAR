@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Misiones;
 
 use App\Enums\TipoRegla;
-use App\Filament\Resources\BaseResource;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Filament\Resources\Misiones\Pages\CreateMision;
 use App\Filament\Resources\Misiones\Pages\ListMisiones;
 use App\Filament\Resources\Misiones\Pages\NewMisionVersion;
@@ -19,6 +19,7 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -33,8 +34,10 @@ use UnitEnum;
  * crea una versión nueva por las Actions del motor, que validan los límites
  * del comercio. El grupo ve todas; el administrador de comercio, las suyas.
  */
-class MisionResource extends BaseResource
+class MisionResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = Regla::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFlag;

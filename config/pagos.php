@@ -42,6 +42,10 @@ return [
     // toque, reintento o volver atrás desde la pasarela) en lugar de abrir otro.
     'reusar_pendiente_minutos' => 30,
 
+    // Días antes del fin de la membresía en que se avisa de la renovación (E6-01, regla 10).
+    // TODO(cliente): supuesto del fixture (renewal.notice_days_before), pendiente de confirmar.
+    'avisos_renovacion_dias' => [7, 1],
+
     // Días que se guardan las notificaciones con firma inválida antes de que el proceso nocturno las borre.
     // TODO(cliente): supuesto del fixture (retention.invalid_signature_days), pendiente de confirmar.
     'retencion_firmas_invalidas_dias' => 90,

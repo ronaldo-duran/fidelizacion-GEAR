@@ -7,6 +7,8 @@ namespace App\Jobs;
 use App\Actions\Notificaciones\Notify;
 use App\Enums\EventoNotificacion;
 use App\Models\AvisoDescenso;
+use App\Models\AvisoRenovacion;
+use App\Models\Cliente;
 use App\Support\FormatoColombiano;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,7 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Envía, a la hora de `notificaciones.hora_avisos`, los avisos de descenso
- * que E3-05 registró de noche (E7-01, regla 10). Solo los del último día:
+ * que E3-05 registró de noche (E7-01, regla 10) y los de renovación de la
+ * membresía (E6-01). Solo los del último día:
  * los de una noche perdida no se reenvían tarde (E3-05). Cada aviso queda
  * con `enviado_at`, y la restricción única de los envíos evita duplicados
  * si el proceso corre dos veces.
@@ -34,6 +37,12 @@ class SendAvisosNocturnos implements ShouldQueue
     }
 
     public function handle(Notify $notify): void
+    {
+        $this->descenso($notify);
+        $this->renovacion($notify);
+    }
+
+    private function descenso(Notify $notify): void
     {
         $query = AvisoDescenso::query()->with('cliente')->where('created_at', '>=', CarbonImmutable::now()->subDay());
         $query->getQuery()->whereNull('enviado_at');
@@ -60,5 +69,41 @@ class SendAvisosNocturnos implements ShouldQueue
                 });
             }
         });
+    }
+
+    private function renovacion(Notify $notify): void
+    {
+        $query = AvisoRenovacion::query()->with('cliente')->where('created_at', '>=', CarbonImmutable::now()->subDay());
+        $query->getQuery()->whereNull('enviado_at');
+
+        $query->chunkById(self::CHUNK, static function (Collection $avisos) use ($notify): void {
+            foreach ($avisos as $aviso) {
+                $cliente = $aviso->cliente;
+                $nivel = $cliente?->nivel_por_membresia;
+
+                // Si el cliente ya no tiene membresía, o renovó entre el registro de la noche y este
+                // envío (su fin ya no es el del aviso), el aviso no aplica y no se envía. Se deja sin
+                // `enviado_at` porque no se envió; el filtro de 24 horas lo descarta mañana.
+                if ($cliente === null || $nivel === null || ! self::mismoFin($cliente, $aviso)) {
+                    continue;
+                }
+
+                DB::transaction(static function () use ($notify, $aviso, $cliente, $nivel): void {
+                    $notify(EventoNotificacion::MembresiaPorVencer, $cliente, $aviso->id, [
+                        'nivel' => $nivel->getLabel(),
+                        'vigente_hasta' => FormatoColombiano::fechaConAnio($aviso->vigente_hasta),
+                        'dias_antes' => (string) $aviso->dias_antes,
+                        'enlace' => route('cliente.membresia'),
+                    ]);
+
+                    $aviso->forceFill(['enviado_at' => CarbonImmutable::now()])->save();
+                });
+            }
+        });
+    }
+
+    private static function mismoFin(Cliente $cliente, AvisoRenovacion $aviso): bool
+    {
+        return $cliente->membresia_vigente_hasta?->toDateString() === $aviso->vigente_hasta->toDateString();
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\EventosCalificados;
 
-use App\Filament\Resources\BaseResource;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Filament\Resources\EventosCalificados\Pages\CreateEventoCalificado;
 use App\Filament\Resources\EventosCalificados\Pages\ListEventosCalificados;
 use App\Filament\Resources\EventosCalificados\Schemas\EventoCalificadoForm;
@@ -13,6 +13,7 @@ use App\Models\EventoCalificado;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -26,8 +27,10 @@ use UnitEnum;
  * There is no editing nor deleting; access is decided by
  * `EventoCalificadoPolicy` and every save goes through the level actions.
  */
-class EventoCalificadoResource extends BaseResource
+class EventoCalificadoResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = EventoCalificado::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSparkles;

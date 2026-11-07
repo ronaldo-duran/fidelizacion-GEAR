@@ -92,6 +92,16 @@ class Cliente extends Model implements AuthenticatableContract
     }
 
     /**
+     * Los periodos de membresía, uno por pago aprobado (E6-01).
+     *
+     * @return HasMany<Membresia, $this>
+     */
+    public function membresias(): HasMany
+    {
+        return $this->hasMany(Membresia::class);
+    }
+
+    /**
      * @return HasMany<AutorizacionDatos, $this>
      */
     public function autorizaciones(): HasMany

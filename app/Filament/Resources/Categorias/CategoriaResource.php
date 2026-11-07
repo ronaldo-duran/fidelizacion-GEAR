@@ -4,24 +4,27 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Categorias;
 
-use App\Filament\Resources\BaseResource;
 use App\Filament\Resources\Categorias\Pages\CreateCategoria;
 use App\Filament\Resources\Categorias\Pages\EditCategoria;
 use App\Filament\Resources\Categorias\Pages\ListCategorias;
 use App\Filament\Resources\Categorias\Schemas\CategoriaForm;
 use App\Filament\Resources\Categorias\Tables\CategoriasTable;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Models\Categoria;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
-class CategoriaResource extends BaseResource
+class CategoriaResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = Categoria::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

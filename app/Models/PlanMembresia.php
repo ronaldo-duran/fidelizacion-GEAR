@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\Nivel;
+use App\Observers\AuditoriaObserver;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 
 /**
  * Plan de membresía (E6-01): el nivel que otorga, por cuántos meses y a qué
- * precio en pesos enteros. No se borra: se desactiva.
+ * precio en pesos enteros. No se borra: se desactiva. Los cambios quedan en
+ * la auditoría.
  *
  * @property int $id
  * @property string $nombre
@@ -21,6 +24,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable $updated_at
  */
+#[ObservedBy(AuditoriaObserver::class)]
 class PlanMembresia extends Model
 {
     protected $table = 'planes_membresia';

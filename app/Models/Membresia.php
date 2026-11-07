@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable $vigente_hasta
  * @property CarbonImmutable $created_at
  * @property-read PlanMembresia $plan
+ * @property-read PagoMembresia $pago
  */
 class Membresia extends Model
 {
@@ -47,6 +48,14 @@ class Membresia extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(PlanMembresia::class);
+    }
+
+    /**
+     * @return BelongsTo<PagoMembresia, $this>
+     */
+    public function pago(): BelongsTo
+    {
+        return $this->belongsTo(PagoMembresia::class, 'pago_id');
     }
 
     /**

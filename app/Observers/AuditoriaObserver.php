@@ -40,7 +40,9 @@ class AuditoriaObserver
     private function registrar(Model $model, string $evento, ?array $antes, ?array $despues): void
     {
         Auditoria::query()->create([
-            'usuario_id' => Auth::id(),
+            // El usuario del panel (guard web): en una petición de la PWA el guard por defecto es el
+            // del cliente, y su id no es un usuario.
+            'usuario_id' => Auth::guard('web')->id(),
             'evento' => $evento,
             'modelo' => $model::class,
             'modelo_id' => $model->getKey(),

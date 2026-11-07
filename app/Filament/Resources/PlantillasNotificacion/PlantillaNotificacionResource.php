@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\PlantillasNotificacion;
 
-use App\Filament\Resources\BaseResource;
+use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Filament\Resources\PlantillasNotificacion\Pages\EditPlantillaNotificacion;
 use App\Filament\Resources\PlantillasNotificacion\Pages\ListPlantillasNotificacion;
 use App\Filament\Resources\PlantillasNotificacion\Schemas\PlantillaNotificacionForm;
@@ -12,6 +12,7 @@ use App\Filament\Resources\PlantillasNotificacion\Tables\PlantillasNotificacionT
 use App\Models\PlantillaNotificacion;
 use BackedEnum;
 use Filament\Resources\Pages\PageRegistration;
+use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -24,8 +25,10 @@ use UnitEnum;
  * están activas. Una por evento; no se crean ni se borran. Guardar pasa por
  * `UpdatePlantillaNotificacion`, que valida la lista blanca de variables.
  */
-class PlantillaNotificacionResource extends BaseResource
+class PlantillaNotificacionResource extends Resource
 {
+    use SpanishLabels;
+
     protected static ?string $model = PlantillaNotificacion::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedEnvelope;

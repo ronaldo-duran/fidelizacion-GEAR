@@ -1,0 +1,688 @@
+{
+    "_note": "Scenarios for E9-01 (public API for merchants). Today is Friday 2026-11-06 15:00 in America/Bogota. Merchants, branches and rules are the ones in compras-escenarios.json (merchant 1 restaurant with branches 11 active and 12 inactive, merchant 2 ice cream with branch 21, merchant 5 inactive with branch 51); only the rule `acumulacion-base` is active here, so 1 point per $1.000. Granted values and benefit states come from redencion-escenarios.json and are not repeated. Every credential belongs to one branch (decision 1 of the spec). Request fields use the database column names. `idempotency_key` values are UUIDs; `\"new\"` means a fresh UUID per request. Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-06 15:00:00",
+    "settings": {
+        "requests_per_minute": {
+            "value": 120,
+            "_assumption": true,
+            "_source": "decision 7 of the spec: general limit per credential"
+        },
+        "customer_lookups_per_minute": {
+            "value": 60,
+            "_assumption": true,
+            "_source": "decision 7 of the spec: operations 1 and 2 per credential"
+        },
+        "rotation_grace_hours": {
+            "value": 24,
+            "_assumption": true,
+            "_source": "business rule 4: the old token keeps working while the POS switches"
+        },
+        "max_amount": {
+            "value": 999999999999,
+            "_assumption": true,
+            "_source": "business rule 9: whole pesos, room for property purchases"
+        },
+        "annul_window_days": {
+            "value": 30,
+            "_source": "decision 4 of the spec: the ledger reversal window, config puntos.reversal_window_days"
+        },
+        "idempotency_key_format": { "value": "uuid", "_source": "decision 3 of the spec" }
+    },
+    "abilities": {
+        "GET /api/v1/clientes": "clientes:leer",
+        "GET /api/v1/clientes/beneficios": "clientes:leer",
+        "POST /api/v1/compras": "compras:registrar",
+        "GET /api/v1/compras/{referencia_externa}": "compras:registrar",
+        "POST /api/v1/compras/{referencia_externa}/anulacion": "compras:anular",
+        "GET /api/v1/codigos/{codigo}": "beneficios:redimir",
+        "POST /api/v1/redenciones": "beneficios:redimir"
+    },
+    "credentials": [
+        {
+            "key": "pos-rancho",
+            "comercio_id": 1,
+            "sede_id": 11,
+            "abilities": ["clientes:leer", "compras:registrar", "compras:anular", "beneficios:redimir"]
+        },
+        {
+            "key": "pos-heladeria",
+            "comercio_id": 2,
+            "sede_id": 21,
+            "abilities": ["clientes:leer", "compras:registrar", "compras:anular", "beneficios:redimir"]
+        },
+        {
+            "key": "pos-rancho-solo-compras",
+            "comercio_id": 1,
+            "sede_id": 11,
+            "abilities": ["compras:registrar"]
+        },
+        {
+            "key": "pos-rancho-sede-inactiva",
+            "comercio_id": 1,
+            "sede_id": 12,
+            "abilities": ["compras:registrar"]
+        },
+        {
+            "key": "pos-comercio-inactivo",
+            "comercio_id": 5,
+            "sede_id": 51,
+            "abilities": ["compras:registrar"]
+        }
+    ],
+    "customers": [
+        {
+            "key": "andres",
+            "tipo_documento": "CC",
+            "documento": "1012345678",
+            "nombre_completo": "Andrés Felipe Rojas",
+            "celular": "3001234567",
+            "email": "andres@example.com",
+            "fecha_nacimiento": "1990-10-29",
+            "saldo_puntos": 470,
+            "nivel_efectivo": "bronce",
+            "nivel_efectivo_desde": "2026-06-01 10:00:00"
+        },
+        {
+            "key": "lucia",
+            "tipo_documento": "PPT",
+            "documento": "B7K2M9Q4",
+            "nombre_completo": "Lucía Mendoza",
+            "saldo_puntos": 120,
+            "nivel_efectivo": "bronce",
+            "nivel_efectivo_desde": "2026-09-15 18:30:00"
+        }
+    ],
+    "authentication": [
+        {
+            "_description": "No Authorization header.",
+            "token": "none",
+            "expected_status": 401,
+            "expected_codigo": "no_autenticado"
+        },
+        {
+            "_description": "A token that does not exist.",
+            "token": "unknown",
+            "expected_status": 401,
+            "expected_codigo": "no_autenticado"
+        },
+        {
+            "_description": "A revoked credential stops working on the next request.",
+            "credential": "pos-rancho",
+            "token": "revoked",
+            "expected_status": 401,
+            "expected_codigo": "no_autenticado"
+        },
+        {
+            "_description": "After a rotation, the old token still works inside the grace window.",
+            "credential": "pos-rancho",
+            "token": "rotated",
+            "hours_after_rotation": 23,
+            "expected_status": 200
+        },
+        {
+            "_description": "After the grace window, only the new token works.",
+            "credential": "pos-rancho",
+            "token": "rotated",
+            "hours_after_rotation": 25,
+            "expected_status": 401,
+            "expected_codigo": "no_autenticado"
+        },
+        {
+            "_description": "The new token of a rotation works right away.",
+            "credential": "pos-rancho",
+            "token": "rotation_new",
+            "hours_after_rotation": 0,
+            "expected_status": 200
+        },
+        {
+            "_description": "A credential without the ability of the operation.",
+            "credential": "pos-rancho-solo-compras",
+            "request": "GET /api/v1/clientes?tipo_documento=CC&documento=1012345678",
+            "expected_status": 403,
+            "expected_codigo": "sin_permiso"
+        },
+        {
+            "_description": "A credential of an inactive branch.",
+            "credential": "pos-rancho-sede-inactiva",
+            "request": "GET /api/v1/compras/fac-0001",
+            "expected_status": 403,
+            "expected_codigo": "sede_inactiva"
+        },
+        {
+            "_description": "A credential of an inactive merchant.",
+            "credential": "pos-comercio-inactivo",
+            "request": "GET /api/v1/compras/fac-0001",
+            "expected_status": 403,
+            "expected_codigo": "comercio_inactivo"
+        }
+    ],
+    "idempotency": [
+        {
+            "_description": "A POST without Idempotency-Key is rejected before touching the database.",
+            "credential": "pos-rancho",
+            "idempotency_key": null,
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "monto": 45000,
+                "referencia_externa": "fac-1001"
+            },
+            "expected_status": 400,
+            "expected_codigo": "idempotency_key_requerida",
+            "expected_transacciones": 0
+        },
+        {
+            "_description": "An Idempotency-Key that is not a UUID.",
+            "credential": "pos-rancho",
+            "idempotency_key": "intento-1",
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "monto": 45000,
+                "referencia_externa": "fac-1002"
+            },
+            "expected_status": 400,
+            "expected_codigo": "idempotency_key_invalida",
+            "expected_transacciones": 0
+        },
+        {
+            "_description": "The same purchase sent twice: the second one is a replay with the same body and no new points.",
+            "credential": "pos-rancho",
+            "requests": [
+                {
+                    "idempotency_key": "3f1c2b9e-6a1d-4f7e-9c2a-1b8d7e6f5a40",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 45000,
+                        "referencia_externa": "FAC-1003"
+                    },
+                    "expected_status": 201,
+                    "expected_replayed": false
+                },
+                {
+                    "idempotency_key": "3f1c2b9e-6a1d-4f7e-9c2a-1b8d7e6f5a40",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 45000,
+                        "referencia_externa": "fac-1003"
+                    },
+                    "expected_status": 200,
+                    "expected_replayed": true
+                }
+            ],
+            "expected_transacciones": 1,
+            "expected_puntos_otorgados": 45,
+            "expected_saldo": 515
+        },
+        {
+            "_description": "Same reference, different amount: conflict, nothing written.",
+            "credential": "pos-rancho",
+            "requests": [
+                {
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 45000,
+                        "referencia_externa": "fac-1004"
+                    },
+                    "expected_status": 201
+                },
+                {
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 46000,
+                        "referencia_externa": "fac-1004"
+                    },
+                    "expected_status": 409,
+                    "expected_codigo": "compra_en_conflicto"
+                }
+            ],
+            "expected_transacciones": 1,
+            "expected_saldo": 515
+        },
+        {
+            "_description": "Same reference, different document: conflict.",
+            "credential": "pos-rancho",
+            "requests": [
+                {
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 45000,
+                        "referencia_externa": "fac-1005"
+                    },
+                    "expected_status": 201
+                },
+                {
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "PPT",
+                        "documento": "B7K2M9Q4",
+                        "monto": 45000,
+                        "referencia_externa": "fac-1005"
+                    },
+                    "expected_status": 409,
+                    "expected_codigo": "compra_en_conflicto"
+                }
+            ],
+            "expected_transacciones": 1
+        },
+        {
+            "_description": "The same reference in two merchants is two purchases.",
+            "requests": [
+                {
+                    "credential": "pos-rancho",
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 20000,
+                        "referencia_externa": "fac-1006"
+                    },
+                    "expected_status": 201
+                },
+                {
+                    "credential": "pos-heladeria",
+                    "idempotency_key": "new",
+                    "body": {
+                        "tipo_documento": "CC",
+                        "documento": "1012345678",
+                        "monto": 20000,
+                        "referencia_externa": "fac-1006"
+                    },
+                    "expected_status": 201
+                }
+            ],
+            "expected_transacciones": 2,
+            "expected_saldo": 510
+        }
+    ],
+    "concurrency": [
+        {
+            "_description": "Ten simultaneous POS retries of the same purchase (criterion of issue #25).",
+            "credential": "pos-rancho",
+            "parallel_requests": 10,
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "monto": 45000,
+                "referencia_externa": "fac-2001"
+            },
+            "expected_transacciones": 1,
+            "expected_movimientos": 1,
+            "expected_saldo": 515,
+            "expected_status_counts": { "201": 1, "200": 9 }
+        },
+        {
+            "_description": "Ten simultaneous deliveries with the same Idempotency-Key.",
+            "credential": "pos-rancho",
+            "parallel_requests": 10,
+            "idempotency_key": "9b6f0c1e-2d4a-4c8b-8e1f-7a3d5c2b1e90",
+            "delivery": "by_document",
+            "expected_redenciones": 1,
+            "expected_status_counts": { "201": 1, "200": 9 }
+        }
+    ],
+    "isolation": [
+        {
+            "_description": "Merchant 2 cannot see a purchase of merchant 1: 404, the same as a missing reference.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-3001",
+                "monto": 30000,
+                "customer": "andres"
+            },
+            "credential": "pos-heladeria",
+            "request": "GET /api/v1/compras/fac-3001",
+            "expected_status": 404,
+            "expected_codigo": "compra_no_encontrada"
+        },
+        {
+            "_description": "Merchant 2 cannot annul a purchase of merchant 1.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-3002",
+                "monto": 30000,
+                "customer": "andres"
+            },
+            "credential": "pos-heladeria",
+            "request": "POST /api/v1/compras/fac-3002/anulacion",
+            "body": { "motivo": "Devolución" },
+            "expected_status": 404,
+            "expected_codigo": "compra_no_encontrada",
+            "expected_estado_after": "acreditada"
+        },
+        {
+            "_description": "A benefit code of merchant 1 read by merchant 2 is not valid.",
+            "setup": { "benefit_of_comercio_id": 1, "customer": "andres" },
+            "credential": "pos-heladeria",
+            "request": "GET /api/v1/codigos/{codigo}",
+            "expected_status": 200,
+            "expected_resultado": "no_valido"
+        },
+        {
+            "_description": "The benefit list only has benefits of the credential's merchant.",
+            "credential": "pos-heladeria",
+            "request": "GET /api/v1/clientes/beneficios?tipo_documento=CC&documento=1012345678",
+            "expected_status": 200,
+            "expected_only_comercio_id": 2
+        },
+        {
+            "_description": "A delivery key already used in merchant 1 is a conflict for merchant 2, without saying whose it is.",
+            "setup": { "credential": "pos-rancho", "idempotency_key": "5d2e8a1b-7c3f-4e9a-b6d0-2f1a8c7e4b31" },
+            "credential": "pos-heladeria",
+            "idempotency_key": "5d2e8a1b-7c3f-4e9a-b6d0-2f1a8c7e4b31",
+            "request": "POST /api/v1/redenciones",
+            "expected_status": 409,
+            "expected_codigo": "redencion_en_conflicto"
+        }
+    ],
+    "validation": [
+        { "_description": "Zero.", "monto": 0, "expected_status": 422, "expected_campo": "monto" },
+        { "_description": "Negative.", "monto": -1000, "expected_status": 422, "expected_campo": "monto" },
+        {
+            "_description": "A string, even with digits only.",
+            "monto": "45000",
+            "expected_status": 422,
+            "expected_campo": "monto"
+        },
+        {
+            "_description": "A number with decimals.",
+            "monto": 45000.5,
+            "expected_status": 422,
+            "expected_campo": "monto"
+        },
+        {
+            "_description": "An integer written with a decimal point.",
+            "monto": 45000.0,
+            "expected_status": 422,
+            "expected_campo": "monto"
+        },
+        {
+            "_description": "Above the maximum.",
+            "monto": 1000000000000,
+            "expected_status": 422,
+            "expected_campo": "monto"
+        },
+        {
+            "_description": "No reference.",
+            "monto": 45000,
+            "referencia_externa": "",
+            "expected_status": 422,
+            "expected_campo": "referencia_externa"
+        },
+        {
+            "_description": "An unknown document type.",
+            "monto": 45000,
+            "tipo_documento": "TI",
+            "expected_status": 422,
+            "expected_campo": "tipo_documento"
+        }
+    ],
+    "purchases": [
+        {
+            "_description": "A purchase that crosses the Plata threshold answers with the new level.",
+            "credential": "pos-rancho",
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "monto": 45000,
+                "referencia_externa": "fac-4001"
+            },
+            "expected_status": 201,
+            "expected_body": {
+                "referencia_externa": "fac-4001",
+                "estado": "acreditada",
+                "monto": 45000,
+                "sede_id": 11,
+                "puntos_otorgados": 45,
+                "nivel_efectivo": "plata",
+                "registrada_at": "2026-11-06T15:00:00-05:00"
+            },
+            "expected_canal": "api"
+        },
+        {
+            "_description": "A document with lowercase letters and spaces is normalized.",
+            "credential": "pos-rancho",
+            "body": {
+                "tipo_documento": "PPT",
+                "documento": " b7k2 m9q4 ",
+                "monto": 10000,
+                "referencia_externa": "fac-4002"
+            },
+            "expected_status": 201,
+            "expected_body": { "estado": "acreditada", "puntos_otorgados": 10, "nivel_efectivo": "bronce" }
+        },
+        {
+            "_description": "A document without a customer leaves the purchase pending.",
+            "credential": "pos-rancho",
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "9999999999",
+                "monto": 45000,
+                "referencia_externa": "fac-4003"
+            },
+            "expected_status": 201,
+            "expected_body": { "estado": "pendiente", "puntos_otorgados": 0, "nivel_efectivo": null }
+        },
+        {
+            "_description": "A purchase below one point is registered without movements.",
+            "credential": "pos-rancho",
+            "body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "monto": 900,
+                "referencia_externa": "fac-4004"
+            },
+            "expected_status": 201,
+            "expected_body": { "estado": "acreditada", "puntos_otorgados": 0 }
+        }
+    ],
+    "annulment": [
+        {
+            "_description": "Annul inside the window: the reversal exists and the purchase is annulled.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-5001",
+                "monto": 45000,
+                "customer": "andres",
+                "days_ago": 29
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "Devolución en caja" },
+            "expected_status": 200,
+            "expected_estado": "anulada",
+            "expected_reversa_puntos": -45
+        },
+        {
+            "_description": "Annulling twice: the second answer is a replay without another reversal.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-5002",
+                "monto": 45000,
+                "customer": "andres",
+                "already_annulled": true
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "Devolución en caja" },
+            "expected_status": 200,
+            "expected_replayed": true,
+            "expected_reversas": 1
+        },
+        {
+            "_description": "Outside the window the purchase does not change.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-5003",
+                "monto": 45000,
+                "customer": "andres",
+                "days_ago": 31
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "Devolución en caja" },
+            "expected_status": 422,
+            "expected_codigo": "fuera_de_plazo",
+            "expected_estado": "acreditada"
+        },
+        {
+            "_description": "A pending purchase is annulled without movements.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-5004",
+                "monto": 45000,
+                "documento_sin_cliente": "9999999999"
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "Error de digitación" },
+            "expected_status": 200,
+            "expected_estado": "anulada",
+            "expected_movimientos": 0
+        },
+        {
+            "_description": "A purchase registered at the cashier is not annulled through the API (decision 4).",
+            "setup": {
+                "canal": "cajero",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "referencia_externa": "caja-5005",
+                "monto": 45000,
+                "customer": "andres"
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "Devolución" },
+            "expected_status": 403,
+            "expected_codigo": "sin_permiso"
+        },
+        {
+            "_description": "No reason.",
+            "setup": {
+                "credential": "pos-rancho",
+                "referencia_externa": "fac-5006",
+                "monto": 45000,
+                "customer": "andres"
+            },
+            "credential": "pos-rancho",
+            "body": { "motivo": "  " },
+            "expected_status": 422,
+            "expected_campo": "motivo"
+        }
+    ],
+    "customer_lookup": [
+        {
+            "_description": "A registered customer: first name and level only.",
+            "credential": "pos-rancho",
+            "query": { "tipo_documento": "CC", "documento": "1012345678" },
+            "expected_status": 200,
+            "expected_body": {
+                "tipo_documento": "CC",
+                "documento": "1012345678",
+                "primer_nombre": "Andrés",
+                "nivel_efectivo": "bronce",
+                "nivel_efectivo_desde": "2026-06-01T10:00:00-05:00"
+            },
+            "forbidden_fields": ["celular", "email", "fecha_nacimiento", "saldo_puntos", "nombre_completo", "id"]
+        },
+        {
+            "_description": "A document without a customer.",
+            "credential": "pos-rancho",
+            "query": { "tipo_documento": "CC", "documento": "9999999999" },
+            "expected_status": 404,
+            "expected_codigo": "cliente_no_registrado"
+        },
+        {
+            "_description": "The same number with another document type is another customer.",
+            "credential": "pos-rancho",
+            "query": { "tipo_documento": "CE", "documento": "1012345678" },
+            "expected_status": 404,
+            "expected_codigo": "cliente_no_registrado"
+        },
+        {
+            "_description": "Past the lookup limit the API answers 429 with Retry-After.",
+            "credential": "pos-rancho",
+            "lookups_in_the_minute": 61,
+            "expected_last_status": 429,
+            "expected_codigo": "demasiadas_peticiones",
+            "expected_retry_after_header": true
+        }
+    ],
+    "redemption": [
+        {
+            "_description": "By code: the code is checked first and then delivered with the same key twice.",
+            "credential": "pos-rancho",
+            "delivery": "by_code",
+            "steps": [
+                { "request": "GET /api/v1/codigos/{codigo}", "expected_status": 200, "expected_resultado": "valido" },
+                {
+                    "request": "POST /api/v1/redenciones",
+                    "idempotency_key": "c4a7e2d1-9b3f-4a6e-8d2c-5f1b0e9a7c62",
+                    "expected_status": 201,
+                    "expected_fields": ["valor_otorgado_cop", "beneficio_id", "sede_id", "referencia", "created_at"]
+                },
+                {
+                    "request": "POST /api/v1/redenciones",
+                    "idempotency_key": "c4a7e2d1-9b3f-4a6e-8d2c-5f1b0e9a7c62",
+                    "expected_status": 200,
+                    "expected_replayed": true
+                },
+                { "request": "GET /api/v1/codigos/{codigo}", "expected_status": 200, "expected_resultado": "ya_usado" }
+            ],
+            "expected_redenciones": 1,
+            "expected_saldo_unchanged": true,
+            "expected_nivel_unchanged": true
+        },
+        {
+            "_description": "The same key with another benefit is a conflict.",
+            "credential": "pos-rancho",
+            "delivery": "by_document",
+            "same_key_other_beneficio": true,
+            "expected_status": 409,
+            "expected_codigo": "redencion_en_conflicto",
+            "expected_redenciones": 1
+        },
+        {
+            "_description": "A percentage benefit without the bill amount.",
+            "credential": "pos-rancho",
+            "delivery": "by_document",
+            "beneficio_tipo": "porcentaje",
+            "monto_cuenta_cop": null,
+            "expected_status": 422,
+            "expected_campo": "monto_cuenta_cop"
+        },
+        {
+            "_description": "A benefit that requires support without it.",
+            "credential": "pos-rancho",
+            "delivery": "by_document",
+            "requiere_soporte": true,
+            "soporte": null,
+            "expected_status": 422,
+            "expected_campo": "soporte"
+        }
+    ],
+    "errors": [
+        {
+            "_description": "An unknown route under /api answers JSON, never HTML.",
+            "request": "GET /api/v1/no-existe",
+            "expected_status": 404,
+            "expected_codigo": "ruta_no_encontrada"
+        },
+        {
+            "_description": "A wrong method.",
+            "request": "DELETE /api/v1/compras/fac-0001",
+            "expected_status": 405,
+            "expected_codigo": "metodo_no_permitido"
+        },
+        {
+            "_description": "An unexpected error hides the trace and the SQL.",
+            "request": "forced_exception",
+            "expected_status": 500,
+            "expected_codigo": "error_interno",
+            "forbidden_text": ["SQLSTATE", "Stack trace", "vendor/"]
+        }
+    ]
+}

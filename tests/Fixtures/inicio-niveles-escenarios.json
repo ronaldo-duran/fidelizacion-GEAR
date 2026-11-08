@@ -1,0 +1,134 @@
+{
+    "_note": "Scenarios for E8-03 (customer home and levels screen). Thresholds come from the niveles rule in reglas-validas.json (Bronce 0, Plata 500, Oro 1.500, Diamante 3.000); they are repeated here only as the expected result, the screen reads them from the rule. Dates are relative to `hoy` in America/Bogota. Values the client has not confirmed carry \"_assumption\": true.",
+    "home": {
+        "today_list": {
+            "_description": "How many available benefits the home lists under \"Para usar hoy\". With more, a link \"Ver los N\" opens the catalog (E8-04).",
+            "max_items": { "value": 5, "_assumption": true }
+        },
+        "progress": {
+            "_description": "Progress bar from the threshold of the current level to the next one, rounded down. A customer below the threshold of their effective level (level from a membership or an event) sees 0."
+        }
+    },
+    "customers": [
+        {
+            "_description": "Bronce with a few points: next level Plata.",
+            "nombre_completo": "Sofía Pérez Rojas",
+            "saldo_puntos": 120,
+            "sources": { "nivel_por_puntos": "bronce", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "expected": {
+                "nivel_efectivo": "bronce",
+                "greeting": "Sofía, eres",
+                "next_level": "plata",
+                "missing_points": 380,
+                "progress_percent": 24,
+                "origin": "puntos"
+            }
+        },
+        {
+            "_description": "Plata: next level Oro (screen 1r shows \"Te faltan 340 pts\" on the Oro card).",
+            "nombre_completo": "Marcela Gómez",
+            "saldo_puntos": 1160,
+            "sources": { "nivel_por_puntos": "plata", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "expected": {
+                "nivel_efectivo": "plata",
+                "greeting": "Marcela, eres",
+                "next_level": "oro",
+                "missing_points": 340,
+                "progress_percent": 66,
+                "origin": "puntos"
+            }
+        },
+        {
+            "_description": "Oro: next level Diamante (screen 1f shows \"860 puntos más para Diamante\").",
+            "nombre_completo": "Julián Andrés Mora",
+            "saldo_puntos": 2140,
+            "sources": { "nivel_por_puntos": "oro", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "expected": {
+                "nivel_efectivo": "oro",
+                "greeting": "Julián, eres",
+                "next_level": "diamante",
+                "missing_points": 860,
+                "progress_percent": 42,
+                "origin": "puntos"
+            }
+        },
+        {
+            "_description": "Diamante by points: there is no next level and no progress bar.",
+            "nombre_completo": "Camilo Rivera",
+            "saldo_puntos": 3400,
+            "sources": { "nivel_por_puntos": "diamante", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "expected": {
+                "nivel_efectivo": "diamante",
+                "greeting": "Camilo, eres",
+                "next_level": null,
+                "missing_points": null,
+                "progress_percent": null,
+                "origin": "puntos"
+            }
+        },
+        {
+            "_description": "Plata by points and Diamante by a valid membership: the home shows Diamante, says it comes from the membership and until when.",
+            "nombre_completo": "Lucía Fernández",
+            "saldo_puntos": 1160,
+            "sources": {
+                "nivel_por_puntos": "plata",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "hoy+20d",
+                "nivel_por_evento": null
+            },
+            "expected": {
+                "nivel_efectivo": "diamante",
+                "greeting": "Lucía, eres",
+                "next_level": null,
+                "missing_points": null,
+                "progress_percent": null,
+                "origin": "membresia",
+                "origin_until": "hoy+20d"
+            }
+        },
+        {
+            "_description": "Plata by points and Oro by a school enrollment: the next level is Diamante and the bar starts at 0 because the balance is below the Oro threshold.",
+            "nombre_completo": "Andrés Castillo",
+            "saldo_puntos": 900,
+            "sources": {
+                "nivel_por_puntos": "plata",
+                "nivel_por_membresia": null,
+                "nivel_por_evento": "oro",
+                "evento_vigente_hasta": "hoy+6m"
+            },
+            "expected": {
+                "nivel_efectivo": "oro",
+                "greeting": "Andrés, eres",
+                "next_level": "diamante",
+                "missing_points": 2100,
+                "progress_percent": 0,
+                "origin": "evento",
+                "origin_until": "hoy+6m"
+            }
+        },
+        {
+            "_description": "A customer without a name on file: the greeting drops the name.",
+            "nombre_completo": null,
+            "saldo_puntos": 0,
+            "sources": { "nivel_por_puntos": "bronce", "nivel_por_membresia": null, "nivel_por_evento": null },
+            "expected": {
+                "nivel_efectivo": "bronce",
+                "greeting": "Eres",
+                "next_level": "plata",
+                "missing_points": 500,
+                "progress_percent": 0,
+                "origin": "puntos"
+            }
+        }
+    ],
+    "levels_screen": {
+        "_description": "Levels screen (1r) for the Plata customer above. Only the level right above the current one shows the missing points; Bronce shows \"Al registrarte\" instead of a threshold.",
+        "customer": "Marcela Gómez",
+        "expected_cards": [
+            { "nivel": "bronce", "threshold_text": "Al registrarte", "current": false, "missing_points": null },
+            { "nivel": "plata", "threshold_text": "500 pts", "current": true, "missing_points": null },
+            { "nivel": "oro", "threshold_text": "1.500 pts", "current": false, "missing_points": 340 },
+            { "nivel": "diamante", "threshold_text": "3.000 pts", "current": false, "missing_points": null }
+        ]
+    }
+}

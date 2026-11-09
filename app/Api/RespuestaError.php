@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Api;
 
+use App\Beneficios\EntregaRechazada;
 use App\Compras\CompraEnConflicto;
+use App\Enums\ResultadoBeneficio;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -68,6 +70,12 @@ final class RespuestaError
                 'Ya existe otra compra con esa referencia.',
                 [],
             ],
+            $error instanceof EntregaRechazada => [
+                422,
+                self::codigoEntrega($error->chequeo->resultado),
+                $error->getMessage(),
+                [],
+            ],
             default => self::http($error),
         };
     }
@@ -121,5 +129,10 @@ final class RespuestaError
         }
 
         return $campos;
+    }
+
+    private static function codigoEntrega(ResultadoBeneficio $resultado): string
+    {
+        return $resultado === ResultadoBeneficio::Usado ? 'ya_usado' : $resultado->value;
     }
 }

@@ -35,4 +35,14 @@ final class ErrorApi extends RuntimeException
     {
         return new self(404, 'compra_no_encontrada', 'No encontramos una compra con esa referencia en este comercio.');
     }
+
+    public static function clienteNoRegistrado(): self
+    {
+        return new self(404, 'cliente_no_registrado', 'Ese documento no es cliente del programa.');
+    }
+
+    public static function redencionEnConflicto(): self
+    {
+        return new self(409, 'redencion_en_conflicto', 'Esa llave de idempotencia ya se usó con otra entrega.');
+    }
 }

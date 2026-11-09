@@ -61,6 +61,17 @@ class User extends Authenticatable implements FilamentUser
         return $this->activo && $this->rol === RolUsuario::Cajero && $this->sede_id !== null;
     }
 
+    /**
+     * Quién entrega beneficios (E5-02): el cajero activo con sede, o la
+     * credencial de la API activa con sede (E9-01).
+     */
+    public function puedeEntregarBeneficios(): bool
+    {
+        return $this->activo
+            && $this->sede_id !== null
+            && in_array($this->rol, [RolUsuario::Cajero, RolUsuario::Integracion], true);
+    }
+
     public function esIntegracion(): bool
     {
         return $this->rol === RolUsuario::Integracion;

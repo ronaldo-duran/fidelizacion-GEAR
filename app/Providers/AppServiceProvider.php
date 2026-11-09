@@ -51,8 +51,12 @@ class AppServiceProvider extends ServiceProvider
             static fn (Request $request): Limit => Limit::perMinute(120)->by((string) $request->ip()),
         );
 
-        // API pública (E9-01, regla 12): un tope por credencial.
+        // API pública (E9-01, regla 12): un tope general y uno más bajo para consultar documentos.
         RateLimiter::for('api', static fn (Request $request): Limit => self::topeApi($request, 'requests_per_minute'));
+        RateLimiter::for(
+            'api-consultas',
+            static fn (Request $request): Limit => self::topeApi($request, 'customer_lookups_per_minute'),
+        );
 
         $formato = '\\' . FormatoColombiano::class;
 

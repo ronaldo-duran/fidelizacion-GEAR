@@ -1,0 +1,532 @@
+openapi: 3.1.0
+info:
+  title: API pública del Club Aponte Rivera
+  version: 1.0.0
+  description: |
+    API para que el punto de venta (POS) de un comercio del grupo registre compras, consulte
+    clientes y entregue beneficios sin pasar por la caja del programa (E9-01).
+
+    - Cada credencial es de una sede: todo lo que hace queda registrado en esa sede.
+    - Todo POST exige el header `Idempotency-Key` con un UUID. Un reintento con los mismos
+      datos responde 200 con `Idempotent-Replayed: true` y no otorga ni descuenta nada.
+    - Los montos son pesos colombianos enteros (sin centavos). Las fechas van en ISO 8601 con
+      la zona de Bogotá (`-05:00`).
+    - Los puntos solo sirven para el nivel del cliente: no se canjean ni se gastan.
+
+    La guía en español para el proveedor del POS está en `docs/api/README.md`.
+servers:
+  - url: https://{dominio}/api/v1
+    variables:
+      dominio:
+        default: club.example.com
+security:
+  - token: []
+
+paths:
+  /clientes:
+    get:
+      operationId: consultarCliente
+      summary: Consulta si un documento es cliente del programa
+      description: |
+        Responde el primer nombre y el nivel efectivo. Nunca el celular, el correo, la fecha de
+        nacimiento ni el saldo. Alcance `clientes:leer`. Cuenta contra el tope de consultas.
+      parameters:
+        - $ref: '#/components/parameters/TipoDocumento'
+        - $ref: '#/components/parameters/Documento'
+      responses:
+        '200':
+          description: Cliente registrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Cliente' }
+              example:
+                data:
+                  tipo_documento: CC
+                  documento: '1012345678'
+                  primer_nombre: Andrés
+                  nivel_efectivo: bronce
+                  nivel_efectivo_desde: '2026-06-01T10:00:00-05:00'
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/ClienteNoRegistrado' }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /clientes/beneficios:
+    get:
+      operationId: beneficiosDelCliente
+      summary: Beneficios del comercio para un cliente
+      description: |
+        Los beneficios del comercio de la credencial con su estado para ese cliente hoy y el
+        valor para su nivel. Alcance `clientes:leer`. Cuenta contra el tope de consultas.
+      parameters:
+        - $ref: '#/components/parameters/TipoDocumento'
+        - $ref: '#/components/parameters/Documento'
+      responses:
+        '200':
+          description: Lista de beneficios.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/BeneficioCliente' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/ClienteNoRegistrado' }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /compras:
+    post:
+      operationId: registrarCompra
+      summary: Registra una compra y otorga los puntos
+      description: |
+        Registra la compra en la sede de la credencial. Si el cliente sube de nivel, la respuesta
+        ya trae el nivel nuevo. Un documento sin cliente deja la compra `pendiente`. La
+        `referencia_externa` es única por comercio: la misma referencia con los mismos datos es
+        un reintento (200); con otro documento u otro monto es un conflicto (409). Alcance
+        `compras:registrar`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NuevaCompra' }
+            example:
+              tipo_documento: CC
+              documento: '1012345678'
+              monto: 45000
+              referencia_externa: FAC-1003
+      responses:
+        '201':
+          description: Compra registrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Compra' }
+              example:
+                data:
+                  referencia_externa: fac-1003
+                  estado: acreditada
+                  tipo_documento: CC
+                  documento: '1012345678'
+                  monto: 45000
+                  sede_id: 11
+                  puntos_otorgados: 45
+                  nivel_efectivo: plata
+                  registrada_at: '2026-11-06T15:00:00-05:00'
+        '200': { $ref: '#/components/responses/CompraRepetida' }
+        '400': { $ref: '#/components/responses/IdempotencyKey' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '409':
+          description: La referencia ya se usó en este comercio con otros datos.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { codigo: compra_en_conflicto, mensaje: Ya existe otra compra con esa referencia., campos: {} }
+        '422': { $ref: '#/components/responses/DatosInvalidos' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /compras/{referencia_externa}:
+    get:
+      operationId: consultarCompra
+      summary: Consulta una compra del comercio
+      description: Una compra de otro comercio responde 404, igual que una que no existe. Alcance `compras:registrar`.
+      parameters:
+        - $ref: '#/components/parameters/ReferenciaExterna'
+      responses:
+        '200':
+          description: La compra.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Compra' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/CompraNoEncontrada' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /compras/{referencia_externa}/anulacion:
+    post:
+      operationId: anularCompra
+      summary: Anula una compra
+      description: |
+        Inserta la reversa de los puntos y deja la compra `anulada`. Solo alcanza compras
+        registradas por la API en este comercio, dentro del plazo de la reversa (30 días hoy).
+        Anular una compra ya anulada responde 200 con `Idempotent-Replayed: true`. Alcance
+        `compras:anular`.
+      parameters:
+        - $ref: '#/components/parameters/ReferenciaExterna'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [motivo]
+              properties:
+                motivo: { type: string, maxLength: 255, example: Devolución en caja }
+      responses:
+        '200':
+          description: Compra anulada (o ya anulada, con `Idempotent-Replayed`).
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Compra' }
+        '400': { $ref: '#/components/responses/IdempotencyKey' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/CompraNoEncontrada' }
+        '422':
+          description: Falta el motivo (`datos_invalidos`) o la compra está fuera de plazo (`fuera_de_plazo`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /codigos/{codigo}:
+    get:
+      operationId: validarCodigo
+      summary: Valida el código de un beneficio sin gastarlo
+      description: |
+        El código es el QR leído (token firmado) o el código corto que dicta el cliente
+        (`BBC-4821`). Responde `valido`, `ya_usado` o `no_valido`; un código de otro comercio es
+        `no_valido`. Los datos del cliente solo van si es válido. Alcance `beneficios:redimir`.
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Resultado de la validación.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ChequeoCodigo' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+  /redenciones:
+    post:
+      operationId: entregarBeneficio
+      summary: Confirma la entrega de un beneficio
+      description: |
+        Por código (`codigo`) o por documento (`tipo_documento`, `documento` y `beneficio_id`).
+        Para un beneficio de porcentaje se envía `monto_cuenta_cop`; el valor otorgado es ese
+        porcentaje redondeado hacia abajo. Si el beneficio exige soporte, se envía `soporte`. La
+        `Idempotency-Key` es la referencia de la redención: repetirla con la misma entrega
+        responde 200; con otro beneficio, otro cliente u otro código, 409. Entregar no gasta
+        puntos. Alcance `beneficios:redimir`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NuevaRedencion' }
+            examples:
+              porCodigo:
+                value: { codigo: BBC-4821, monto_cuenta_cop: 80000 }
+              porDocumento:
+                value: { tipo_documento: CC, documento: '1012345678', beneficio_id: 7 }
+      responses:
+        '201':
+          description: Beneficio entregado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Redencion' }
+        '200':
+          description: Reintento con la misma llave y la misma entrega.
+          headers:
+            Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Redencion' }
+        '400': { $ref: '#/components/responses/IdempotencyKey' }
+        '401': { $ref: '#/components/responses/NoAutenticado' }
+        '403': { $ref: '#/components/responses/SinPermiso' }
+        '404': { $ref: '#/components/responses/ClienteNoRegistrado' }
+        '409':
+          description: La llave ya se usó con otra entrega (o en otro comercio).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error:
+                  codigo: redencion_en_conflicto
+                  mensaje: Esa llave de idempotencia ya se usó con otra entrega.
+                  campos: {}
+        '422':
+          description: |
+            Faltan datos (`datos_invalidos`, con `campos.monto_cuenta_cop` o `campos.soporte`), o
+            el beneficio no se puede entregar: `ya_usado`, `vencido`, `invalido`, `sin_cupos`,
+            `no_disponible_hoy`, `nivel_insuficiente` o `no_disponible`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/DemasiadasPeticiones' }
+
+components:
+  securitySchemes:
+    token:
+      type: http
+      scheme: bearer
+      description: El token de la credencial, creado en el panel. Se muestra una sola vez.
+
+  headers:
+    IdempotentReplayed:
+      description: '`true` cuando la respuesta es un reintento que devolvió lo que ya existía.'
+      schema: { type: string, enum: ['true'] }
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Un UUID por operación. Al reintentar la misma operación, se envía el mismo.
+      schema: { type: string, format: uuid }
+    TipoDocumento:
+      name: tipo_documento
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/TipoDocumento' }
+    Documento:
+      name: documento
+      in: query
+      required: true
+      description: Se guarda y se busca en mayúsculas y sin espacios.
+      schema: { type: string, maxLength: 30 }
+    ReferenciaExterna:
+      name: referencia_externa
+      in: path
+      required: true
+      description: La referencia del POS; se compara sin espacios y sin distinguir mayúsculas.
+      schema: { type: string, maxLength: 100 }
+
+  responses:
+    CompraRepetida:
+      description: Reintento de la misma compra con los mismos datos.
+      headers:
+        Idempotent-Replayed: { $ref: '#/components/headers/IdempotentReplayed' }
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/Compra' }
+    IdempotencyKey:
+      description: Falta el header `Idempotency-Key` (`idempotency_key_requerida`) o no es un UUID (`idempotency_key_invalida`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NoAutenticado:
+      description: Falta el token, no existe, fue revocado o pasó su ventana de gracia (`no_autenticado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    SinPermiso:
+      description: |
+        La credencial no tiene el alcance (`sin_permiso`), o su comercio o su sede están
+        inactivos (`comercio_inactivo`, `sede_inactiva`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ClienteNoRegistrado:
+      description: El documento no es cliente del programa (`cliente_no_registrado`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    CompraNoEncontrada:
+      description: No hay una compra con esa referencia en este comercio (`compra_no_encontrada`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    DatosInvalidos:
+      description: Datos inválidos (`datos_invalidos`), con los errores por campo en `campos`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              codigo: datos_invalidos
+              mensaje: Revisa los datos enviados.
+              campos:
+                monto: [Debe ser un número entero de pesos, sin comillas ni decimales.]
+    DemasiadasPeticiones:
+      description: Se pasó el tope por minuto de la credencial (`demasiadas_peticiones`). Esperar lo que dice `Retry-After`.
+      headers:
+        Retry-After:
+          description: Segundos que faltan para volver a intentar.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    TipoDocumento:
+      type: string
+      enum: [CC, CE, PPT, PA, DEX]
+      description: CC cédula, CE cédula de extranjería, PPT permiso de protección temporal, PA pasaporte y DEX documento extranjero.
+    Nivel:
+      type: string
+      enum: [bronce, plata, oro, diamante]
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [codigo, mensaje, campos]
+          properties:
+            codigo:
+              type: string
+              description: Código estable; es lo que debe leer el POS.
+            mensaje:
+              type: string
+              description: Mensaje en español para mostrar o registrar.
+            campos:
+              type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+    Cliente:
+      type: object
+      properties:
+        tipo_documento: { $ref: '#/components/schemas/TipoDocumento' }
+        documento: { type: string }
+        primer_nombre: { type: [string, 'null'] }
+        nivel_efectivo: { $ref: '#/components/schemas/Nivel' }
+        nivel_efectivo_desde: { type: [string, 'null'], format: date-time }
+    NuevaCompra:
+      type: object
+      required: [tipo_documento, documento, monto, referencia_externa]
+      properties:
+        tipo_documento: { $ref: '#/components/schemas/TipoDocumento' }
+        documento: { type: string, maxLength: 30 }
+        monto:
+          type: integer
+          minimum: 1
+          maximum: 999999999999
+          description: Pesos enteros. Un texto (`"45000"`) o un número con decimales (`45000.0`) se rechaza.
+        referencia_externa: { type: string, maxLength: 100 }
+    Compra:
+      type: object
+      properties:
+        referencia_externa: { type: string }
+        estado: { type: string, enum: [acreditada, pendiente, anulada] }
+        tipo_documento: { $ref: '#/components/schemas/TipoDocumento' }
+        documento: { type: string }
+        monto: { type: integer }
+        sede_id: { type: [integer, 'null'] }
+        puntos_otorgados:
+          type: integer
+          description: Puntos que dio la compra. Sirven solo para el nivel; no son un saldo.
+        nivel_efectivo:
+          oneOf:
+            - $ref: '#/components/schemas/Nivel'
+            - type: 'null'
+          description: El nivel del cliente en este momento; null si la compra está pendiente.
+        registrada_at: { type: string, format: date-time }
+    BeneficioCliente:
+      type: object
+      properties:
+        beneficio_id: { type: integer }
+        nombre: { type: string }
+        tipo: { type: string, enum: [porcentaje, monto_fijo] }
+        condiciones_texto: { type: [string, 'null'] }
+        requiere_soporte: { type: boolean }
+        estado: { type: string, enum: [disponible, bloqueado, usado, sin_cupos, no_disponible_hoy] }
+        valor:
+          type: [integer, 'null']
+          description: Porcentaje (0 a 100) o pesos, para el nivel del cliente. Solo si está disponible.
+        nivel_requerido:
+          oneOf:
+            - $ref: '#/components/schemas/Nivel'
+            - type: 'null'
+        vuelve: { type: [string, 'null'], format: date }
+        proxima_fecha: { type: [string, 'null'], format: date }
+    ChequeoCodigo:
+      type: object
+      properties:
+        resultado: { type: string, enum: [valido, ya_usado, no_valido] }
+        motivo:
+          type: string
+          enum:
+            [
+              valido,
+              usado,
+              vencido,
+              invalido,
+              bloqueado,
+              sin_cupos,
+              no_disponible_hoy,
+              nivel_insuficiente,
+              no_disponible,
+            ]
+        mensaje: { type: string }
+        beneficio:
+          type: [object, 'null']
+          properties:
+            beneficio_id: { type: integer }
+            nombre: { type: string }
+            tipo: { type: string, enum: [porcentaje, monto_fijo] }
+            requiere_soporte: { type: boolean }
+            valor: { type: [integer, 'null'] }
+        cliente:
+          type: [object, 'null']
+          properties:
+            primer_nombre: { type: [string, 'null'] }
+            nivel_efectivo: { $ref: '#/components/schemas/Nivel' }
+        ultimo_uso:
+          type: [object, 'null']
+          properties:
+            usado_at: { type: string, format: date-time }
+            sede_id: { type: [integer, 'null'] }
+        vuelve: { type: [string, 'null'], format: date }
+    NuevaRedencion:
+      type: object
+      properties:
+        codigo: { type: string, description: 'El QR leído o el código corto. Si va, no se envía el documento.' }
+        tipo_documento: { $ref: '#/components/schemas/TipoDocumento' }
+        documento: { type: string }
+        beneficio_id: { type: integer }
+        monto_cuenta_cop: { type: integer, minimum: 1, description: Obligatorio para un beneficio de porcentaje. }
+        soporte: { type: string, maxLength: 100, description: Obligatorio si el beneficio exige soporte. }
+    Redencion:
+      type: object
+      properties:
+        referencia: { type: string, format: uuid }
+        beneficio_id: { type: integer }
+        sede_id: { type: [integer, 'null'] }
+        valor_otorgado_cop: { type: integer }
+        monto_cuenta_cop: { type: [integer, 'null'] }
+        soporte: { type: [string, 'null'] }
+        created_at: { type: string, format: date-time }

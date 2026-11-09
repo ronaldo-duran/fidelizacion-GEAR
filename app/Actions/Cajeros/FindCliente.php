@@ -25,7 +25,8 @@ class FindCliente
      */
     public function __invoke(User $cajero, TipoDocumento $tipo, string $documento): ?Cliente
     {
-        $tope = config('cajero.search_max_per_minute');
+        // La credencial de la API tiene su propio tope de consultas (E9-01, regla 12).
+        $tope = config($cajero->esIntegracion() ? 'api.customer_lookups_per_minute' : 'cajero.search_max_per_minute');
 
         if (RateLimiter::hit("cajero-busqueda:{$cajero->id}", 60) > (is_int($tope) ? $tope : 0)) {
             throw ValidationException::withMessages(['form.documento' => self::DEMASIADAS]);

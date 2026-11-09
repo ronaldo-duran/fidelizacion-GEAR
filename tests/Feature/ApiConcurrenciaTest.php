@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\CanalCompra;
 use App\Enums\TipoMovimiento;
 use App\Models\MovimientoPuntos;
+use App\Models\Redencion;
 use App\Models\Transaccion;
 use Illuminate\Support\Str;
 use Tests\Support\ApiTestData;
@@ -12,7 +13,7 @@ use Tests\Support\BloqueoTestData;
 use Tests\Support\SinTransaccionDePrueba;
 
 // Concurrencia real de E9-01 (criterio del issue #25): diez procesos PHP registran la misma
-// compra a la vez contra la base de prueba. La protección es la
+// compra, o entregan con la misma llave, a la vez contra la base de prueba. La protección es la
 // restricción única de cada tabla (regla dura 3.7). Los datos se guardan de verdad para que los
 // procesos los vean.
 uses(SinTransaccionDePrueba::class);
@@ -45,4 +46,23 @@ it('gives one purchase and one credit to ten simultaneous retries', function ():
             ->where('tipo', TipoMovimiento::Acumulacion->value)->count())
         ->toBe($caso['expected_movimientos'])
         ->and($api->clientes['andres']->refresh()->saldo_puntos)->toBe($caso['expected_saldo']);
+});
+
+it('gives one redemption to ten simultaneous deliveries with the same key', function (): void {
+    $caso = ApiTestData::fixture()['concurrency'][1];
+    $api = ApiTestData::seed();
+    $beneficio = $api->beneficio(1);
+
+    $estados = ApiTestData::enParalelo('redencion', $api->credenciales[$caso['credential']]->id, [
+        'tipo_documento' => 'CC',
+        'documento' => '1012345678',
+        'beneficio_id' => $beneficio->id,
+        'idempotency_key' => $caso['idempotency_key'],
+    ], $caso['parallel_requests']);
+
+    $esperados = array_map(intval(...), $caso['expected_status_counts']);
+    ksort($esperados);
+
+    expect($estados)->toBe($esperados)
+        ->and(Redencion::query()->count())->toBe($caso['expected_redenciones']);
 });

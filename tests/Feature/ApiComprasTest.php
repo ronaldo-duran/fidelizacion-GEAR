@@ -60,11 +60,7 @@ it('answers each authentication case of the fixture', function (array $caso): vo
     if (isset($caso['expected_codigo'])) {
         $respuesta->assertJsonPath('error.codigo', $caso['expected_codigo']);
     }
-})->with(fn (): array => array_filter(
-    ApiTestData::casos('authentication'),
-    // La consulta de clientes llega con el siguiente PR de E9-01.
-    static fn (array $caso): bool => ! str_contains($caso[0]['request'] ?? '', '/clientes'),
-));
+})->with(ApiTestData::casos('authentication'));
 
 it('answers each idempotency case of the fixture', function (array $caso): void {
     $requests = $caso['requests'] ?? [[

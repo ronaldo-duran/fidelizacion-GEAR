@@ -1,10 +1,12 @@
-{{-- Encabezado del cliente: logo a la izquierda; avisos y perfil a la derecha. --}}
+@props(['nivel' => null])
+
+{{-- Encabezado del cliente: logo a la izquierda; avisos y perfil a la derecha. Con `nivel`, el logo toma los colores del bloque del nivel (inicio). --}}
 @php
     $cliente = auth('cliente')->user();
     $noLeidos = $cliente === null ? 0 : app(\App\Notificaciones\AvisosDelCliente::class)->noLeidos((int) $cliente->getAuthIdentifier());
 @endphp
 <header {{ $attributes->merge(['class' => 'flex items-center justify-between px-5 pb-1 pt-3']) }}>
-    <x-logo-ar />
+    <x-logo-ar :nivel="$nivel" />
     <div class="flex items-center gap-1">
         @if ($cliente !== null)
             <a

@@ -1,6 +1,6 @@
 @props(['comercio' => '', 'titulo' => '', 'icono' => 'heroicon-o-gift'])
 
-<div class="flex h-14 items-center gap-3 border-b border-line">
+<div {{ $attributes->merge(['class' => 'flex min-h-14 items-center gap-3 border-b border-line py-2']) }}>
     <span class="flex size-10 shrink-0 items-center justify-center rounded-sm bg-brand-soft text-brand">
         @svg($icono, 'size-5')
     </span>

@@ -59,5 +59,11 @@ export const completarRegistro = async (page, cliente) => {
     await page.getByLabel('Código del SMS').fill(await codigoDelSms(cliente.celular));
     await page.getByRole('button', { name: 'Verificar y crear mi cuenta' }).click();
 
-    await expect(page.getByRole('heading', { name: `Hola, ${cliente.nombre}` })).toBeVisible();
+    await enElInicio(page, cliente);
+};
+
+// El inicio del cliente (E8-03): saludo con el primer nombre y el nivel como título.
+export const enElInicio = async (page, cliente) => {
+    await expect(page.getByText(`${cliente.nombre.split(' ')[0]}, eres`)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Bronce|Plata|Oro|Diamante/);
 };

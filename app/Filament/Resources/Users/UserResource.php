@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Users;
 
+use App\Enums\RolUsuario;
 use App\Filament\Resources\Concerns\SpanishLabels;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
@@ -17,6 +18,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
@@ -45,6 +48,17 @@ class UserResource extends Resource
         $usuario = Auth::user();
 
         return $usuario instanceof User && $usuario->esAdministradorDelGrupo();
+    }
+
+    /**
+     * Los usuarios de integración son credenciales de la API (E9-01) y viven
+     * en su propio recurso.
+     *
+     * @return Builder<Model>
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->where('rol', '!=', RolUsuario::Integracion->value);
     }
 
     public static function form(Schema $schema): Schema

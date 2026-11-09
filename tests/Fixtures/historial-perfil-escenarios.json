@@ -1,0 +1,256 @@
+{
+    "_note": "Scenarios for E8-05 (customer history and profile). Today is 2026-11-10 in America/Bogota. The accrual rule gives 1 point per $1.000 and every lot is valid for 12 months (`vigencia_puntos_meses` of the rule, repeated here only as the expected result). Thresholds come from the niveles rule in reglas-validas.json. Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-10 10:00:00",
+    "history": {
+        "validity_months": 12,
+        "expiry_notice_days": {
+            "value": 30,
+            "_assumption": true,
+            "_source": "decision 5 of the spec: same as the first descent notice of the niveles rule"
+        },
+        "minus_sign": "−",
+        "empty_state": {
+            "title": "Todavía no tienes movimientos",
+            "body": "Tus compras en los comercios del Club suman puntos."
+        }
+    },
+    "customer": {
+        "nombre_completo": "Marcela Gómez Ríos",
+        "tipo_documento": "CC",
+        "documento": "1012346789",
+        "celular": "3001234567",
+        "email": null,
+        "fecha_nacimiento": null,
+        "nivel_por_puntos": "plata",
+        "nivel_efectivo": "plata",
+        "nivel_efectivo_desde": "2026-05-14 12:00:00"
+    },
+    "movements": [
+        {
+            "key": "old_purchase",
+            "at": "2025-09-20 13:00:00",
+            "tipo": "acumulacion",
+            "comercio": "El Rancho de Javi",
+            "monto": 40000,
+            "puntos": 40,
+            "_reason": "older than the 12-month window: not listed; it expired on 2026-09-20"
+        },
+        {
+            "key": "expiry",
+            "at": "2026-09-21 00:30:00",
+            "tipo": "caducidad",
+            "expires": "old_purchase",
+            "puntos": -40
+        },
+        {
+            "key": "november_purchase",
+            "at": "2025-11-25 18:00:00",
+            "tipo": "acumulacion",
+            "comercio": "Cervecería BBC",
+            "monto": 180000,
+            "puntos": 180,
+            "_reason": "its lot expires on 2026-11-25, inside the 30-day notice window"
+        },
+        {
+            "key": "school",
+            "at": "2026-05-14 12:00:00",
+            "tipo": "acumulacion",
+            "comercio": "Colegio Semillitas del Futuro",
+            "monto": 420000,
+            "puntos": 420
+        },
+        {
+            "key": "rancho_august",
+            "at": "2026-08-12 20:00:00",
+            "tipo": "acumulacion",
+            "comercio": "El Rancho de Javi",
+            "monto": 64000,
+            "puntos": 64
+        },
+        {
+            "key": "ice_cream",
+            "at": "2026-08-30 16:00:00",
+            "tipo": "acumulacion",
+            "comercio": "Heladería Polo Norte",
+            "monto": 18000,
+            "puntos": 18
+        },
+        {
+            "key": "annulled_purchase",
+            "at": "2026-09-24 19:00:00",
+            "tipo": "acumulacion",
+            "comercio": "Cervecería BBC",
+            "monto": 32000,
+            "puntos": 32
+        },
+        {
+            "key": "reversal",
+            "at": "2026-09-24 19:20:00",
+            "tipo": "reversa",
+            "reverses": "annulled_purchase",
+            "comercio": "Cervecería BBC",
+            "puntos": -32
+        },
+        {
+            "key": "adjustment",
+            "at": "2026-10-03 09:00:00",
+            "tipo": "ajuste_manual",
+            "puntos": 100,
+            "motivo": "Compra registrada a mano por falla del POS",
+            "_reason": "the reason is internal and never shown"
+        },
+        {
+            "key": "bonus",
+            "at": "2026-10-05 11:00:00",
+            "tipo": "promocion",
+            "comercio": null,
+            "puntos": 50
+        },
+        {
+            "key": "rancho_october",
+            "at": "2026-10-27 21:00:00",
+            "tipo": "acumulacion",
+            "comercio": "El Rancho de Javi",
+            "monto": 85000,
+            "puntos": 85
+        }
+    ],
+    "expected_history": {
+        "title": "Puntos de los últimos 12 meses",
+        "saldo_puntos": 917,
+        "expiry_notice": "180 puntos dejan de contar el 25 de noviembre. Son de compras de noviembre de 2025.",
+        "months": [
+            {
+                "label": "Octubre",
+                "rows": [
+                    {
+                        "key": "rancho_october",
+                        "title": "El Rancho de Javi",
+                        "line": "27 oct · Compra $85.000",
+                        "points": "+85",
+                        "color": "success-ink"
+                    },
+                    {
+                        "key": "bonus",
+                        "title": "Club Aponte Rivera",
+                        "line": "5 oct · Bono",
+                        "points": "+50",
+                        "color": "success-ink"
+                    },
+                    {
+                        "key": "adjustment",
+                        "title": "Ajuste del Club",
+                        "line": "3 oct · Ajuste",
+                        "points": "+100",
+                        "color": "success-ink"
+                    }
+                ]
+            },
+            {
+                "label": "Septiembre",
+                "rows": [
+                    {
+                        "key": "reversal",
+                        "title": "Cervecería BBC",
+                        "line": "24 sep · Devolución",
+                        "points": "−32",
+                        "color": "danger"
+                    },
+                    {
+                        "key": "annulled_purchase",
+                        "title": "Cervecería BBC",
+                        "line": "24 sep · Compra $32.000",
+                        "points": "+32",
+                        "color": "success-ink"
+                    },
+                    {
+                        "key": "expiry",
+                        "title": "Puntos vencidos",
+                        "line": "21 sep · Dejaron de contar",
+                        "points": "−40",
+                        "color": "danger"
+                    }
+                ]
+            },
+            {
+                "label": "Agosto",
+                "rows": [
+                    {
+                        "key": "ice_cream",
+                        "title": "Heladería Polo Norte",
+                        "line": "30 ago · Compra $18.000",
+                        "points": "+18",
+                        "color": "success-ink"
+                    },
+                    {
+                        "key": "rancho_august",
+                        "title": "El Rancho de Javi",
+                        "line": "12 ago · Compra $64.000",
+                        "points": "+64",
+                        "color": "success-ink"
+                    }
+                ]
+            },
+            {
+                "label": "Mayo",
+                "rows": [
+                    {
+                        "key": "school",
+                        "title": "Colegio Semillitas del Futuro",
+                        "line": "14 may · Compra $420.000",
+                        "points": "+420",
+                        "color": "success-ink"
+                    }
+                ]
+            },
+            {
+                "label": "Noviembre de 2025",
+                "rows": [
+                    {
+                        "key": "november_purchase",
+                        "title": "Cervecería BBC",
+                        "line": "25 nov · Compra $180.000",
+                        "points": "+180",
+                        "color": "success-ink"
+                    }
+                ]
+            }
+        ],
+        "not_listed": ["old_purchase"],
+        "forbidden_words": ["canjear", "canje", "redimir", "WhatsApp"]
+    },
+    "expiry_notice_outside_window": {
+        "_description": "The same customer 20 days earlier: the November lot expires in 35 days, outside the window, so there is no notice.",
+        "today": "2026-10-21 10:00:00",
+        "expected_notice": null
+    },
+    "expected_profile": {
+        "initials": "MG",
+        "level_line": "Plata desde mayo 2026",
+        "document": "CC •••• 6789",
+        "phone": "300 123 4567",
+        "email_empty": "Agregar",
+        "birthdate_empty": "Agregar",
+        "no_email_notice": "Agrega tu correo para recibir avisos",
+        "short_document": { "tipo_documento": "PA", "documento": "A12", "expected": "PA ••••" },
+        "forbidden_words": ["WhatsApp"]
+    },
+    "profile": {
+        "email_notices": [
+            { "evento": "subida_nivel", "label": "Cuando subo de nivel" },
+            { "evento": "aviso_descenso", "label": "Cuando voy a bajar de nivel" },
+            { "evento": "membresia_por_vencer", "label": "Cuando mi suscripción va a vencer" },
+            { "evento": "beneficio_usado", "label": "Cuando uso un beneficio" }
+        ],
+        "always_sent": ["bienvenida", "membresia_confirmada"],
+        "omitted_reason": "preferencia_cliente"
+    },
+    "email_cases": [
+        {
+            "_description": "Uppercase and spaces are normalized.",
+            "input": "  Marcela.Gomez@Correo.CO ",
+            "expected": "marcela.gomez@correo.co"
+        },
+        { "_description": "Not an email.", "input": "marcela@", "expected_error": "email" }
+    ]
+}

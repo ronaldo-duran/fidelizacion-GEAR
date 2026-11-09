@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Compras\AnulacionApi;
 use App\Compras\AnulacionCajero;
 use App\Models\MovimientoPuntos;
 use App\Models\Transaccion;
@@ -46,7 +47,8 @@ class MovimientoPuntosPolicy
 
     /**
      * The group administrator, or the administrator of the merchant where the
-     * purchase happened. El cajero, solo al anular su propia compra en plazo (E4-02).
+     * purchase happened. El cajero, solo al anular su propia compra en plazo (E4-02),
+     * y la credencial de la API, solo al anular una compra de la API de su comercio (E9-01).
      */
     public function reverse(User $user, MovimientoPuntos $original): bool
     {
@@ -56,15 +58,16 @@ class MovimientoPuntosPolicy
 
         return $user->esAdministradorDelGrupo()
             || ($user->esAdministradorDeComercio() && $user->comercio_id === $original->comercio_id)
-            || $this->cajeroAnulaSuCompra($user, $original);
+            || $this->anulaSuCompra($user, $original);
     }
 
-    private function cajeroAnulaSuCompra(User $user, MovimientoPuntos $original): bool
+    private function anulaSuCompra(User $user, MovimientoPuntos $original): bool
     {
         $transaccion = $original->transaccion_id === null
             ? null
             : Transaccion::query()->find($original->transaccion_id);
 
-        return $transaccion !== null && AnulacionCajero::permite($user, $transaccion);
+        return $transaccion !== null
+            && (AnulacionCajero::permite($user, $transaccion) || AnulacionApi::permite($user, $transaccion));
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureCajero;
+use App\Models\User;
 use App\Sms\ArraySmsSender;
 use App\Sms\LogSmsSender;
 use App\Sms\ProveedorSmsSender;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
@@ -49,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
             static fn (Request $request): Limit => Limit::perMinute(120)->by((string) $request->ip()),
         );
 
+        // API pública (E9-01, regla 12): un tope por credencial.
+        RateLimiter::for('api', static fn (Request $request): Limit => self::topeApi($request, 'requests_per_minute'));
+
         $formato = '\\' . FormatoColombiano::class;
 
         Blade::directive(
@@ -65,5 +70,18 @@ class AppServiceProvider extends ServiceProvider
             'hora',
             static fn (string $expression): string => "<?php echo {$formato}::hora({$expression}); ?>",
         );
+    }
+
+    /**
+     * El tope de la API por token: rotar una credencial le da al token nuevo su propia cuenta.
+     */
+    private static function topeApi(Request $request, string $clave): Limit
+    {
+        $tope = config("api.{$clave}");
+        $user = $request->user();
+        $token = $user instanceof User ? $user->currentAccessToken() : null;
+        $llave = $token instanceof PersonalAccessToken ? "token:{$token->id}" : 'ip:' . $request->ip();
+
+        return Limit::perMinute(is_int($tope) ? $tope : 0)->by("{$clave}:{$llave}");
     }
 }

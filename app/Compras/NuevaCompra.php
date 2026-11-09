@@ -46,8 +46,17 @@ final class NuevaCompra
         $this->tipoDocumento = $tipoDocumento;
         $this->documento = Cliente::normalizeDocumento($documento);
         $this->monto = $monto;
-        $this->referenciaExterna = mb_strtolower(str_replace(' ', '', trim($referenciaExterna)));
+        $this->referenciaExterna = self::normalizeReferencia($referenciaExterna);
         $this->canal = $canal;
         $this->idempotencyKey = $idempotencyKey;
+    }
+
+    /**
+     * La referencia del POS sin espacios y en minúsculas: así la busca también
+     * la API al consultarla o anularla (E9-01).
+     */
+    public static function normalizeReferencia(string $referencia): string
+    {
+        return mb_strtolower(str_replace(' ', '', trim($referencia)));
     }
 }

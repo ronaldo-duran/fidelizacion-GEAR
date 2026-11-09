@@ -86,8 +86,14 @@ beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-11-08 10:00:00'));
     $this->regla = NivelesTestData::nivelesRegla();
     $categoria = Categoria::query()->firstOrCreate(['slug' => 'varios'], ['nombre' => 'Varios']);
-    $this->heladeria = Comercio::factory()->create(['razon_social' => 'Heladería Polo', 'categoria_id' => $categoria->id]);
-    $this->cerveceria = Comercio::factory()->create(['razon_social' => 'Cervecería Andina', 'categoria_id' => $categoria->id]);
+    $this->heladeria = Comercio::factory()->create([
+        'razon_social' => 'Heladería Polo',
+        'categoria_id' => $categoria->id,
+    ]);
+    $this->cerveceria = Comercio::factory()->create([
+        'razon_social' => 'Cervecería Andina',
+        'categoria_id' => $categoria->id,
+    ]);
 });
 
 it('keeps the today list limit equal to the fixture', function (): void {
@@ -129,7 +135,9 @@ it('shows each customer their level, what is missing for the next one and the pr
     if (isset($esperado['origin_until'])) {
         $origen = $esperado['origin'] === 'membresia' ? 'Por tu suscripción' : 'Por tu compra';
         $hasta = NivelesTestData::day($esperado['origin_until']);
-        $fecha = $hasta->year === now()->year ? FormatoColombiano::fecha($hasta) : FormatoColombiano::fechaConAnio($hasta);
+        $fecha = $hasta->year === now()->year
+            ? FormatoColombiano::fecha($hasta)
+            : FormatoColombiano::fechaConAnio($hasta);
         $pantalla->assertSee("{$origen}, hasta el {$fecha}");
     } else {
         $pantalla->assertDontSee('Por tu suscripción')->assertDontSee('Por tu compra');
@@ -178,7 +186,8 @@ it('lists only the available benefits up to the limit, ordered by merchant and n
         'max_por_cliente_ventana' => 'mes',
         'max_por_cliente_cantidad' => 1,
     ]);
-    BeneficiosTestData::redencion($usado, $cliente, '2026-11-02', User::factory()->cajero($this->cerveceria->id)->create());
+    $cajero = User::factory()->cajero($this->cerveceria->id)->create();
+    BeneficiosTestData::redencion($usado, $cliente, '2026-11-02', $cajero);
 
     $this->actingAs($cliente, 'cliente');
 
@@ -216,7 +225,10 @@ it('reads the today list with a fixed number of queries', function (): void {
         return count(DB::getQueryLog());
     };
 
-    beneficioDeInicio($this->heladeria, 'Uno', ['plata' => 10], ['max_por_cliente_ventana' => 'mes', 'max_por_cliente_cantidad' => 1]);
+    beneficioDeInicio($this->heladeria, 'Uno', ['plata' => 10], [
+        'max_por_cliente_ventana' => 'mes',
+        'max_por_cliente_cantidad' => 1,
+    ]);
     $conUno = $contar();
 
     foreach (range(1, 6) as $numero) {
@@ -257,7 +269,8 @@ it('counts the valid benefits each level receives', function (): void {
     beneficioDeInicio($this->cerveceria, 'Vencido', ['bronce' => 5], ['vigente_hasta' => '2026-10-31']);
     $cliente = NivelesTestData::cliente([]);
 
-    $conteo = array_map(static fn ($tarjeta): int => $tarjeta->beneficios, app(PantallaNiveles::class)->tarjetas($cliente));
+    $tarjetas = app(PantallaNiveles::class)->tarjetas($cliente);
+    $conteo = array_map(static fn ($tarjeta): int => $tarjeta->beneficios, $tarjetas);
 
     expect($conteo)->toBe([1, 1, 2, 2]);
 
@@ -271,8 +284,10 @@ it('explains the Diamante ways with the configured numbers and links to the memb
     $meses = config('niveles.event_rules.compra_inmueble.default_validity_months');
     $this->actingAs(NivelesTestData::cliente([]), 'cliente');
 
+    $duracion = $meses === 12 ? 'un año' : "{$meses} meses";
+
     Livewire::test(Niveles::class)
-        ->assertSee('o comprar un inmueble con la inmobiliaria del grupo (' . ($meses === 12 ? 'un año' : "{$meses} meses") . ' de Diamante)')
+        ->assertSee("o comprar un inmueble con la inmobiliaria del grupo ({$duracion} de Diamante)")
         ->assertSee('Suscripción desde ' . FormatoColombiano::pesos($plan->precio_cop) . '/mes')
         ->assertSee(route('cliente.membresia'));
 });
@@ -288,14 +303,19 @@ it('labels the button "Ver mi suscripción" when the customer has a valid member
         ->assertSee('Ver mi suscripción')
         ->assertDontSee('Suscripción desde')
         // Diamante es invertido: "TU NIVEL" va en su fondo oscuro, no en blanco sobre la tinta clara.
-        ->assertSeeInOrder(['style="background: var(--color-tier-diamante-ink); color: var(--color-tier-diamante-bg)"', 'TU NIVEL'], false);
+        ->assertSeeInOrder([
+            'style="background: var(--color-tier-diamante-ink); color: var(--color-tier-diamante-bg)"',
+            'TU NIVEL',
+        ], false);
 });
 
 it('follows a new version of the niveles rule without touching any view', function (): void {
     $cliente = NivelesTestData::cliente(['saldo_puntos' => 1160, 'nivel_por_puntos' => 'plata']);
     $definicion = $this->regla->definicion;
     $definicion['umbrales'] = array_map(
-        static fn (array $umbral): array => $umbral['nivel'] === 'oro' ? [...$umbral, 'umbral_puntos' => 2000] : $umbral,
+        static fn (array $umbral): array => $umbral['nivel'] === 'oro'
+            ? [...$umbral, 'umbral_puntos' => 2000]
+            : $umbral,
         $definicion['umbrales'],
     );
     app(VersionRegla::class)(User::factory()->administradorDelGrupo()->create(), $this->regla, $definicion);

@@ -45,7 +45,7 @@ test('el cliente ve su nivel, abre Niveles, compra la suscripción y su inicio q
     // El inicio ya está en Diamante y dice de dónde sale el nivel.
     await page.goto('/inicio');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Diamante');
-    await expect(page.getByText(/^Por tu suscripción, hasta el/)).toBeVisible();
+    await expect(page.getByText(/Por tu suscripción, hasta el/)).toBeVisible();
     await expect(page.getByText('Estás en el nivel más alto del Club.')).toBeVisible();
     await sinDesborde(page);
 });

@@ -51,7 +51,8 @@ beforeEach(function (): void {
     $this->revisor = User::factory()->cajero($this->comercio->id)->apruebaMisiones()->create();
     $this->inactivo = Comercio::factory()->create(['activo' => false]);
     app(SetPromocionLimites::class)($this->admin, $this->inactivo->id, true, 50);
-    $this->actingAs($this->cliente, 'cliente');
+    // Leído de la base, como en una petición real: el inicio (E8-03) usa el saldo y el nivel.
+    $this->actingAs($this->cliente->refresh(), 'cliente');
 });
 
 it('asks a guest to sign in before showing the missions', function (): void {

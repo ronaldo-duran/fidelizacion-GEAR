@@ -7,7 +7,6 @@ use App\Enums\Nivel;
 use App\Livewire\Cliente\Inicio;
 use App\Livewire\Cliente\Niveles;
 use App\Livewire\Cliente\ParaUsarHoy;
-use App\Models\Beneficio;
 use App\Models\Categoria;
 use App\Models\Cliente;
 use App\Models\Comercio;
@@ -19,68 +18,12 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\Support\BeneficiosTestData;
+use Tests\Support\InicioTestData;
 use Tests\Support\MembresiasTestData;
 use Tests\Support\NivelesTestData;
 
 // Inicio y niveles del cliente (E8-03). Los clientes, el tope de "Para usar hoy" y las tarjetas
 // salen de tests/Fixtures/inicio-niveles-escenarios.json; los umbrales, de la regla `niveles`.
-
-/**
- * @return array<string, mixed>
- */
-function inicioFixture(): array
-{
-    $json = file_get_contents(dirname(__DIR__) . '/Fixtures/inicio-niveles-escenarios.json');
-
-    return json_decode((string) $json, true, flags: JSON_THROW_ON_ERROR);
-}
-
-/**
- * Un cliente del fixture, con su nombre y sus fuentes de nivel.
- *
- * @param  array<string, mixed>  $caso
- */
-function clienteDelFixture(array $caso): Cliente
-{
-    $cliente = NivelesTestData::cliente([...$caso['sources'], 'saldo_puntos' => $caso['saldo_puntos']]);
-    $cliente->forceFill(['nombre_completo' => $caso['nombre_completo']])->save();
-
-    return $cliente->refresh();
-}
-
-/**
- * Un beneficio vigente sin condiciones ni límites, con valor para los niveles dados.
- *
- * @param  array<string, int>  $valores
- * @param  array<string, mixed>  $extra
- */
-function beneficioDeInicio(Comercio $comercio, string $nombre, array $valores, array $extra = []): Beneficio
-{
-    return Beneficio::query()->forceCreate([
-        'comercio_id' => $comercio->id,
-        'nombre' => $nombre,
-        'tipo' => 'porcentaje',
-        'valores_por_nivel' => $valores,
-        'condiciones' => [],
-        'vigente_desde' => '2026-01-01',
-        'activo' => true,
-        ...$extra,
-    ]);
-}
-
-/**
- * @return array<string, array{0: array<string, mixed>}>
- */
-function clientesDelFixture(): array
-{
-    $casos = [];
-
-    foreach (inicioFixture()['customers'] as $caso) {
-        $casos[$caso['_description']] = [$caso];
-    }
-
-    return $casos;
-}
 
 beforeEach(function (): void {
     $this->travelTo(CarbonImmutable::parse('2026-11-08 10:00:00'));
@@ -97,11 +40,13 @@ beforeEach(function (): void {
 });
 
 it('keeps the today list limit equal to the fixture', function (): void {
-    expect(config('inicio.para_usar_hoy_max'))->toBe(inicioFixture()['home']['today_list']['max_items']['value']);
+    $tope = InicioTestData::inicioFixture()['home']['today_list']['max_items']['value'];
+
+    expect(config('inicio.para_usar_hoy_max'))->toBe($tope);
 });
 
 it('shows each customer their level, what is missing for the next one and the progress', function (array $caso): void {
-    $cliente = clienteDelFixture($caso);
+    $cliente = InicioTestData::clienteDelFixture($caso);
     $esperado = $caso['expected'];
     $resumen = app(ResumenNivel::class)->para($cliente);
 
@@ -142,7 +87,7 @@ it('shows each customer their level, what is missing for the next one and the pr
     } else {
         $pantalla->assertDontSee('Por tu suscripción')->assertDontSee('Por tu compra');
     }
-})->with(clientesDelFixture());
+})->with(InicioTestData::clientesDelFixture());
 
 it('shows the origin that lasts longer when the membership and an event give the same level', function (): void {
     $cliente = NivelesTestData::cliente([
@@ -171,18 +116,18 @@ it('renders the level on the first response and loads the today list afterwards'
 });
 
 it('lists only the available benefits up to the limit, ordered by merchant and name', function (): void {
-    $max = inicioFixture()['home']['today_list']['max_items']['value'];
+    $max = InicioTestData::inicioFixture()['home']['today_list']['max_items']['value'];
     $cliente = NivelesTestData::cliente(['saldo_puntos' => 600, 'nivel_por_puntos' => 'plata']);
     $nombres = [];
 
     foreach (range(1, $max + 1) as $numero) {
         $nombres[] = sprintf('Helado %02d', $numero);
-        beneficioDeInicio($this->heladeria, end($nombres), ['plata' => 10]);
+        InicioTestData::beneficioDeInicio($this->heladeria, end($nombres), ['plata' => 10]);
     }
 
-    beneficioDeInicio($this->cerveceria, 'Cerveza de la casa', ['plata' => 15]);
-    beneficioDeInicio($this->cerveceria, 'Solo para Oro', ['oro' => 20]);
-    $usado = beneficioDeInicio($this->cerveceria, 'Usado este mes', ['plata' => 10], [
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Cerveza de la casa', ['plata' => 15]);
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Solo para Oro', ['oro' => 20]);
+    $usado = InicioTestData::beneficioDeInicio($this->cerveceria, 'Usado este mes', ['plata' => 10], [
         'max_por_cliente_ventana' => 'mes',
         'max_por_cliente_cantidad' => 1,
     ]);
@@ -202,7 +147,7 @@ it('lists only the available benefits up to the limit, ordered by merchant and n
 });
 
 it('shows the empty state with a link to the levels screen when nothing is available today', function (): void {
-    beneficioDeInicio($this->cerveceria, 'Solo para Diamante', ['diamante' => 20]);
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Solo para Diamante', ['diamante' => 20]);
     $this->actingAs(NivelesTestData::cliente(['saldo_puntos' => 100]), 'cliente');
 
     Livewire::withoutLazyLoading()->test(ParaUsarHoy::class)
@@ -225,7 +170,7 @@ it('reads the today list with a fixed number of queries', function (): void {
         return count(DB::getQueryLog());
     };
 
-    beneficioDeInicio($this->heladeria, 'Uno', ['plata' => 10], [
+    InicioTestData::beneficioDeInicio($this->heladeria, 'Uno', ['plata' => 10], [
         'max_por_cliente_ventana' => 'mes',
         'max_por_cliente_cantidad' => 1,
     ]);
@@ -233,16 +178,16 @@ it('reads the today list with a fixed number of queries', function (): void {
 
     foreach (range(1, 6) as $numero) {
         $comercio = $numero % 2 === 0 ? $this->heladeria : $this->cerveceria;
-        beneficioDeInicio($comercio, "Otro {$numero}", ['plata' => 10], ['cupo_global' => 50]);
+        InicioTestData::beneficioDeInicio($comercio, "Otro {$numero}", ['plata' => 10], ['cupo_global' => 50]);
     }
 
     expect($contar())->toBeLessThanOrEqual($conUno + 1);
 });
 
 it('shows the four level cards of the fixture to the Plata customer', function (): void {
-    $fixture = inicioFixture();
+    $fixture = InicioTestData::inicioFixture();
     $caso = collect($fixture['customers'])->firstWhere('nombre_completo', $fixture['levels_screen']['customer']);
-    $cliente = clienteDelFixture($caso);
+    $cliente = InicioTestData::clienteDelFixture($caso);
 
     $tarjetas = app(PantallaNiveles::class)->tarjetas($cliente);
     $leidas = array_map(static fn ($tarjeta): array => [
@@ -263,10 +208,15 @@ it('shows the four level cards of the fixture to the Plata customer', function (
 });
 
 it('counts the valid benefits each level receives', function (): void {
-    beneficioDeInicio($this->heladeria, 'Para todos', ['bronce' => 5, 'plata' => 10, 'oro' => 15, 'diamante' => 20]);
-    beneficioDeInicio($this->cerveceria, 'Desde Oro', ['oro' => 15, 'diamante' => 20]);
-    beneficioDeInicio($this->cerveceria, 'Inactivo', ['bronce' => 5], ['activo' => false]);
-    beneficioDeInicio($this->cerveceria, 'Vencido', ['bronce' => 5], ['vigente_hasta' => '2026-10-31']);
+    InicioTestData::beneficioDeInicio($this->heladeria, 'Para todos', [
+        'bronce' => 5,
+        'plata' => 10,
+        'oro' => 15,
+        'diamante' => 20,
+    ]);
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Desde Oro', ['oro' => 15, 'diamante' => 20]);
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Inactivo', ['bronce' => 5], ['activo' => false]);
+    InicioTestData::beneficioDeInicio($this->cerveceria, 'Vencido', ['bronce' => 5], ['vigente_hasta' => '2026-10-31']);
     $cliente = NivelesTestData::cliente([]);
 
     $tarjetas = app(PantallaNiveles::class)->tarjetas($cliente);

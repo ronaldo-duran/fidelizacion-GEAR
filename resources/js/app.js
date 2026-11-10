@@ -1,4 +1,5 @@
 import './cajero.js';
+import './uso-beneficio.js';
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

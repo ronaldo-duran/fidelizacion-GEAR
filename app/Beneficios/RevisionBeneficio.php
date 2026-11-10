@@ -81,7 +81,11 @@ class RevisionBeneficio
         );
     }
 
-    private function ultimoUso(int $clienteId, int $beneficioId): ?Redencion
+    /**
+     * La última redención del cliente en ese beneficio, con su comercio y su
+     * sede: "ya usado" en la caja (E5-02) y en la PWA (E8-04).
+     */
+    public function ultimoUso(int $clienteId, int $beneficioId): ?Redencion
     {
         return Redencion::query()
             ->with(['comercio', 'sede'])

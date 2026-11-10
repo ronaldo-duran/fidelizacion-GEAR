@@ -21,6 +21,7 @@ use App\Livewire\Cliente\Misiones;
 use App\Livewire\Cliente\Niveles;
 use App\Livewire\Cliente\RecuperarPin;
 use App\Livewire\Cliente\Registro;
+use App\Livewire\Cliente\UsarBeneficio;
 use App\Livewire\Cliente\VerificarRegistro;
 use Illuminate\Support\Facades\Route;
 
@@ -44,6 +45,7 @@ Route::name('cliente.')->group(function (): void {
         Route::get('/inicio', Inicio::class)->name('inicio');
         Route::get('/niveles', Niveles::class)->name('niveles');
         Route::get('/beneficios', Beneficios::class)->name('beneficios');
+        Route::get('/beneficios/{beneficio}', UsarBeneficio::class)->name('beneficio');
         Route::get('/misiones', Misiones::class)->name('misiones');
         Route::get('/avisos', Avisos::class)->name('avisos');
         Route::get('/membresia', Membresia::class)->name('membresia');

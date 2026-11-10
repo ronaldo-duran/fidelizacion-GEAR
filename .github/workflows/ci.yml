@@ -110,10 +110,15 @@ jobs:
               --json labels --jq '.labels[].name' | grep -qx 'sin-version'; then
             echo "SIN_VERSION=1" >> "$GITHUB_ENV"
           fi
+      # En un PR se compara con la punta actual de la rama base: `pull_request.base.sha` no se
+      # actualiza cuando la base avanza, y HEAD es el merge con la base nueva.
       - name: La versión sube cuando cambia código de producción
         run: |
-          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
-          node scripts/ci/verificar-version.mjs "$BASE" HEAD
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/ci/verificar-version.mjs "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
+          else
+            node scripts/ci/verificar-version.mjs "${{ github.event.before }}" HEAD
+          fi
 
   commits:
     name: 1 · Conventional Commits
@@ -127,9 +132,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # En un PR, solo los commits del PR: desde la punta actual de la base hasta la cabeza del PR.
       - name: Mensajes de commit
         run: |
-          BASE="${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npx commitlint --from "origin/${{ github.base_ref }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
+            exit 0
+          fi
+          BASE="${{ github.event.before }}"
           if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ] \
               || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
             npx commitlint --last --verbose
@@ -160,9 +170,11 @@ jobs:
               --json labels --jq '.labels[].name' | grep -qx 'pr-grande'; then
             echo "PR_GRANDE=1" >> "$GITHUB_ENV"
           fi
-      # Solo cuenta código de producción: aviso desde 400 líneas, falla desde 800.
+      # Solo cuenta código de producción: aviso desde 400 líneas, falla desde 800. Se mide contra la
+      # punta actual de la base y la cabeza del PR: con `base.sha`, que no se actualiza, y el merge
+      # con la base nueva, contaría como del PR todo lo que entró a la base después.
       - name: Tamaño del código de producción
-        run: node scripts/ci/verificar-tamano.mjs ${{ github.event.pull_request.base.sha }} HEAD
+        run: node scripts/ci/verificar-tamano.mjs "origin/${{ github.base_ref }}" "${{ github.event.pull_request.head.sha }}"
 
   # ─────────────────────────────── Etapa 2: pruebas ───────────────────────────────
 

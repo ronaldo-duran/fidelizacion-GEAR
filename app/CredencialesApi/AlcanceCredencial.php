@@ -47,6 +47,20 @@ final class AlcanceCredencial
     }
 
     /**
+     * La credencial con su fila bloqueada hasta el final de la transacción:
+     * rotar y revocar la misma credencial a la vez se ordenan aquí, así una
+     * credencial revocada nunca queda con un token vivo. Se llama dentro de
+     * `DB::transaction()`.
+     */
+    public static function bloquear(int $credencialId): User
+    {
+        $query = User::query()->whereKey($credencialId);
+        $query->getQuery()->lockForUpdate();
+
+        return $query->firstOrFail();
+    }
+
+    /**
      * @param  list<AlcanceApi>  $alcances
      */
     public static function emitir(User $credencial, array $alcances): CredencialApiEmitida

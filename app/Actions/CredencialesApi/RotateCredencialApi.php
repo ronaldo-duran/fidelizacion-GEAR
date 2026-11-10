@@ -19,6 +19,11 @@ use Laravel\Sanctum\PersonalAccessToken;
  * con los mismos alcances y le pone al vigente un vencimiento de unas horas
  * (`api.rotation_grace_hours`), para que el POS cambie de token sin cortar
  * ventas. Pasada esa ventana solo sirve el nuevo.
+ *
+ * La credencial se bloquea dentro de la transacción y ahí se revisa que siga
+ * activa: una rotación que choca con una revocación nunca deja un token vivo
+ * en una credencial revocada, y dos rotaciones a la vez no dejan dos tokens
+ * sin vencimiento.
  */
 class RotateCredencialApi
 {
@@ -28,21 +33,28 @@ class RotateCredencialApi
      */
     public function __invoke(User $admin, int $credencialId): CredencialApiEmitida
     {
-        $credencial = User::query()->findOrFail($credencialId);
+        AlcanceCredencial::autorizarSobre($admin, User::query()->findOrFail($credencialId));
 
-        AlcanceCredencial::autorizarSobre($admin, $credencial);
+        return DB::transaction(static function () use ($admin, $credencialId): CredencialApiEmitida {
+            $credencial = AlcanceCredencial::bloquear($credencialId);
 
-        if (! $credencial->activo) {
-            throw ValidationException::withMessages(['credencial' => 'Esta credencial está revocada.']);
-        }
+            if (! $credencial->activo) {
+                throw ValidationException::withMessages(['credencial' => 'Esta credencial está revocada.']);
+            }
 
-        return DB::transaction(static function () use ($admin, $credencial): CredencialApiEmitida {
-            $horas = config('api.rotation_grace_hours');
-            $vence = CarbonImmutable::now()->addHours(is_int($horas) ? $horas : 0);
             $tokens = $credencial->tokens()->getQuery();
             $tokens->getQuery()->whereNull('expires_at')->orderBy('id');
             $vigentes = $tokens->get();
             $alcances = self::alcances($vigentes->last());
+
+            if ($alcances === []) {
+                throw ValidationException::withMessages([
+                    'credencial' => 'Esta credencial no tiene un token vigente para rotar.',
+                ]);
+            }
+
+            $horas = config('api.rotation_grace_hours');
+            $vence = CarbonImmutable::now()->addHours(is_int($horas) ? $horas : 0);
 
             foreach ($vigentes as $token) {
                 $token->forceFill(['expires_at' => $vence])->save();

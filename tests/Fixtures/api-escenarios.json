@@ -327,6 +327,18 @@
             "delivery": "by_document",
             "expected_redenciones": 1,
             "expected_status_counts": { "201": 1, "200": 9 }
+        },
+        {
+            "_description": "Ten simultaneous annulments of the same purchase, each with its own Idempotency-Key: one reversal; the API answers 200 to all and nine of them carry Idempotent-Replayed (counted here as 200; the one that annulled as 201).",
+            "credential": "pos-rancho",
+            "parallel_requests": 10,
+            "setup": { "referencia_externa": "fac-2002", "monto": 45000, "customer": "andres" },
+            "body": { "motivo": "Devolución en caja" },
+            "expected_reversas": 1,
+            "expected_reversa_puntos": -45,
+            "expected_saldo": 470,
+            "expected_estado": "anulada",
+            "expected_status_counts": { "201": 1, "200": 9 }
         }
     ],
     "isolation": [

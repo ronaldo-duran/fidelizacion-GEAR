@@ -19,11 +19,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Anula por la API una compra del comercio de la credencial (E9-01, regla 10
  * y decisión 4): solo compras de la API, con el plazo de la reversa del libro
- * (E3-02). La anulación misma es la de la caja (`AnnulCompra`), que inserta la
- * reversa una sola vez.
- *
- * Anular una compra ya anulada no es un error: es un reintento del POS y
- * responde la misma compra sin otra reversa (regla 7).
+ * (E3-02), con la anulación de la caja (`AnnulCompra`). Anular una compra ya
+ * anulada es un reintento del POS: responde la misma compra (regla 7).
  */
 class AnnulCompraApi
 {

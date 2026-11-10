@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Api\AnnulCompraApi;
 use App\Actions\Compras\RegisterCompra;
 use App\Compras\NuevaCompra;
 use App\Enums\CanalCompra;
@@ -10,6 +11,8 @@ use App\Enums\TipoDocumento;
 use App\Enums\TipoMovimiento;
 use App\Models\MovimientoPuntos;
 use App\Models\Transaccion;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\ApiTestData;
 use Tests\Support\BloqueoTestData;
@@ -83,4 +86,41 @@ it('gives one reversal to ten simultaneous annulments of the same purchase', fun
         ->and($reversas->count())->toBe($caso['expected_reversas'])
         ->and((int) $reversas->sum('puntos'))->toBe($caso['expected_reversa_puntos'])
         ->and($cliente->refresh()->saldo_puntos)->toBe($caso['expected_saldo']);
+});
+
+it('waits for the purchase lock before annulling it', function (): void {
+    $caso = ApiTestData::fixture()['concurrency'][2];
+    $api = ApiTestData::seed();
+    $credencial = $api->credenciales[$caso['credential']];
+    $cliente = $api->clientes[$caso['setup']['customer']];
+    $compra = app(RegisterCompra::class)($credencial, new NuevaCompra(
+        (int) $credencial->comercio_id,
+        $credencial->sede_id,
+        TipoDocumento::from($cliente->tipo_documento->value),
+        $cliente->documento,
+        $caso['setup']['monto'],
+        $caso['setup']['referencia_externa'],
+        CanalCompra::Api,
+        (string) Str::uuid(),
+    ))->transaccion;
+
+    // Otra anulación tiene la compra bloqueada: esta espera ahí, antes de leer el libro.
+    $segunda = BloqueoTestData::segundaConexion();
+    $segunda->beginTransaction();
+    $segunda->table('transacciones')->where('id', $compra->id)->lockForUpdate()->first();
+    BloqueoTestData::limitarEspera(DB::connection(), 1);
+
+    $bloqueada = null;
+
+    try {
+        app(AnnulCompraApi::class)($credencial, $caso['setup']['referencia_externa'], $caso['body']['motivo']);
+    } catch (QueryException $error) {
+        $bloqueada = $error;
+    }
+
+    expect($bloqueada)->toBeInstanceOf(QueryException::class)
+        ->and($bloqueada?->getSql())->toContain('transacciones')
+        ->and(MovimientoPuntos::query()->where('tipo', TipoMovimiento::Reversa->value)->count())->toBe(0);
+
+    $segunda->rollBack();
 });

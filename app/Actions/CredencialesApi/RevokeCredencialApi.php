@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\DB;
  * desactiva al usuario de integración. El token deja de servir en la
  * siguiente petición. El usuario se conserva porque sus compras, reversas y
  * redenciones lo referencian.
+ *
+ * Bloquea la credencial como la rotación: si las dos chocan, una espera a la
+ * otra y la credencial termina revocada y sin tokens.
  */
 class RevokeCredencialApi
 {
@@ -22,11 +25,10 @@ class RevokeCredencialApi
      */
     public function __invoke(User $admin, int $credencialId): void
     {
-        $credencial = User::query()->findOrFail($credencialId);
+        AlcanceCredencial::autorizarSobre($admin, User::query()->findOrFail($credencialId));
 
-        AlcanceCredencial::autorizarSobre($admin, $credencial);
-
-        DB::transaction(static function () use ($admin, $credencial): void {
+        DB::transaction(static function () use ($admin, $credencialId): void {
+            $credencial = AlcanceCredencial::bloquear($credencialId);
             $borrados = $credencial->tokens()->getQuery()->toBase()->delete();
             $credencial->forceFill(['activo' => false])->save();
 

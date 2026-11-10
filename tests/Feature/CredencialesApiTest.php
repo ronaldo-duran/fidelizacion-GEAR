@@ -14,6 +14,8 @@ use App\Models\Sede;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
@@ -72,8 +74,9 @@ it('rotates the token keeping the old one alive for the grace window', function 
     $emitida = app(RotateCredencialApi::class)($this->admin, $credencial->id);
 
     $nuevo = PersonalAccessToken::query()->whereKeyNot($viejo->id)->sole();
+    $vence = CarbonImmutable::now()->addHours(config('api.rotation_grace_hours'));
 
-    expect($viejo->refresh()->expires_at?->equalTo(CarbonImmutable::now()->addHours(24)))->toBeTrue()
+    expect($viejo->refresh()->expires_at?->equalTo($vence))->toBeTrue()
         ->and($nuevo->expires_at)->toBeNull()
         ->and($nuevo->abilities)->toBe($viejo->abilities)
         ->and($nuevo->token)->toBe(hash('sha256', explode('|', $emitida->token, 2)[1]))
@@ -118,4 +121,51 @@ it('keeps the integration users out of the users list and its role out of the fo
         ->assertCanNotSeeTableRecords([$credencial]);
 
     expect(RolUsuario::asignables())->not->toHaveKey(RolUsuario::Integracion->value);
+});
+
+it('does not let a merchant admin rotate or revoke another merchant credential', function (string $accion): void {
+    $ajena = ($this->crear)(null, Sede::factory()->create());
+    $deOtro = User::factory()->administradorDeComercio($this->rancho->id)->create();
+
+    app($accion)($deOtro, $ajena->id);
+})->with([RotateCredencialApi::class, RevokeCredencialApi::class])->throws(AuthorizationException::class);
+
+it('does not let an inactive administrator manage credentials', function (string $accion): void {
+    $credencial = ($this->crear)();
+    $this->admin->forceFill(['activo' => false])->save();
+
+    app($accion)($this->admin->refresh(), $credencial->id);
+})->with([RotateCredencialApi::class, RevokeCredencialApi::class])->throws(AuthorizationException::class);
+
+it('does not rotate a credential without a current token', function (): void {
+    $credencial = ($this->crear)();
+    $credencial->tokens()->getQuery()->toBase()->update(['expires_at' => CarbonImmutable::now()->addHour()]);
+
+    app(RotateCredencialApi::class)($this->admin, $credencial->id);
+})->throws(ValidationException::class);
+
+it('authenticates the old token only during the grace window and never after a revocation', function (): void {
+    // Una ruta mínima con el guard de Sanctum: la API llega en otro PR de E9-01.
+    Route::middleware('auth:sanctum')->get('_prueba-token', static fn (): string => 'ok');
+    $pedir = function (string $token): int {
+        Auth::forgetGuards();
+
+        return $this->getJson('/_prueba-token', ['Authorization' => "Bearer {$token}"])->status();
+    };
+    $emitida = app(CreateCredencialApi::class)($this->admin, 'POS', $this->sede->id, [AlcanceApi::ComprasRegistrar]);
+    $nuevo = app(RotateCredencialApi::class)($this->admin, $emitida->credencial->id)->token;
+    $horas = config('api.rotation_grace_hours');
+
+    expect($pedir($emitida->token))->toBe(200)
+        ->and($pedir($nuevo))->toBe(200);
+
+    $this->travel($horas - 1)->hours();
+    expect($pedir($emitida->token))->toBe(200);
+
+    $this->travel(2)->hours();
+    expect($pedir($emitida->token))->toBe(401)
+        ->and($pedir($nuevo))->toBe(200);
+
+    app(RevokeCredencialApi::class)($this->admin, $emitida->credencial->id);
+    expect($pedir($nuevo))->toBe(401);
 });

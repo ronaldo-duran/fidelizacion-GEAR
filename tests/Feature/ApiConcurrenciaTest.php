@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Actions\Compras\RegisterCompra;
+use App\Compras\NuevaCompra;
 use App\Enums\CanalCompra;
+use App\Enums\EstadoTransaccion;
+use App\Enums\TipoDocumento;
 use App\Enums\TipoMovimiento;
 use App\Models\MovimientoPuntos;
 use App\Models\Redencion;
@@ -12,10 +16,10 @@ use Tests\Support\ApiTestData;
 use Tests\Support\BloqueoTestData;
 use Tests\Support\SinTransaccionDePrueba;
 
-// Concurrencia real de E9-01 (criterio del issue #25): diez procesos PHP registran la misma
-// compra, o entregan con la misma llave, a la vez contra la base de prueba. La protección es la
-// restricción única de cada tabla (regla dura 3.7). Los datos se guardan de verdad para que los
-// procesos los vean.
+// Concurrencia real de E9-01 (criterio del issue #25): diez procesos PHP registran o anulan la
+// misma compra, o entregan con la misma llave, a la vez contra la base de prueba. La protección
+// es la restricción única de cada tabla y el bloqueo del cliente en la reversa (reglas duras 3.4
+// y 3.7). Los datos se guardan de verdad para que los procesos los vean.
 uses(SinTransaccionDePrueba::class);
 
 afterEach(function (): void {
@@ -46,6 +50,40 @@ it('gives one purchase and one credit to ten simultaneous retries', function ():
             ->where('tipo', TipoMovimiento::Acumulacion->value)->count())
         ->toBe($caso['expected_movimientos'])
         ->and($api->clientes['andres']->refresh()->saldo_puntos)->toBe($caso['expected_saldo']);
+});
+
+it('gives one reversal to ten simultaneous annulments of the same purchase', function (): void {
+    $caso = ApiTestData::fixture()['concurrency'][2];
+    $api = ApiTestData::seed();
+    $credencial = $api->credenciales[$caso['credential']];
+    $cliente = $api->clientes[$caso['setup']['customer']];
+    app(RegisterCompra::class)($credencial, new NuevaCompra(
+        (int) $credencial->comercio_id,
+        $credencial->sede_id,
+        TipoDocumento::from($cliente->tipo_documento->value),
+        $cliente->documento,
+        $caso['setup']['monto'],
+        $caso['setup']['referencia_externa'],
+        CanalCompra::Api,
+        (string) Str::uuid(),
+    ));
+
+    $estados = ApiTestData::enParalelo('anulacion', $credencial->id, [
+        'referencia_externa' => $caso['setup']['referencia_externa'],
+        ...$caso['body'],
+    ], $caso['parallel_requests']);
+
+    $compra = Transaccion::query()->where('referencia_externa', $caso['setup']['referencia_externa'])->sole();
+    $reversas = MovimientoPuntos::query()->where('transaccion_id', $compra->id)
+        ->where('tipo', TipoMovimiento::Reversa->value);
+    $esperados = array_map(intval(...), $caso['expected_status_counts']);
+    ksort($esperados);
+
+    expect($estados)->toBe($esperados)
+        ->and($compra->estado)->toBe(EstadoTransaccion::from($caso['expected_estado']))
+        ->and($reversas->count())->toBe($caso['expected_reversas'])
+        ->and((int) $reversas->sum('puntos'))->toBe($caso['expected_reversa_puntos'])
+        ->and($cliente->refresh()->saldo_puntos)->toBe($caso['expected_saldo']);
 });
 
 it('gives one redemption to ten simultaneous deliveries with the same key', function (): void {

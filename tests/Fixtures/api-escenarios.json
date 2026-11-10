@@ -339,6 +339,15 @@
             "expected_saldo": 470,
             "expected_estado": "anulada",
             "expected_status_counts": { "201": 1, "200": 9 }
+        },
+        {
+            "_description": "Ten simultaneous deliveries with the same benefit code and the same Idempotency-Key: the code is spent once and the other nine get the same redemption, not \"ya usado\".",
+            "credential": "pos-rancho",
+            "parallel_requests": 10,
+            "idempotency_key": "2a7c9e41-5b3d-4f8a-9c6e-0d1b2f3a4c5e",
+            "delivery": "by_code",
+            "expected_redenciones": 1,
+            "expected_status_counts": { "201": 1, "200": 9 }
         }
     ],
     "isolation": [

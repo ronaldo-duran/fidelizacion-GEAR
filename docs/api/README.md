@@ -62,7 +62,8 @@ mismo UUID y los mismos datos**. El programa nunca la cuenta dos veces:
   factura del POS): la misma referencia con otro documento u otro monto
   responde `409 compra_en_conflicto`.
 - En las entregas la llave es la referencia de la redención: la misma llave
-  con otro beneficio, otro cliente u otro código responde
+  con otro beneficio, otro cliente, otro código, otro monto de la cuenta u otro
+  soporte responde
   `409 redencion_en_conflicto`.
 
 Sin el header, o con algo que no es un UUID, la API responde `400` y no hace

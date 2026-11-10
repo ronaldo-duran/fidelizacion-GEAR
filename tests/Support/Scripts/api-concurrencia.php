@@ -37,10 +37,10 @@ try {
     $repetido = match ($modo) {
         'anulacion' => app(AnnulCompraApi::class)($user, $datos['referencia_externa'], $datos['motivo'])->repetido,
         'redencion' => app(RedeemBeneficioApi::class)($user, new EntregaApi(
-            null,
-            TipoDocumento::from($datos['tipo_documento']),
-            $datos['documento'],
-            $datos['beneficio_id'],
+            $datos['codigo'] ?? null,
+            isset($datos['tipo_documento']) ? TipoDocumento::from($datos['tipo_documento']) : null,
+            $datos['documento'] ?? null,
+            $datos['beneficio_id'] ?? null,
             null,
             null,
             $datos['idempotency_key'],

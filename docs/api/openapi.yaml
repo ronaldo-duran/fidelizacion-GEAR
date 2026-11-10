@@ -237,7 +237,8 @@ paths:
         Para un beneficio de porcentaje se envía `monto_cuenta_cop`; el valor otorgado es ese
         porcentaje redondeado hacia abajo. Si el beneficio exige soporte, se envía `soporte`. La
         `Idempotency-Key` es la referencia de la redención: repetirla con la misma entrega
-        responde 200; con otro beneficio, otro cliente u otro código, 409. Entregar no gasta
+        responde 200; con otro beneficio, otro cliente, otro código, otro monto de la cuenta u otro
+        soporte, 409. Entregar no gasta
         puntos. Alcance `beneficios:redimir`.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'

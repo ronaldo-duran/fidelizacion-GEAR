@@ -104,3 +104,21 @@ it('gives one redemption to ten simultaneous deliveries with the same key', func
     expect($estados)->toBe($esperados)
         ->and(Redencion::query()->count())->toBe($caso['expected_redenciones']);
 });
+
+it('spends a code once when ten deliveries with the same code and key arrive together', function (): void {
+    $caso = ApiTestData::fixture()['concurrency'][3];
+    $api = ApiTestData::seed();
+    $codigo = ApiTestData::codigo($api->clientes['andres'], $api->beneficio(1));
+
+    $estados = ApiTestData::enParalelo('redencion', $api->credenciales[$caso['credential']]->id, [
+        'codigo' => $codigo,
+        'idempotency_key' => $caso['idempotency_key'],
+    ], $caso['parallel_requests']);
+
+    $esperados = array_map(intval(...), $caso['expected_status_counts']);
+    ksort($esperados);
+
+    expect($estados)->toBe($esperados)
+        ->and(Redencion::query()->count())->toBe($caso['expected_redenciones'])
+        ->and(Redencion::query()->sole()->credencial_qr_id)->not->toBeNull();
+});

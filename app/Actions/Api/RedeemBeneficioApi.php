@@ -30,7 +30,8 @@ use Illuminate\Validation\ValidationException;
  * base (regla dura 3.7):
  *
  * - la misma llave con la misma entrega devuelve la redención ya hecha;
- * - con otro beneficio, otro cliente u otro código es un conflicto (409);
+ * - con otro beneficio, otro cliente, otro código, otro monto de la cuenta u
+ *   otro soporte es un conflicto (409);
  * - una llave de otro comercio también es un conflicto, sin decir de quién es.
  */
 class RedeemBeneficioApi
@@ -151,11 +152,25 @@ class RedeemBeneficioApi
     private function comoRepeticion(User $user, Redencion $existente, EntregaApi $entrega): Redencion
     {
         $misma = $existente->comercio_id === $user->comercio_id
+            && self::mismosDatos($existente, $entrega)
             && ($entrega->porCodigo()
                 ? $this->mismoCodigo($existente, (string) $entrega->codigo)
                 : $this->mismoDocumento($existente, $entrega));
 
         return $misma ? $existente : throw ErrorApi::redencionEnConflicto();
+    }
+
+    /**
+     * El monto de la cuenta y el soporte que se guardaron. Solo cuentan si la
+     * redención los guardó: en un beneficio de monto fijo el monto que mande
+     * el POS no se usa, y sin soporte exigido el soporte tampoco.
+     */
+    private static function mismosDatos(Redencion $existente, EntregaApi $entrega): bool
+    {
+        $monto = $existente->monto_cuenta_cop === null || $existente->monto_cuenta_cop === $entrega->montoCuenta;
+        $soporte = $existente->soporte === null || $existente->soporte === trim((string) $entrega->soporte);
+
+        return $monto && $soporte;
     }
 
     private function mismoCodigo(Redencion $existente, string $codigo): bool

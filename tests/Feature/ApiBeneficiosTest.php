@@ -216,3 +216,86 @@ it('rejects a delivery without a valid Idempotency-Key', function (string $ruta)
         ->assertStatus(400)
         ->assertJsonPath('error.codigo', 'idempotency_key_requerida');
 })->with(['/api/v1/redenciones']);
+
+it('answers 429 with Retry-After when a delivery by document passes the lookup limit', function (): void {
+    $beneficio = $this->api->beneficio(1);
+    $body = ['tipo_documento' => 'CC', 'documento' => '1012345678', 'beneficio_id' => $beneficio->id];
+    $tope = config('api.customer_lookups_per_minute');
+
+    // Las consultas por documento comparten el tope de la credencial.
+    for ($i = 0; $i < $tope; $i++) {
+        $this->getJson('/api/v1/clientes?tipo_documento=CC&documento=1012345678', $this->api->headers('pos-rancho'));
+    }
+
+    $respuesta = $this->postJson('/api/v1/redenciones', $body, $this->api->headers('pos-rancho', (string) Str::uuid()))
+        ->assertStatus(429)
+        ->assertJsonPath('error.codigo', 'demasiadas_peticiones');
+
+    expect($respuesta->headers->has('Retry-After'))->toBeTrue()
+        ->and(Redencion::query()->count())->toBe(0);
+});
+
+it('answers 422 ya_usado to a spent code with a new key', function (): void {
+    $codigo = ApiTestData::codigo($this->andres, $this->api->beneficio(1));
+    $entregar = fn () => $this->postJson(
+        '/api/v1/redenciones',
+        ['codigo' => $codigo],
+        $this->api->headers('pos-rancho', (string) Str::uuid()),
+    );
+
+    $entregar()->assertCreated();
+
+    $entregar()
+        ->assertStatus(422)
+        ->assertJsonPath('error.codigo', 'ya_usado');
+
+    expect(Redencion::query()->count())->toBe(1);
+});
+
+it('replays a delivery by the signed QR or by its short code, and conflicts with another code', function (): void {
+    $beneficio = $this->api->beneficio(1);
+    $emitida = ApiTestData::credencialQr($this->andres, $beneficio);
+    $llave = (string) Str::uuid();
+    $headers = $this->api->headers('pos-rancho', $llave);
+
+    $this->postJson('/api/v1/redenciones', ['codigo' => $emitida->token], $headers)->assertCreated();
+
+    $this->postJson('/api/v1/redenciones', ['codigo' => $emitida->token], $this->api->headers('pos-rancho', $llave))
+        ->assertOk()
+        ->assertHeader('Idempotent-Replayed', 'true');
+
+    $corto = mb_strtolower($emitida->credencial->codigo_corto);
+
+    $this->postJson('/api/v1/redenciones', ['codigo' => $corto], $this->api->headers('pos-rancho', $llave))
+        ->assertOk()
+        ->assertHeader('Idempotent-Replayed', 'true');
+
+    $otro = ApiTestData::codigo($this->andres, $this->api->beneficio(1));
+
+    $this->postJson('/api/v1/redenciones', ['codigo' => $otro], $this->api->headers('pos-rancho', $llave))
+        ->assertStatus(409)
+        ->assertJsonPath('error.codigo', 'redencion_en_conflicto');
+
+    expect(Redencion::query()->count())->toBe(1);
+});
+
+it('answers a conflict to the same key with another bill amount', function (): void {
+    $beneficio = $this->api->beneficio(1, [
+        'tipo' => 'porcentaje',
+        'valores_por_nivel' => ['bronce' => 10, 'plata' => 20, 'oro' => 30, 'diamante' => 40],
+    ]);
+    $body = ['tipo_documento' => 'CC', 'documento' => '1012345678', 'beneficio_id' => $beneficio->id];
+    $headers = $this->api->headers('pos-rancho', (string) Str::uuid());
+
+    $this->postJson('/api/v1/redenciones', [...$body, 'monto_cuenta_cop' => 50000], $headers)
+        ->assertCreated();
+
+    $this->postJson('/api/v1/redenciones', [...$body, 'monto_cuenta_cop' => 50000], $headers)
+        ->assertOk();
+
+    $this->postJson('/api/v1/redenciones', [...$body, 'monto_cuenta_cop' => 90000], $headers)
+        ->assertStatus(409)
+        ->assertJsonPath('error.codigo', 'redencion_en_conflicto');
+
+    expect(Redencion::query()->count())->toBe(1);
+});

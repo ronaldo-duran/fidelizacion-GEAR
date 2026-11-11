@@ -34,9 +34,19 @@ test('el cliente se registra, verifica su celular, queda con sesión y ve la bie
     await expect(page.getByRole('link', { name: 'Avisos', exact: true })).toBeVisible();
 });
 
-test('el cliente ingresa con su documento y su PIN', async ({ page }) => {
+// También cubre el historial (E8-05) sin gastar otro SMS.
+test('el cliente revisa su historial, cierra sesión e ingresa con su PIN', async ({ page }) => {
     const cliente = nuevoCliente();
     await registrar(page, cliente);
+
+    // Historial: la cifra que cuenta para el nivel y nada de canjes.
+    await page.getByRole('link', { name: 'Historial', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /^Puntos de los últimos \d+ meses$/ })).toBeVisible();
+    await expect(page.getByText('cuentan para subir de nivel')).toBeVisible();
+    await expect(page.getByText(/canje|WhatsApp/i)).toHaveCount(0);
+    await sinDesborde(page);
+
+    await page.getByRole('link', { name: 'Inicio', exact: true }).click();
     await page.getByRole('button', { name: 'Cerrar sesión' }).click();
 
     await expect(page.getByRole('heading', { name: 'Ingresa al Club' })).toBeVisible();

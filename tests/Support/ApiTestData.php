@@ -167,6 +167,11 @@ final class ApiTestData
                 array_map(AlcanceApi::from(...), $credencial['abilities']),
             );
             $data->credenciales[$credencial['key']] = $emitida->credencial;
+
+            if (($credencial['activo'] ?? true) === false) {
+                // Desactivada sin pasar por la revocación: el token sigue en la base.
+                $emitida->credencial->forceFill(['activo' => false])->save();
+            }
             $data->tokens[$credencial['key']] = $emitida->token;
         }
 

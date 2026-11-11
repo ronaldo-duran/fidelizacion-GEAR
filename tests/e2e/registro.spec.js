@@ -56,7 +56,7 @@ test('el cliente revisa su historial, ajusta su perfil, cierra sesión e ingresa
     await sinDesborde(page);
 
     await page.getByRole('button', { name: /^Correo/ }).click();
-    await page.getByLabel('Correo').fill(' Marcela.Gomez@Correo.CO ');
+    await page.getByLabel('Correo', { exact: true }).fill(' Marcela.Gomez@Correo.CO ');
     await page.getByRole('button', { name: 'Guardar' }).click();
     await expect(page.getByText('marcela.gomez@correo.co')).toBeVisible();
 

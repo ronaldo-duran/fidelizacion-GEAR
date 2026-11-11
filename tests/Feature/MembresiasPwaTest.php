@@ -236,11 +236,14 @@ it('never accepts a webhook for the simulated gateway', function (): void {
     expect($pago->fresh()?->estado)->toBe(EstadoPago::Pendiente);
 });
 
-it('links the subscription from the home screen', function (): void {
-    $this->get(route('cliente.inicio'))
+it('links the subscription from the levels screen', function (): void {
+    MembresiasTestData::plan();
+
+    // Desde E8-03 el enlace vive en la tarjeta Diamante de la pantalla de niveles.
+    $this->get(route('cliente.niveles'))
         ->assertOk()
         ->assertSee(route('cliente.membresia'))
-        ->assertSee('Suscripción Diamante');
+        ->assertSee('Suscripción desde ' . ($this->pesos)($this->mensual) . '/mes');
 });
 
 it('reuses the recent pending payment of the same plan instead of opening another one', function (): void {

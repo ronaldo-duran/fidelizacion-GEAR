@@ -18,6 +18,14 @@
     --text-hero--line-height: 0.9;
     --text-hero--letter-spacing: -0.03em;
     --text-hero--font-weight: 800;
+    /* Nombre del nivel y cifra de puntos del inicio (TierHero, COMPONENTS.md) */
+    --text-nivel: 64px;
+    --text-nivel--line-height: 0.95;
+    --text-nivel--letter-spacing: -0.02em;
+    --text-nivel--font-weight: 800;
+    --text-cifra: 40px;
+    --text-cifra--line-height: 1;
+    --text-cifra--font-weight: 700;
     --text-3xl: 56px;
     --text-3xl--line-height: 1;
     --text-3xl--font-weight: 800;

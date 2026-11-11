@@ -83,7 +83,11 @@ if (process.env.SIN_VERSION === '1' || titulos.includes('[sin-version]')) {
     process.exit(0);
 }
 
-const versionAnterior = versionEn(desde);
+// La versión debe superar la del punto donde salió la rama y también la de la base actual: si otro
+// PR ya publicó esa versión en la base, la de este PR también tiene que subir.
+const versionDesde = versionEn(desde);
+const versionBase = versionEn(base);
+const versionAnterior = comparar(versionBase, versionDesde) > 0 ? versionBase : versionDesde;
 if (comparar(versionNueva, versionAnterior) <= 0) {
     error(
         `Cambió código de producción (${deProducto.slice(0, 5).join(', ')}${deProducto.length > 5 ? '…' : ''}) ` +

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Beneficios;
 
+use App\Enums\EstadoBeneficio;
 use App\Enums\Nivel;
 use App\Models\Beneficio;
 use App\Models\Cliente;
@@ -39,6 +40,68 @@ class BeneficiosParaCliente
     public function para(Cliente $cliente, ?CarbonImmutable $dia = null): array
     {
         return $this->evaluar($cliente, ($dia ?? CarbonImmutable::now())->startOfDay(), Beneficio::query());
+    }
+
+    /**
+     * Solo los que el cliente puede usar hoy, por nombre del comercio y luego
+     * del beneficio: "Para usar hoy" del inicio (E8-03, regla 6).
+     *
+     * @return list<BeneficioParaCliente>
+     */
+    public function disponibles(Cliente $cliente, ?CarbonImmutable $dia = null): array
+    {
+        return self::ordenar(array_values(array_filter(
+            $this->para($cliente, $dia),
+            static fn (BeneficioParaCliente $item): bool => $item->estado === EstadoBeneficio::Disponible,
+        )));
+    }
+
+    /**
+     * Por nombre del comercio y luego del beneficio, sin distinguir mayúsculas:
+     * el orden del inicio (E8-03) y del catálogo (E8-04).
+     *
+     * @param  list<BeneficioParaCliente>  $items
+     * @return list<BeneficioParaCliente>
+     */
+    public static function ordenar(array $items): array
+    {
+        usort($items, static fn (BeneficioParaCliente $uno, BeneficioParaCliente $otro): int => self::orden($uno)
+            <=> self::orden($otro));
+
+        return $items;
+    }
+
+    /**
+     * @return array{0: string, 1: string} comercio y beneficio, en minúsculas
+     */
+    private static function orden(BeneficioParaCliente $item): array
+    {
+        // `vigentes` solo trae beneficios de comercios activos: el comercio siempre está.
+        $comercio = $item->beneficio->comercio->razon_social ?? '';
+
+        return [mb_strtolower($comercio), mb_strtolower($item->beneficio->nombre)];
+    }
+
+    /**
+     * Cuántos beneficios vigentes recibe cada nivel: los que le dan un valor
+     * en `valores_por_nivel` (pantalla de niveles, E8-03 regla 8). Una sola
+     * consulta.
+     *
+     * @return array<string, int> nivel => cantidad, con los cuatro niveles
+     */
+    public function conteoPorNivel(?CarbonImmutable $dia = null): array
+    {
+        $conteo = array_fill_keys(array_map(static fn (Nivel $nivel): string => $nivel->value, Nivel::cases()), 0);
+
+        foreach ($this->vigentes(Beneficio::query(), ($dia ?? CarbonImmutable::now())->startOfDay()) as $beneficio) {
+            foreach (Nivel::cases() as $nivel) {
+                if ($beneficio->valorPara($nivel) !== null) {
+                    $conteo[$nivel->value]++;
+                }
+            }
+        }
+
+        return $conteo;
     }
 
     /**

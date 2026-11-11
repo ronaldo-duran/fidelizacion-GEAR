@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { codigoDelSms, completarRegistro, nuevoCliente, sinDesborde } from './ayudas.js';
+import { codigoDelSms, completarRegistro, enElInicio, nuevoCliente, sinDesborde } from './ayudas.js';
 
 // Registro, verificación, ingreso y recuperación del PIN del cliente (E8-02) a 360 px.
 // En el CI el SMS va al log (SMS_DRIVER=log con APP_ENV=local): de ahí se lee el código.
@@ -48,7 +48,7 @@ test('el cliente ingresa con su documento y su PIN', async ({ page }) => {
 
     await page.getByLabel('PIN').fill(cliente.pin);
     await page.getByRole('button', { name: 'Ingresar' }).click();
-    await expect(page.getByRole('heading', { name: `Hola, ${cliente.nombre}` })).toBeVisible();
+    await enElInicio(page, cliente);
 });
 
 test('el cliente recupera su PIN con el código del SMS', async ({ page }) => {
@@ -81,5 +81,5 @@ test('el cliente recupera su PIN con el código del SMS', async ({ page }) => {
     await page.getByLabel('Repite el PIN nuevo').fill('7351');
     await page.getByRole('button', { name: 'Guardar PIN nuevo' }).click();
 
-    await expect(page.getByRole('heading', { name: `Hola, ${cliente.nombre}` })).toBeVisible();
+    await enElInicio(page, cliente);
 });

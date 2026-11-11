@@ -106,7 +106,8 @@ it('shows the customer their notices, marks them read and only theirs', function
     $otro = LedgerTestData::cliente('3030303030');
     ($this->avisar)(EventoNotificacion::SubidaNivel, 1, $this->cliente);
     ($this->avisar)(EventoNotificacion::SubidaNivel, 2, $otro);
-    $this->actingAs($this->cliente, 'cliente');
+    // Leído de la base, como en una petición real: el inicio (E8-03) usa el saldo y el nivel.
+    $this->actingAs($this->cliente->refresh(), 'cliente');
 
     $this->get('/inicio')->assertSee('Avisos, 1 sin leer');
 

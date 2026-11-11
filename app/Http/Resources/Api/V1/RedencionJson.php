@@ -17,7 +17,6 @@ final class RedencionJson
      */
     public static function datos(Redencion $redencion): array
     {
-
         return [
             'referencia' => $redencion->referencia,
             'beneficio_id' => $redencion->beneficio_id,

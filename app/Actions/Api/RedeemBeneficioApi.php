@@ -88,9 +88,15 @@ class RedeemBeneficioApi
      */
     private function entregar(User $user, EntregaApi $entrega): Redencion
     {
-        [$clienteId, $beneficioId, $credencialId] = $entrega->porCodigo()
-            ? $this->porCodigo($user, (string) $entrega->codigo)
-            : $this->porDocumento($user, $entrega);
+        try {
+            [$clienteId, $beneficioId, $credencialId] = $entrega->porCodigo()
+                ? $this->porCodigo($user, (string) $entrega->codigo)
+                : $this->porDocumento($user, $entrega);
+        } catch (EntregaRechazada $rechazo) {
+            // Otro intento con la misma llave pudo gastar el código después de la
+            // primera búsqueda: si ya existe su redención, esto es una repetición.
+            return Redencion::query()->where('referencia', $entrega->llave)->first() ?? throw $rechazo;
+        }
 
         try {
             return ($this->redeem)($user, new EntregaBeneficio(

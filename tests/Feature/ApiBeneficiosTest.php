@@ -2,9 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Actions\Beneficios\CheckBeneficioCredencial;
+use App\Actions\Beneficios\RedeemBeneficio;
+use App\Actions\Credenciales\ValidateCredencial;
+use App\Beneficios\ChequeoBeneficio;
+use App\Beneficios\EntregaBeneficio;
+use App\Beneficios\RevisionBeneficio;
 use App\Enums\EstadoTransaccion;
 use App\Models\Redencion;
 use App\Models\Transaccion;
+use App\Models\User;
 use Illuminate\Support\Str;
 use Tests\Support\ApiTestData;
 
@@ -298,4 +305,47 @@ it('answers a conflict to the same key with another bill amount', function (): v
         ->assertJsonPath('error.codigo', 'redencion_en_conflicto');
 
     expect(Redencion::query()->count())->toBe(1);
+});
+
+it('replays the delivery when a retry with the same key finds the code spent', function (): void {
+    $codigo = ApiTestData::codigo($this->andres, $this->api->beneficio(1));
+    $llave = (string) Str::uuid();
+
+    // El otro intento con la misma llave entrega justo antes del chequeo de este: el código ya está gastado.
+    $check = new class extends CheckBeneficioCredencial
+    {
+        public string $llave = '';
+
+        public function __construct()
+        {
+            parent::__construct(app(ValidateCredencial::class), app(RevisionBeneficio::class));
+        }
+
+        public function __invoke(User $cajero, string $entrada): ChequeoBeneficio
+        {
+            $chequeo = parent::__invoke($cajero, $entrada);
+
+            if ($chequeo->esValido() && $chequeo->cliente !== null && $chequeo->beneficio !== null) {
+                app(RedeemBeneficio::class)($cajero, new EntregaBeneficio(
+                    $chequeo->cliente->id,
+                    $chequeo->beneficio->id,
+                    $chequeo->credencialId,
+                    null,
+                    null,
+                    $this->llave,
+                ));
+            }
+
+            return parent::__invoke($cajero, $entrada);
+        }
+    };
+    $check->llave = $llave;
+    $this->app->instance(CheckBeneficioCredencial::class, $check);
+
+    $repetida = $this->postJson('/api/v1/redenciones', ['codigo' => $codigo], $this->api->headers('pos-rancho', $llave))
+        ->assertOk()
+        ->assertJsonPath('data.referencia', $llave);
+
+    expect($repetida->headers->get('Idempotent-Replayed'))->toBe('true')
+        ->and(Redencion::query()->count())->toBe(1);
 });

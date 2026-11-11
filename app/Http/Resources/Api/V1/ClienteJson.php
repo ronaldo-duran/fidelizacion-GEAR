@@ -18,7 +18,6 @@ final class ClienteJson
      */
     public static function datos(Cliente $cliente): array
     {
-
         return [
             'tipo_documento' => $cliente->tipo_documento->value,
             'documento' => $cliente->documento,

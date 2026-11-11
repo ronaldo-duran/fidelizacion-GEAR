@@ -1,0 +1,190 @@
+{
+    "_note": "Scenarios for E8-04 (customer catalog and benefit use). The day is a Tuesday in America/Bogota. Thresholds come from the niveles rule in reglas-validas.json (Plata 500, Oro 1.500, Diamante 3.000) and the code timing from qr-escenarios.json; they are repeated here only as expected results. Merchants and categories use the seeder slugs. Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-10 19:42:18",
+    "detail": {
+        "others_today": {
+            "_description": "How many available benefits the detail lists under \"Otros para hoy\", excluding the one on screen.",
+            "max_items": { "value": 3, "_assumption": true }
+        },
+        "live_clock_example": "Hoy · 7:42:18 p. m.",
+        "help_text": "Muestra esta pantalla al cajero. Él escanea el código y listo.",
+        "offline_text": "Sin conexión. Tu código aparece cuando vuelvas a tener señal."
+    },
+    "customer": {
+        "nombre_completo": "Marcela Gómez",
+        "saldo_puntos": 1160,
+        "nivel_por_puntos": "plata",
+        "fecha_nacimiento": "1990-03-15"
+    },
+    "benefits": [
+        {
+            "key": "martes_bbc",
+            "nombre": "Martes de cerveza en Cervecería BBC",
+            "comercio": "Cervecería BBC",
+            "categoria_slug": "cerveceria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "bronce": 10, "plata": 20, "oro": 40, "diamante": 50 },
+            "condiciones": { "dia_semana": ["martes"] },
+            "condiciones_texto": "Solo los martes · Todas las sedes"
+        },
+        {
+            "key": "kilo_rancho",
+            "nombre": "Kilo de carne en El Rancho de Javi",
+            "comercio": "El Rancho de Javi",
+            "categoria_slug": "restaurante",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "plata": 20, "oro": 40, "diamante": 50 },
+            "max_por_cliente": { "ventana": "mes", "cantidad": 1 },
+            "condiciones_texto": "1 vez al mes · Todas las sedes"
+        },
+        {
+            "key": "helado_polo",
+            "nombre": "Descuento en tu helado",
+            "comercio": "Heladería Polo Norte",
+            "categoria_slug": "heladeria",
+            "tipo": "monto_fijo",
+            "valores_por_nivel": { "plata": 3000, "oro": 3000, "diamante": 3000 }
+        },
+        {
+            "key": "postre_caribe",
+            "nombre": "Postre con tu plato fuerte",
+            "comercio": "Restaurante Sabor Caribe",
+            "categoria_slug": "restaurante",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "plata": 15, "oro": 25, "diamante": 30 },
+            "max_por_cliente": { "ventana": "mes", "cantidad": 1 },
+            "used_by_customer": { "at": "2026-11-03 13:05:00", "sede": "Sede principal" }
+        },
+        {
+            "key": "cumple_monarca",
+            "nombre": "Descuento de cumpleaños",
+            "comercio": "Peluquería Monarca",
+            "categoria_slug": "peluqueria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "bronce": 30, "plata": 50, "oro": 70, "diamante": 100 },
+            "condiciones": { "es_cumpleanos": true },
+            "max_por_cliente": { "ventana": "anio", "cantidad": 1 }
+        },
+        {
+            "key": "cupo_barril",
+            "nombre": "Jarra de la casa",
+            "comercio": "Cervecería El Barril",
+            "categoria_slug": "cerveceria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "plata": 30, "oro": 40, "diamante": 50 },
+            "cupo_global": 1,
+            "used_by_another_customer": true
+        },
+        {
+            "key": "alquiler_hubble",
+            "nombre": "Descuento de alquiler de fin de semana",
+            "comercio": "Hubble Alquileres Recreacionales",
+            "categoria_slug": "alquiler-recreacional",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "oro": 15, "diamante": 20 }
+        },
+        {
+            "key": "cuota_laura",
+            "nombre": "Descuento en la cuota inicial",
+            "comercio": "Constructora Inmobiliaria Laura Rivera",
+            "categoria_slug": "inmobiliaria",
+            "tipo": "porcentaje",
+            "valores_por_nivel": { "diamante": 5 },
+            "requiere_soporte": true
+        }
+    ],
+    "expected_catalog": {
+        "available_count_label": "3 con Plata",
+        "chips": [
+            "Todos",
+            "Alquiler recreacional",
+            "Cervecería",
+            "Heladería",
+            "Inmobiliaria",
+            "Peluquería",
+            "Restaurante"
+        ],
+        "sections": {
+            "Puedes usarlos": [
+                { "key": "martes_bbc", "meta": "20 % de descuento · Con Oro, 40 %" },
+                { "key": "kilo_rancho", "meta": "20 % de descuento · Con Oro, 40 %" },
+                { "key": "helado_polo", "meta": "$3.000 de descuento" }
+            ],
+            "Por ahora no": [
+                { "key": "cupo_barril", "estado": "sin_cupos", "meta": "Se acabaron los cupos" },
+                { "key": "cumple_monarca", "estado": "no_disponible_hoy", "meta": "Disponible el 15 de marzo de 2027" },
+                {
+                    "key": "postre_caribe",
+                    "estado": "usado",
+                    "meta": "Ya lo usaste este mes · Vuelve el 1 de diciembre"
+                }
+            ],
+            "Se abren al subir de nivel": [
+                { "key": "alquiler_hubble", "nivel": "oro", "meta": "Te faltan 340 pts" },
+                { "key": "cuota_laura", "nivel": "diamante", "meta": "Te faltan 1.840 pts" }
+            ]
+        }
+    },
+    "category_filter": {
+        "_description": "Choosing a chip filters the three sections; an empty section is not shown.",
+        "categoria": "cerveceria",
+        "sections": {
+            "Puedes usarlos": ["martes_bbc"],
+            "Por ahora no": ["cupo_barril"]
+        },
+        "hidden_sections": ["Se abren al subir de nivel"]
+    },
+    "without_birthdate": {
+        "_description": "The same customer without fecha_nacimiento: the birthday benefit asks for it (the profile arrives with E8-05).",
+        "key": "cumple_monarca",
+        "meta": "Necesitamos tu fecha de nacimiento"
+    },
+    "detail_cases": [
+        {
+            "_description": "Available: the code block, the customer and the level.",
+            "key": "martes_bbc",
+            "shows_code": true,
+            "expected_texts": ["LISTO PARA USAR", "Marcela Gómez", "Plata", "Solo los martes · Todas las sedes"]
+        },
+        {
+            "_description": "Used this month (1p): last use date and place, when it comes back and others for today.",
+            "key": "postre_caribe",
+            "shows_code": false,
+            "expected_texts": [
+                "Ya lo usaste este mes",
+                "3 de noviembre · Restaurante Sabor Caribe · Sede principal",
+                "Vuelve el 1 de diciembre",
+                "Otros para hoy"
+            ],
+            "others_today": ["martes_bbc", "kilo_rancho", "helado_polo"]
+        },
+        {
+            "_description": "No quota left: the reason and others for today, without a code.",
+            "key": "cupo_barril",
+            "shows_code": false,
+            "expected_texts": ["Se acabaron los cupos", "Otros para hoy"]
+        },
+        {
+            "_description": "Not available today: the next date, without a code.",
+            "key": "cumple_monarca",
+            "shows_code": false,
+            "expected_texts": ["Disponible el 15 de marzo de 2027", "Otros para hoy"]
+        },
+        {
+            "_description": "Locked: the level that opens it and the missing points, with the link to the levels screen.",
+            "key": "alquiler_hubble",
+            "shows_code": false,
+            "expected_texts": ["Oro", "Te faltan 340 pts", "Ver cómo subir de nivel"]
+        }
+    ],
+    "not_found_cases": [
+        { "_description": "An inactive benefit.", "variant": "inactive" },
+        { "_description": "A benefit of an inactive merchant.", "variant": "inactive_merchant" },
+        {
+            "_description": "A benefit that only gives a value to levels below the customer's (only Bronce): the Plata customer does not receive it.",
+            "variant": "level_does_not_receive_it"
+        },
+        { "_description": "An id that does not exist.", "variant": "missing" }
+    ],
+    "forbidden_words": ["canjear", "canje", "costo", "saldo"]
+}

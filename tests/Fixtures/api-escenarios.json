@@ -67,6 +67,14 @@
             "comercio_id": 5,
             "sede_id": 51,
             "abilities": ["compras:registrar"]
+        },
+        {
+            "key": "pos-rancho-desactivada",
+            "_description": "Integration user deactivated another way (not through Revoke): its token still exists.",
+            "comercio_id": 1,
+            "sede_id": 11,
+            "abilities": ["compras:registrar"],
+            "activo": false
         }
     ],
     "customers": [
@@ -154,6 +162,13 @@
             "request": "GET /api/v1/compras/fac-0001",
             "expected_status": 403,
             "expected_codigo": "comercio_inactivo"
+        },
+        {
+            "_description": "A live token of an inactive integration user: Sanctum does not check users.activo, the API middleware does.",
+            "credential": "pos-rancho-desactivada",
+            "request": "GET /api/v1/compras/fac-0001",
+            "expected_status": 403,
+            "expected_codigo": "sin_permiso"
         }
     ],
     "idempotency": [

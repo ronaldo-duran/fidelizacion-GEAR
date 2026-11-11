@@ -12,6 +12,7 @@ use App\Livewire\Cajero\Caja;
 use App\Livewire\Cajero\Ingreso as CajeroIngreso;
 use App\Livewire\Cajero\ValidarBeneficio;
 use App\Livewire\Cliente\Avisos;
+use App\Livewire\Cliente\Beneficios;
 use App\Livewire\Cliente\EstadoPago;
 use App\Livewire\Cliente\Historial;
 use App\Livewire\Cliente\Ingreso;
@@ -44,6 +45,7 @@ Route::name('cliente.')->group(function (): void {
     Route::middleware(['auth:cliente', 'auth.session'])->group(function (): void {
         Route::get('/inicio', Inicio::class)->name('inicio');
         Route::get('/niveles', Niveles::class)->name('niveles');
+        Route::get('/beneficios', Beneficios::class)->name('beneficios');
         Route::get('/historial', Historial::class)->name('historial');
         Route::get('/perfil', Perfil::class)->name('perfil');
         Route::get('/misiones', Misiones::class)->name('misiones');

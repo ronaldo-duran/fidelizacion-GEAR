@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { codigoDelSms, completarRegistro, enElInicio, nuevoCliente, sinDesborde } from './ayudas.js';
+import { cerrarSesion, codigoDelSms, completarRegistro, enElInicio, nuevoCliente, sinDesborde } from './ayudas.js';
 
 // Registro, verificación, ingreso y recuperación del PIN del cliente (E8-02) a 360 px.
 // En el CI el SMS va al log (SMS_DRIVER=log con APP_ENV=local): de ahí se lee el código.
@@ -34,8 +34,8 @@ test('el cliente se registra, verifica su celular, queda con sesión y ve la bie
     await expect(page.getByRole('link', { name: 'Avisos', exact: true })).toBeVisible();
 });
 
-// También cubre el historial (E8-05) sin gastar otro SMS.
-test('el cliente revisa su historial, cierra sesión e ingresa con su PIN', async ({ page }) => {
+// También cubre el historial y el perfil (E8-05) sin gastar otro SMS.
+test('el cliente revisa su historial, ajusta su perfil, cierra sesión e ingresa con su PIN', async ({ page }) => {
     const cliente = nuevoCliente();
     await registrar(page, cliente);
 
@@ -46,7 +46,27 @@ test('el cliente revisa su historial, cierra sesión e ingresa con su PIN', asyn
     await expect(page.getByText(/canje|WhatsApp/i)).toHaveCount(0);
     await sinDesborde(page);
 
-    await page.getByRole('link', { name: 'Inicio', exact: true }).click();
+    // Perfil: documento enmascarado, correo nuevo y un aviso apagado.
+    await page.getByRole('link', { name: 'Mi perfil' }).click();
+    await expect(page.getByRole('heading', { name: 'Mi perfil' })).toBeVisible();
+    await expect(page.getByText(`CC •••• ${cliente.documento.slice(-4)}`)).toBeVisible();
+    await expect(page.getByText('Agrega tu correo para recibir avisos')).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Cuando subo de nivel' })).toBeDisabled();
+    await expect(page.getByText(/WhatsApp/i)).toHaveCount(0);
+    await sinDesborde(page);
+
+    await page.getByRole('button', { name: /^Correo/ }).click();
+    await page.getByLabel('Correo').fill(' Marcela.Gomez@Correo.CO ');
+    await page.getByRole('button', { name: 'Guardar' }).click();
+    await expect(page.getByText('marcela.gomez@correo.co')).toBeVisible();
+
+    const subida = page.getByRole('switch', { name: 'Cuando subo de nivel' });
+    await expect(subida).toHaveAttribute('aria-checked', 'true');
+    await subida.click();
+    await expect(subida).toHaveAttribute('aria-checked', 'false');
+    await page.reload();
+    await expect(page.getByRole('switch', { name: 'Cuando subo de nivel' })).toHaveAttribute('aria-checked', 'false');
+
     await page.getByRole('button', { name: 'Cerrar sesión' }).click();
 
     await expect(page.getByRole('heading', { name: 'Ingresa al Club' })).toBeVisible();
@@ -67,7 +87,7 @@ test('el cliente recupera su PIN con el código del SMS', async ({ page }) => {
     test.setTimeout(150_000);
     const cliente = nuevoCliente();
     await registrar(page, cliente);
-    await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await cerrarSesion(page);
     await page.waitForTimeout(61_000);
 
     await page.getByRole('link', { name: 'Olvidé mi PIN' }).click();

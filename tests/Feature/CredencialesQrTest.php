@@ -67,7 +67,9 @@ it('keeps the timing and limits in config equal to the fixture', function (): vo
         ->and(config('credenciales.clock_skew_seconds'))->toBe($this->fixture['timing']['clock_skew_seconds']['value'])
         ->and(config('credenciales.identify_prefix'))->toBe($this->fixture['short_code']['identify_prefix'])
         ->and(config('credenciales.max_failed_short_codes_per_minute'))
-        ->toBe($this->fixture['short_code']['max_failed_attempts_per_minute']['value']);
+        ->toBe($this->fixture['short_code']['max_failed_attempts_per_minute']['value'])
+        ->and(config('credenciales.max_benefit_codes_per_minute'))
+        ->toBe($this->fixture['short_code']['max_benefit_codes_per_minute']['value']);
 });
 
 it('validates each fixture timeline', function (string $criterion): void {

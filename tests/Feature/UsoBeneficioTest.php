@@ -55,7 +55,7 @@ it('shows each detail case of the fixture and issues a code only when available'
     ->mapWithKeys(fn (array $caso): array => [$caso['_description'] => [$caso]])
     ->all());
 
-it('issues a new code on each renewal and the old one expires after its life plus the skew', function (): void {
+it('issues a new code on each renewal and lets the old one expire on its own', function (): void {
     $id = (string) $this->datos->id('martes_bbc');
     $pantalla = Livewire::test(UsarBeneficio::class, ['beneficio' => $id])->call('renovar');
     $primero = $pantalla->get('codigo');
@@ -136,3 +136,22 @@ it('sends a guest to the sign-in screen', function (string $ruta): void {
 
     $this->get($ruta === 'detalle' ? '/beneficios/1' : '/beneficios')->assertRedirect(route('cliente.ingreso'));
 })->with(['catalogo', 'detalle']);
+
+it('stops issuing codes past the limit per minute and shows the error state', function (): void {
+    $tope = config('credenciales.max_benefit_codes_per_minute');
+    $id = (string) $this->datos->id('martes_bbc');
+    $pantalla = Livewire::test(UsarBeneficio::class, ['beneficio' => $id]);
+
+    foreach (range(1, $tope) as $vez) {
+        $pantalla->call('renovar')->assertSet('error', false);
+    }
+
+    $pantalla->call('renovar')->assertSet('error', true)->assertSet('codigo', null);
+
+    expect(CredencialQr::query()->where('beneficio_id', $id)->count())->toBe($tope);
+
+    $this->travel(61)->seconds();
+    $pantalla->call('renovar')->assertSet('error', false);
+
+    expect($pantalla->get('codigo'))->not->toBeNull();
+});

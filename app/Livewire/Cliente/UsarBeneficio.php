@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Cliente;
 
-use App\Actions\Credenciales\IssueCredencial;
+use App\Actions\Credenciales\IssueBeneficioCredencial;
 use App\Beneficios\BeneficioParaCliente;
 use App\Beneficios\BeneficiosParaCliente;
 use App\Beneficios\CatalogoCliente;
 use App\Beneficios\RevisionBeneficio;
 use App\Credenciales\QrRenderer;
 use App\Enums\EstadoBeneficio;
-use App\Enums\PropositoCredencial;
 use App\Models\Cliente;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -25,7 +24,7 @@ use RuntimeException;
  * Detalle y uso de un beneficio (E8-04, pantallas 1o y 1p). Solo se abre un
  * beneficio que `BeneficiosParaCliente` devuelve para el cliente (regla 7), y
  * solo se emite un código si está disponible (regla 8). El código lo emite
- * `IssueCredencial` (E4-04) y al componente le llegan solo el SVG, el código
+ * `IssueBeneficioCredencial` (E4-04, con tope por minuto) y al componente le llegan solo el SVG, el código
  * corto y el vencimiento: el token no queda en ninguna propiedad.
  */
 #[Layout('components.layouts.cliente')]
@@ -56,8 +55,11 @@ class UsarBeneficio extends Component
      * (por ejemplo, el cajero acaba de entregarlo), borra el código y la
      * pantalla pasa al estado nuevo.
      */
-    public function renovar(BeneficiosParaCliente $beneficios, IssueCredencial $issue, QrRenderer $renderer): void
-    {
+    public function renovar(
+        BeneficiosParaCliente $beneficios,
+        IssueBeneficioCredencial $issue,
+        QrRenderer $renderer,
+    ): void {
         $cliente = self::cliente();
         $estado = $beneficios->deBeneficio($cliente, $this->beneficioId);
         $this->imagenQr = $this->codigo = $this->venceMs = null;
@@ -68,12 +70,7 @@ class UsarBeneficio extends Component
         }
 
         try {
-            $emitida = $issue(
-                $cliente,
-                PropositoCredencial::Beneficio,
-                $estado->beneficio->id,
-                $estado->beneficio->comercio_id,
-            );
+            $emitida = $issue($cliente, $estado->beneficio);
             $this->imagenQr = $renderer->svg($emitida->token);
             $this->codigo = $emitida->codigoCorto;
             $this->venceMs = $emitida->venceAt->getTimestampMs();

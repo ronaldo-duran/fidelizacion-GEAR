@@ -50,15 +50,25 @@ class BeneficiosParaCliente
      */
     public function disponibles(Cliente $cliente, ?CarbonImmutable $dia = null): array
     {
-        $disponibles = array_values(array_filter(
+        return self::ordenar(array_values(array_filter(
             $this->para($cliente, $dia),
             static fn (BeneficioParaCliente $item): bool => $item->estado === EstadoBeneficio::Disponible,
-        ));
+        )));
+    }
 
-        usort($disponibles, static fn (BeneficioParaCliente $uno, BeneficioParaCliente $otro): int => self::orden($uno)
+    /**
+     * Por nombre del comercio y luego del beneficio, sin distinguir mayúsculas:
+     * el orden del inicio (E8-03) y del catálogo (E8-04).
+     *
+     * @param  list<BeneficioParaCliente>  $items
+     * @return list<BeneficioParaCliente>
+     */
+    public static function ordenar(array $items): array
+    {
+        usort($items, static fn (BeneficioParaCliente $uno, BeneficioParaCliente $otro): int => self::orden($uno)
             <=> self::orden($otro));
 
-        return $disponibles;
+        return $items;
     }
 
     /**

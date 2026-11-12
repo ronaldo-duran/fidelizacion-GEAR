@@ -169,6 +169,28 @@ it('delivers by document and answers a conflict for the same key with another be
     expect(Redencion::query()->count())->toBe(1);
 });
 
+it('asks for its own scope to deliver by document but not by code', function (): void {
+    $beneficio = $this->api->beneficio(1);
+    $body = ['tipo_documento' => 'CC', 'documento' => '1012345678', 'beneficio_id' => $beneficio->id];
+    $alcances = ApiTestData::fixture()['abilities'];
+
+    expect($alcances['POST /api/v1/redenciones by document'])->toContain('beneficios:redimir_documento');
+
+    $this->postJson('/api/v1/redenciones', $body, $this->api->headers('pos-rancho-solo-codigo', (string) Str::uuid()))
+        ->assertForbidden()
+        ->assertJsonPath('error.codigo', 'sin_permiso');
+
+    expect(Redencion::query()->count())->toBe(0);
+
+    $codigo = ApiTestData::codigo($this->andres, $beneficio);
+    $llave = (string) Str::uuid();
+
+    $this->postJson('/api/v1/redenciones', ['codigo' => $codigo], $this->api->headers('pos-rancho-solo-codigo', $llave))
+        ->assertCreated();
+
+    expect(Redencion::query()->count())->toBe(1);
+});
+
 it('answers a conflict to a delivery key already used by another merchant', function (): void {
     $llave = ApiTestData::fixture()['isolation'][4]['idempotency_key'];
     $body = ['tipo_documento' => 'CC', 'documento' => '1012345678'];

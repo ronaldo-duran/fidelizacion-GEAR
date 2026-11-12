@@ -240,6 +240,11 @@ paths:
         responde 200; con otro beneficio, otro cliente, otro código, otro monto de la cuenta u otro
         soporte, 409. Entregar no gasta
         puntos. Alcance `beneficios:redimir`.
+
+        Por documento exige además el alcance `beneficios:redimir_documento` (sin él, 403
+        `sin_permiso`). Es para que el cajero lea el número del QR o de la cédula digital que el
+        cliente presenta en ese momento, nunca un número dictado: verificar que el cliente está
+        presente es responsabilidad del comercio.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:

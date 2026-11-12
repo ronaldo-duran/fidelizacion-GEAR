@@ -1,0 +1,546 @@
+{
+    "_note": "Scenarios for E10-02 (exportable reports). Today is 2026-11-11 10:00 in America/Bogota. Ranges are whole days in America/Bogota. Amounts are whole pesos. Points are status (hard rule 3.1): columns are points granted, never a balance. Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-11 10:00:00",
+    "settings": {
+        "max_range_days": { "value": 366, "_assumption": true, "_source": "decision 2 of the spec" },
+        "default_range": "first day of the current month to today",
+        "file_name": "{reporte}-{desde}-a-{hasta}-{alcance}.{ext}",
+        "file_name_examples": [
+            "compras-y-puntos-2026-10-01-a-2026-10-31-grupo.xlsx",
+            "aporte-por-comercio-2026-10-01-a-2026-10-31-el-rancho-de-javi.csv"
+        ],
+        "csv": { "separator": ";", "bom": true, "_source": "decision 7 of the spec" },
+        "club_row_label": "Club Aponte Rivera",
+        "comercio_promotions_row_label": "Promociones del comercio",
+        "aporte_note": "Valor en pesos de los beneficios entregados. No es una liquidación entre comercios.",
+        "never_label": "Nunca",
+        "empty_state": "No hay datos en este rango."
+    },
+    "seed": {
+        "comercios": [
+            {
+                "id": 1,
+                "nombre": "El Rancho de Javi",
+                "activo": true,
+                "sedes": [
+                    { "id": 11, "nombre": "Centro", "activa": true },
+                    { "id": 12, "nombre": "Norte", "activa": true },
+                    { "id": 13, "nombre": "Sur", "activa": true }
+                ]
+            },
+            {
+                "id": 2,
+                "nombre": "Heladería La Nube",
+                "activo": true,
+                "sedes": [{ "id": 21, "nombre": "Principal", "activa": true }]
+            },
+            {
+                "id": 3,
+                "nombre": "Cervecería Aponte",
+                "activo": true,
+                "sedes": [{ "id": 31, "nombre": "Principal", "activa": true }]
+            },
+            {
+                "id": 4,
+                "nombre": "Colegio Aponte Rivera",
+                "activo": true,
+                "sedes": [{ "id": 41, "nombre": "Principal", "activa": true }]
+            },
+            {
+                "id": 5,
+                "nombre": "Comercio cerrado",
+                "activo": false,
+                "sedes": [{ "id": 51, "nombre": "Principal", "activa": true }],
+                "_reason": "inactive: it never appears"
+            }
+        ],
+        "clientes": [
+            {
+                "key": "A",
+                "nivel_por_puntos": "plata",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "2026-11-14",
+                "nivel_por_evento": null,
+                "nivel_efectivo": "diamante"
+            },
+            { "key": "B", "nivel_por_puntos": "oro", "nivel_efectivo": "oro" },
+            {
+                "key": "C",
+                "nivel_por_puntos": "diamante",
+                "nivel_por_membresia": "diamante",
+                "membresia_vigente_hasta": "2027-10-02",
+                "nivel_efectivo": "diamante",
+                "_reason": "points come first in the origin order"
+            },
+            {
+                "key": "D",
+                "nivel_por_puntos": "bronce",
+                "nivel_por_evento": "diamante",
+                "evento_vigente_hasta": "2027-03-01",
+                "nivel_efectivo": "diamante"
+            },
+            { "key": "E", "nivel_por_puntos": "bronce", "nivel_efectivo": "bronce" },
+            { "key": "F", "nivel_por_puntos": "bronce", "nivel_efectivo": "bronce" }
+        ],
+        "transacciones": [
+            {
+                "key": "t1",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "cliente": "A",
+                "monto": 85000,
+                "estado": "acreditada",
+                "created_at": "2026-10-05 12:00:00"
+            },
+            {
+                "key": "t2",
+                "comercio_id": 1,
+                "sede_id": 12,
+                "cliente": "B",
+                "monto": 40000,
+                "estado": "acreditada",
+                "created_at": "2026-10-31 23:30:00",
+                "_reason": "last day of the range in Bogota; in UTC it would be November"
+            },
+            {
+                "key": "t3",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "cliente": null,
+                "monto": 30000,
+                "estado": "pendiente",
+                "created_at": "2026-10-10 18:00:00"
+            },
+            {
+                "key": "t4",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "cliente": "A",
+                "monto": 50000,
+                "estado": "anulada",
+                "created_at": "2026-10-12 09:00:00"
+            },
+            {
+                "key": "t5",
+                "comercio_id": 2,
+                "sede_id": 21,
+                "cliente": "B",
+                "monto": 20000,
+                "estado": "acreditada",
+                "created_at": "2026-10-20 15:00:00"
+            },
+            {
+                "key": "t6",
+                "comercio_id": 2,
+                "sede_id": 21,
+                "cliente": "A",
+                "monto": 10000,
+                "estado": "acreditada",
+                "created_at": "2026-11-01 00:10:00",
+                "_reason": "outside the October range"
+            },
+            {
+                "key": "t7",
+                "comercio_id": 3,
+                "sede_id": 31,
+                "cliente": "A",
+                "monto": 60000,
+                "estado": "acreditada",
+                "created_at": "2026-09-20 13:00:00",
+                "_reason": "before the range: the last purchase of merchant 3"
+            }
+        ],
+        "movimientos": [
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 1,
+                "transaccion": "t1",
+                "cliente": "A",
+                "puntos": 85,
+                "created_at": "2026-10-05 12:00:00"
+            },
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 1,
+                "transaccion": "t2",
+                "cliente": "B",
+                "puntos": 40,
+                "created_at": "2026-10-31 23:30:00"
+            },
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 1,
+                "transaccion": "t4",
+                "cliente": "A",
+                "puntos": 50,
+                "created_at": "2026-10-12 09:00:00"
+            },
+            {
+                "tipo": "reversa",
+                "comercio_id": 1,
+                "transaccion": "t4",
+                "cliente": "A",
+                "puntos": -50,
+                "created_at": "2026-10-13 10:00:00"
+            },
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 2,
+                "transaccion": "t5",
+                "cliente": "B",
+                "puntos": 20,
+                "created_at": "2026-10-20 15:00:00"
+            },
+            {
+                "tipo": "promocion",
+                "comercio_id": 1,
+                "transaccion": null,
+                "cliente": "A",
+                "puntos": 100,
+                "created_at": "2026-10-15 11:00:00"
+            },
+            {
+                "tipo": "promocion",
+                "comercio_id": null,
+                "transaccion": null,
+                "cliente": "B",
+                "puntos": 50,
+                "created_at": "2026-10-08 08:00:00",
+                "_reason": "a Club promotion without merchant"
+            },
+            {
+                "tipo": "caducidad",
+                "comercio_id": null,
+                "transaccion": null,
+                "cliente": "A",
+                "puntos": -20,
+                "created_at": "2026-10-25 00:30:00",
+                "_reason": "expiry is not granted by a merchant: it is not in the report"
+            },
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 2,
+                "transaccion": "t6",
+                "cliente": "A",
+                "puntos": 10,
+                "created_at": "2026-11-01 00:10:00"
+            },
+            {
+                "tipo": "acumulacion",
+                "comercio_id": 3,
+                "transaccion": "t7",
+                "cliente": "A",
+                "puntos": 60,
+                "created_at": "2026-09-20 13:00:00"
+            }
+        ],
+        "beneficios": [
+            { "key": "b1", "comercio_id": 1, "nombre": "10 % en la cuenta" },
+            { "key": "b2", "comercio_id": 1, "nombre": "$5.000 de descuento" },
+            { "key": "b3", "comercio_id": 2, "nombre": "$3.000 de descuento" }
+        ],
+        "redenciones": [
+            {
+                "beneficio": "b1",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "cliente": "A",
+                "valor_otorgado_cop": 8500,
+                "created_at": "2026-10-05 12:05:00"
+            },
+            {
+                "beneficio": "b1",
+                "comercio_id": 1,
+                "sede_id": 11,
+                "cliente": "B",
+                "valor_otorgado_cop": 4000,
+                "created_at": "2026-10-20 19:00:00"
+            },
+            {
+                "beneficio": "b2",
+                "comercio_id": 1,
+                "sede_id": 12,
+                "cliente": "B",
+                "valor_otorgado_cop": 5000,
+                "created_at": "2026-10-21 13:00:00"
+            },
+            {
+                "beneficio": "b3",
+                "comercio_id": 2,
+                "sede_id": 21,
+                "cliente": "B",
+                "valor_otorgado_cop": 3000,
+                "created_at": "2026-10-22 16:00:00"
+            },
+            {
+                "beneficio": "b3",
+                "comercio_id": 2,
+                "sede_id": 21,
+                "cliente": "A",
+                "valor_otorgado_cop": 3000,
+                "created_at": "2026-11-02 16:00:00",
+                "_reason": "outside the range"
+            }
+        ],
+        "planes": [
+            { "key": "mensual", "nombre": "Diamante mensual", "duracion_meses": 1, "precio_cop": 49900 },
+            { "key": "anual", "nombre": "Diamante anual", "duracion_meses": 12, "precio_cop": 499000 }
+        ],
+        "membresias": [
+            {
+                "cliente": "A",
+                "plan": "mensual",
+                "vigente_desde": "2026-09-15",
+                "vigente_hasta": "2026-10-14",
+                "pago": { "monto_cop": 49900, "aprobado_at": "2026-09-15 10:00:00" }
+            },
+            {
+                "cliente": "A",
+                "plan": "mensual",
+                "vigente_desde": "2026-10-15",
+                "vigente_hasta": "2026-11-14",
+                "pago": { "monto_cop": 49900, "aprobado_at": "2026-10-15 09:00:00" },
+                "_reason": "renewal: A already had a period"
+            },
+            {
+                "cliente": "C",
+                "plan": "anual",
+                "vigente_desde": "2026-10-03",
+                "vigente_hasta": "2027-10-02",
+                "pago": { "monto_cop": 499000, "aprobado_at": "2026-10-03 11:00:00" },
+                "_reason": "new: the first period of C"
+            },
+            {
+                "cliente": "E",
+                "plan": "mensual",
+                "vigente_desde": "2026-09-05",
+                "vigente_hasta": "2026-10-04",
+                "pago": { "monto_cop": 49900, "aprobado_at": "2026-09-05 10:00:00" },
+                "_reason": "expired in the range without renewal"
+            }
+        ]
+    },
+    "scenarios": [
+        {
+            "key": "group_october",
+            "user": "administrador_grupo",
+            "desde": "2026-10-01",
+            "hasta": "2026-10-31",
+            "compras_y_puntos": {
+                "rows": [
+                    {
+                        "fila": "El Rancho de Javi",
+                        "compras": 3,
+                        "pendientes": 1,
+                        "monto": 155000,
+                        "anuladas": 1,
+                        "acumulacion": 175,
+                        "promociones": 100,
+                        "reversas": -50,
+                        "neto": 225
+                    },
+                    {
+                        "fila": "Heladería La Nube",
+                        "compras": 1,
+                        "pendientes": 0,
+                        "monto": 20000,
+                        "anuladas": 0,
+                        "acumulacion": 20,
+                        "promociones": 0,
+                        "reversas": 0,
+                        "neto": 20
+                    },
+                    {
+                        "fila": "Cervecería Aponte",
+                        "compras": 0,
+                        "pendientes": 0,
+                        "monto": 0,
+                        "anuladas": 0,
+                        "acumulacion": 0,
+                        "promociones": 0,
+                        "reversas": 0,
+                        "neto": 0
+                    },
+                    {
+                        "fila": "Colegio Aponte Rivera",
+                        "compras": 0,
+                        "pendientes": 0,
+                        "monto": 0,
+                        "anuladas": 0,
+                        "acumulacion": 0,
+                        "promociones": 0,
+                        "reversas": 0,
+                        "neto": 0
+                    },
+                    {
+                        "fila": "Club Aponte Rivera",
+                        "compras": 0,
+                        "pendientes": 0,
+                        "monto": 0,
+                        "anuladas": 0,
+                        "acumulacion": 0,
+                        "promociones": 50,
+                        "reversas": 0,
+                        "neto": 50
+                    }
+                ],
+                "total": {
+                    "compras": 4,
+                    "pendientes": 1,
+                    "monto": 175000,
+                    "anuladas": 1,
+                    "acumulacion": 195,
+                    "promociones": 150,
+                    "reversas": -50,
+                    "neto": 295
+                },
+                "_ledger_check": "acumulacion 195 = 85 + 40 + 50 + 20, the accrual movements created in October"
+            },
+            "aporte_por_comercio": {
+                "rows": [
+                    { "fila": "El Rancho de Javi", "beneficio": "10 % en la cuenta", "entregados": 2, "valor": 12500 },
+                    { "fila": "El Rancho de Javi", "beneficio": "$5.000 de descuento", "entregados": 1, "valor": 5000 },
+                    { "fila": "Heladería La Nube", "beneficio": "$3.000 de descuento", "entregados": 1, "valor": 3000 }
+                ],
+                "subtotals": [
+                    { "fila": "El Rancho de Javi", "entregados": 3, "valor": 17500 },
+                    { "fila": "Heladería La Nube", "entregados": 1, "valor": 3000 }
+                ],
+                "total": { "entregados": 4, "valor": 20500 }
+            },
+            "clientes_por_nivel": {
+                "rows": [
+                    { "nivel": "bronce", "clientes": 2, "porcentaje": 33, "puntos": 2, "membresia": 0, "evento": 0 },
+                    { "nivel": "plata", "clientes": 0, "porcentaje": 0, "puntos": 0, "membresia": 0, "evento": 0 },
+                    { "nivel": "oro", "clientes": 1, "porcentaje": 17, "puntos": 1, "membresia": 0, "evento": 0 },
+                    { "nivel": "diamante", "clientes": 3, "porcentaje": 50, "puntos": 1, "membresia": 1, "evento": 1 }
+                ],
+                "total": { "clientes": 6 }
+            },
+            "membresias": {
+                "rows": [
+                    {
+                        "plan": "Diamante mensual",
+                        "activas": 1,
+                        "nuevas": 0,
+                        "renovadas": 1,
+                        "vencidas": 1,
+                        "pagos_aprobados": 49900
+                    },
+                    {
+                        "plan": "Diamante anual",
+                        "activas": 1,
+                        "nuevas": 1,
+                        "renovadas": 0,
+                        "vencidas": 0,
+                        "pagos_aprobados": 499000
+                    }
+                ],
+                "total": { "activas": 2, "nuevas": 1, "renovadas": 1, "vencidas": 1, "pagos_aprobados": 548900 },
+                "_reason": "A's first period ended 2026-10-14 but another started after it: not expired"
+            },
+            "sin_actividad": {
+                "rows": [
+                    { "fila": "Colegio Aponte Rivera", "ultima_compra": null, "dias": null },
+                    { "fila": "Cervecería Aponte", "ultima_compra": "2026-09-20", "dias": 52 }
+                ],
+                "_reason": "days from the last purchase to today; never first"
+            }
+        },
+        {
+            "key": "merchant_admin_october",
+            "user": "administrador_comercio",
+            "comercio_id": 1,
+            "requested_comercio_id": 2,
+            "_reason": "the request asks for merchant 2: it is ignored, the scope comes from the user",
+            "desde": "2026-10-01",
+            "hasta": "2026-10-31",
+            "compras_y_puntos": {
+                "rows": [
+                    {
+                        "fila": "Centro",
+                        "compras": 2,
+                        "pendientes": 1,
+                        "monto": 115000,
+                        "anuladas": 1,
+                        "acumulacion": 135,
+                        "promociones": 0,
+                        "reversas": -50,
+                        "neto": 85
+                    },
+                    {
+                        "fila": "Norte",
+                        "compras": 1,
+                        "pendientes": 0,
+                        "monto": 40000,
+                        "anuladas": 0,
+                        "acumulacion": 40,
+                        "promociones": 0,
+                        "reversas": 0,
+                        "neto": 40
+                    },
+                    {
+                        "fila": "Sur",
+                        "compras": 0,
+                        "pendientes": 0,
+                        "monto": 0,
+                        "anuladas": 0,
+                        "acumulacion": 0,
+                        "promociones": 0,
+                        "reversas": 0,
+                        "neto": 0
+                    },
+                    {
+                        "fila": "Promociones del comercio",
+                        "compras": 0,
+                        "pendientes": 0,
+                        "monto": 0,
+                        "anuladas": 0,
+                        "acumulacion": 0,
+                        "promociones": 100,
+                        "reversas": 0,
+                        "neto": 100
+                    }
+                ],
+                "total": {
+                    "compras": 3,
+                    "pendientes": 1,
+                    "monto": 155000,
+                    "anuladas": 1,
+                    "acumulacion": 175,
+                    "promociones": 100,
+                    "reversas": -50,
+                    "neto": 225
+                },
+                "_reason": "the total equals the merchant row of the group report"
+            },
+            "aporte_por_comercio": {
+                "rows": [
+                    { "fila": "Centro", "beneficio": "10 % en la cuenta", "entregados": 2, "valor": 12500 },
+                    { "fila": "Norte", "beneficio": "$5.000 de descuento", "entregados": 1, "valor": 5000 }
+                ],
+                "total": { "entregados": 3, "valor": 17500 }
+            },
+            "clientes_por_nivel": {
+                "rows": [
+                    { "nivel": "bronce", "clientes": 0, "porcentaje": 0, "puntos": 0, "membresia": 0, "evento": 0 },
+                    { "nivel": "plata", "clientes": 0, "porcentaje": 0, "puntos": 0, "membresia": 0, "evento": 0 },
+                    { "nivel": "oro", "clientes": 1, "porcentaje": 50, "puntos": 1, "membresia": 0, "evento": 0 },
+                    { "nivel": "diamante", "clientes": 1, "porcentaje": 50, "puntos": 0, "membresia": 1, "evento": 0 }
+                ],
+                "total": { "clientes": 2 },
+                "_reason": "only customers with a credited purchase at merchant 1 in the range: A (t1) and B (t2)"
+            },
+            "membresias": "forbidden",
+            "sin_actividad": {
+                "rows": [{ "fila": "Sur", "ultima_compra": null, "dias": null }],
+                "_reason": "Norte bought at 23:30 on the last day in Bogota"
+            }
+        }
+    ],
+    "invalid_ranges": [
+        { "desde": "2026-10-31", "hasta": "2026-10-01", "message": "La fecha inicial debe ser anterior a la final." },
+        { "desde": "2026-11-01", "hasta": "2026-11-12", "message": "El rango no puede terminar en el futuro." },
+        { "desde": "2025-11-10", "hasta": "2026-11-11", "message": "El rango puede ser de hasta 366 días." }
+    ]
+}

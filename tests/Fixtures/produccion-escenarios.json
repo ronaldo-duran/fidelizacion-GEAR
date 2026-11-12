@@ -1,0 +1,135 @@
+{
+    "_note": "Scenarios for E1-03 (production: verified backups, monitoring and go-live) on Hostinger shared hosting with MySQL and the database queue. Today is 2026-11-11 (Wednesday) in America/Bogota. Weeks are ISO weeks (Monday to Sunday). Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-11 10:00:00",
+    "queue": {
+        "scheduled_when_connection": "database",
+        "not_scheduled_when_connection": "redis",
+        "queues": ["nocturno", "notificaciones", "default"],
+        "max_time_seconds": { "value": 50, "_source": "business rule 1: less than the one-minute cron" },
+        "every": "minute",
+        "without_overlapping": true
+    },
+    "backup": {
+        "daily_at": {
+            "value": "03:00",
+            "_assumption": true,
+            "_source": "decision 6 of the spec: after the 01:30 nightly processes"
+        },
+        "file_name": "club-{AAAA-MM-DD-HHMM}.tar.gz.enc",
+        "checksum_suffix": ".sha256",
+        "min_size_kb": {
+            "value": 20,
+            "_assumption": true,
+            "_source": "business rule 4: an empty dump of the schema is bigger than this"
+        },
+        "mysqldump_flags": ["--single-transaction", "--quick", "--no-tablespaces"]
+    },
+    "retention": {
+        "daily": { "value": 7, "_assumption": true },
+        "weekly": { "value": 4, "_assumption": true },
+        "monthly": { "value": 3, "_assumption": true },
+        "_rule": "keep the backups of the last N days; plus the last backup of each of the last N ISO weeks and of each of the last N months, counting the current week and month",
+        "cases": [
+            {
+                "key": "every_day_since_august",
+                "existing": "one backup at 03:00 every day from 2026-08-01 to 2026-11-11",
+                "kept": [
+                    "2026-09-30",
+                    "2026-10-25",
+                    "2026-10-31",
+                    "2026-11-01",
+                    "2026-11-05",
+                    "2026-11-06",
+                    "2026-11-07",
+                    "2026-11-08",
+                    "2026-11-09",
+                    "2026-11-10",
+                    "2026-11-11"
+                ],
+                "_reason": "daily 11-05..11-11; weekly 11-11, 11-08, 11-01, 10-25; monthly 11-11, 10-31, 09-30"
+            },
+            {
+                "key": "with_gaps",
+                "existing": ["2026-08-31", "2026-09-15", "2026-10-20", "2026-11-02", "2026-11-09", "2026-11-11"],
+                "kept": ["2026-09-15", "2026-10-20", "2026-11-02", "2026-11-09", "2026-11-11"],
+                "deleted": ["2026-08-31"],
+                "_reason": "the week of 2026-10-26 has no backup and does not reach further back; August is outside the 3 months"
+            },
+            {
+                "key": "todays_backup_failed",
+                "existing": "one backup at 03:00 every day from 2026-08-01 to 2026-11-10",
+                "todays_upload": "failed",
+                "deleted": [],
+                "_reason": "business rule 4: a failed backup never applies the retention"
+            }
+        ]
+    },
+    "verification": {
+        "weekday": { "value": "sunday", "_assumption": true },
+        "at": { "value": "04:00", "_assumption": true },
+        "checks": [
+            {
+                "key": "migrations_complete",
+                "_description": "every migration file of the deployed code is in the migrations table"
+            },
+            {
+                "key": "tables_not_empty",
+                "tables": ["clientes", "transacciones", "movimientos_puntos"]
+            },
+            {
+                "key": "counts_never_drop",
+                "tables": ["clientes", "transacciones", "movimientos_puntos"],
+                "_description": "no count is lower than in the previous ok verification (the ledger is append-only)"
+            },
+            {
+                "key": "ledger_balances",
+                "_description": "for every customer, the sum of movimientos_puntos.puntos equals clientes.saldo_puntos"
+            },
+            { "key": "files_archive_opens" }
+        ],
+        "cases": [
+            { "key": "good_backup", "result": "ok" },
+            { "key": "checksum_mismatch", "result": "fallo", "failed_check": "checksum", "alert": true },
+            {
+                "key": "ledger_does_not_balance",
+                "setup": "one customer has saldo_puntos 500 and movements that add up to 480",
+                "result": "fallo",
+                "failed_check": "ledger_balances",
+                "alert": true
+            },
+            {
+                "key": "count_dropped",
+                "setup": "the previous ok verification counted 1200 movimientos_puntos; this backup has 1150",
+                "result": "fallo",
+                "failed_check": "counts_never_drop",
+                "alert": true
+            }
+        ]
+    },
+    "alerts": {
+        "recipients": {
+            "value": ["neyder", "ronaldo", "contacto tecnico del cliente"],
+            "_assumption": true,
+            "_source": "decision 8 of the spec; ALERTAS_CORREOS, the client contact is TODO(cliente)"
+        },
+        "subject_prefix": "[Club Aponte Rivera] Alerta:",
+        "stuck_queue_minutes": { "value": 15, "_assumption": true },
+        "queue_check_every_minutes": 10,
+        "repeated_error_window_minutes": { "value": 60, "_assumption": true },
+        "uptime_check_minutes": { "value": 5, "_assumption": true },
+        "uptime_failures_before_alert": 2,
+        "heartbeats": [
+            { "key": "cron", "env": "HEARTBEAT_CRON", "every_minutes": 5, "grace_minutes": 10 },
+            { "key": "nocturno", "env": "HEARTBEAT_NOCTURNO", "expected_at": "01:30", "grace_minutes": 120 },
+            { "key": "respaldo", "env": "HEARTBEAT_RESPALDO", "expected_at": "03:00", "grace_minutes": 60 },
+            {
+                "key": "verificacion",
+                "env": "HEARTBEAT_VERIFICACION",
+                "expected": "sunday 04:00",
+                "grace_minutes": 180
+            }
+        ],
+        "no_ping_without_env": true,
+        "no_personal_data": true
+    }
+}

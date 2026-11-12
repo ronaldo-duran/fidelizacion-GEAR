@@ -106,7 +106,9 @@ datos y sin Horizon:
 - `QUEUE_CONNECTION=database` y `CACHE_STORE=database` (o `file`) en el entorno.
 - Un proceso de trabajo con `php artisan queue:work --tries=1` en lugar del
   contenedor `horizon` (el servicio `horizon` del compose se reemplaza por
-  este comando).
+  este comando). En el hosting compartido, donde no hay procesos
+  permanentes, lo hace el scheduler: con `QUEUE_CONNECTION=database` corre
+  cada minuto `queue:work --stop-when-empty` (tarea `cola-por-cron`, E1-03).
 - El `scheduler` sigue igual; los jobs nocturnos (descenso, caducidad) y los
   correos funcionan desde el día uno.
 - Sin tablero de Horizon, el monitoreo de colas atascadas / jobs que no

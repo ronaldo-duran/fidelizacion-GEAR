@@ -16,6 +16,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * El comercio y la sede se eligen de una lista según el rol: el administrador
@@ -69,6 +70,8 @@ class UserForm
                     ->label('Contraseña')
                     ->password()
                     ->revealable()
+                    ->rule(Password::defaults())
+                    ->helperText('Mínimo 10 caracteres, con letras y números.')
                     ->required(static fn (string $operation): bool => $operation === 'create')
                     ->dehydrated(static fn (?string $state): bool => filled($state))
                     ->dehydrateStateUsing(static fn (string $state): string => Hash::make($state)),

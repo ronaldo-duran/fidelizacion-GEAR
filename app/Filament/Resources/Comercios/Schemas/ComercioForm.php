@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Comercios\Schemas;
 
+use App\Models\Comercio;
 use App\Models\ComercioPromocionLimite;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -15,6 +16,12 @@ use Illuminate\Support\Facades\Gate;
 
 class ComercioForm
 {
+    /**
+     * Los campos que solo cambia el grupo: de la categoría sale la tasa de
+     * puntos, y el NIT y el estado activo son del catálogo del grupo.
+     */
+    public const DATOS_DEL_GRUPO = ['nit', 'categoria_id', 'activo'];
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -27,19 +34,31 @@ class ComercioForm
                     ->label('NIT')
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true),
+                    ->unique(ignoreRecord: true)
+                    ->disabled(self::noEsDelGrupo(...)),
                 Select::make('categoria_id')
                     ->label('Categoría')
                     ->relationship('categoria', 'nombre')
                     ->searchable()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->disabled(self::noEsDelGrupo(...)),
                 Toggle::make('activo')
                     ->label('Activo')
                     ->default(true)
-                    ->helperText('Un comercio inactivo no puede registrar compras.'),
+                    ->helperText('Un comercio inactivo no puede registrar compras.')
+                    ->disabled(self::noEsDelGrupo(...)),
                 self::promociones(),
             ]);
+    }
+
+    /**
+     * Un campo bloqueado no llega en los datos del formulario; `EditComercio`
+     * además los descarta en el servidor.
+     */
+    private static function noEsDelGrupo(): bool
+    {
+        return ! Gate::allows('updateDatosDelGrupo', Comercio::class);
     }
 
     /**

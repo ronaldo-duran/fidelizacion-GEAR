@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Comercios\Pages;
 
 use App\Actions\Promociones\SetPromocionLimites;
 use App\Filament\Resources\Comercios\ComercioResource;
+use App\Filament\Resources\Comercios\Schemas\ComercioForm;
 use App\Filament\Resources\Concerns\VuelveALaLista;
 use App\Models\Comercio;
 use App\Models\ComercioPromocionLimite;
@@ -14,6 +15,7 @@ use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Los límites de promociones viven en su propia tabla y los guarda
@@ -49,6 +51,11 @@ class EditComercio extends EditRecord
 
         $promocion = $data['promocion'] ?? null;
         unset($data['promocion']);
+
+        // La categoría, el NIT y el estado son del grupo: bloqueados en el formulario y descartados aquí.
+        if (! Gate::allows('updateDatosDelGrupo', Comercio::class)) {
+            $data = array_diff_key($data, array_flip(ComercioForm::DATOS_DEL_GRUPO));
+        }
 
         return DB::transaction(static function () use ($record, $data, $promocion): Comercio {
             $record->update($data);

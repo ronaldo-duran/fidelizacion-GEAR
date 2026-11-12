@@ -59,6 +59,12 @@ Fuera del repo, en Coolify (sección _Environment Variables_). Partir de
 - `APP_ENV` (`staging` | `production`), `APP_DEBUG=false` en producción.
 - `APP_KEY` (generar una por entorno con `php artisan key:generate --show`).
 - `APP_URL` con el dominio real y HTTPS.
+- `TRUSTED_PROXIES`: la IP o el rango del proxy que está delante (el de
+  Coolify en el VPS). Vacío si el servidor recibe las conexiones directo.
+  Nunca `*` si el servidor también es alcanzable sin pasar por el proxy: los
+  topes por IP dejarían de servir.
+- `SEMILLA_CLAVE` en staging y en demostración: la contraseña de los
+  usuarios sembrados, mínimo 10 caracteres. Sin ella el seeder no corre.
 - `DB_*` apuntando al PostgreSQL gestionado.
 - `REDIS_*` apuntando al Redis gestionado; `QUEUE_CONNECTION=redis`,
   `CACHE_STORE=redis`.

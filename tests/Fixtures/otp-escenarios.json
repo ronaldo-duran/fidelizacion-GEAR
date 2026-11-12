@@ -8,7 +8,12 @@
     "sending": {
         "resend_cooldown_seconds": { "value": 60, "_assumption": true },
         "max_per_phone_per_hour": { "value": 3, "_assumption": true },
-        "max_per_ip_per_hour": { "value": 10, "_assumption": true }
+        "max_per_ip_per_hour": { "value": 10, "_assumption": true },
+        "max_per_day_global": {
+            "value": 1000,
+            "_assumption": true,
+            "_source": "security audit 2026-11, finding 3: caps the SMS cost of one day whoever asks"
+        }
     },
     "message_template": "Tu código del Club Aponte Rivera es {code}. Vence en {minutes} minutos. No lo compartas.",
     "purposes": ["registro", "recuperar_pin"],

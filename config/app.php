@@ -45,6 +45,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Proxies de confianza
+    |--------------------------------------------------------------------------
+    |
+    | De quién se aceptan los encabezados `X-Forwarded-*` (la IP real del
+    | visitante y si la petición llegó por HTTPS). Vacío: de nadie, y la IP es
+    | la de la conexión. Detrás de un proxy (Coolify, un CDN) va su IP o su
+    | rango, separados por coma; `*` solo si el servidor no es alcanzable sin
+    | pasar por el proxy. Con un valor de más, cualquiera puede inventarse su
+    | IP y saltarse los topes por IP (ingresos, SMS).
+    |
+    */
+
+    'trusted_proxies' => array_values(array_filter(
+        array_map(trim(...), explode(',', (string) env('TRUSTED_PROXIES', ''))),
+        static fn (string $proxy): bool => $proxy !== '',
+    )),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

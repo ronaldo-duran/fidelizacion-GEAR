@@ -25,7 +25,8 @@ final class BusquedaClientes
      */
     public static function aplicar(Builder $query, string $termino): Builder
     {
-        $termino = trim($termino);
+        // Sin comodines de LIKE: `%` o `_` no son parte de un documento, un nombre ni un celular.
+        $termino = trim(str_replace(['%', '_'], '', $termino));
 
         if ($termino === '') {
             return $query;

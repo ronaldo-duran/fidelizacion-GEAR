@@ -14,6 +14,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 
 class DatabaseSeeder extends Seeder
 {
@@ -130,20 +131,45 @@ class DatabaseSeeder extends Seeder
             ->where('nombre', 'Sede principal')
             ->sole();
 
+        $clave = self::claveSembrada();
+
         User::factory()->administradorDelGrupo()->jsonReglaEditor()->create([
             'name' => 'Administrador del grupo',
             'email' => 'admin@example.com',
+            'password' => $clave,
         ]);
-
         User::factory()->administradorDeComercio($comercio->id)->apruebaMisiones()->create([
             'name' => 'Administrador de comercio',
             'email' => 'comercio@clubaponterivera.co',
+            'password' => $clave,
         ]);
-
         User::factory()->cajero($comercio->id, $sede->id)->create([
             'name' => 'Cajero',
             'email' => 'cajero@clubaponterivera.co',
+            'password' => $clave,
         ]);
+    }
+
+    /**
+     * La contraseña de los usuarios sembrados (auditoría 2026-11, hallazgo 2).
+     * `password` solo en local y en las pruebas; en un servidor de staging o
+     * de demostración hay que definir SEMILLA_CLAVE, o el seeder no corre.
+     */
+    public static function claveSembrada(): string
+    {
+        $clave = config('muestra.clave_usuarios');
+
+        if (is_string($clave) && mb_strlen($clave) >= 10) {
+            return $clave;
+        }
+
+        if (app()->environment(['local', 'testing']) && ($clave === null || $clave === '')) {
+            return 'password';
+        }
+
+        throw new RuntimeException(
+            'Define SEMILLA_CLAVE (mínimo 10 caracteres) antes de sembrar usuarios fuera de local.',
+        );
     }
 
     /**

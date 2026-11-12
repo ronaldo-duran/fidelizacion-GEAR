@@ -116,6 +116,13 @@ class SendVerificationCode
             ];
         }
 
+        // Va de último: una petición que ya frenó otro tope no gasta el cupo del día.
+        $limiters['sms-dia'] = [
+            self::setting('max_per_day_global'),
+            86400,
+            'No pudimos enviar el código en este momento. Intenta más tarde.',
+        ];
+
         return $limiters;
     }
 

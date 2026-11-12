@@ -426,6 +426,32 @@ ya lo exporta) o Pest pierde sus plugins.
 - Cada pantalla nueva del cliente o del cajero lleva al menos una prueba
   E2E de su flujo principal en `tests/e2e/`.
 
+### Seguridad
+
+Salen de la auditoría de noviembre de 2026
+(`docs/seguridad/auditoria-2026-11.md`, con el porqué de cada una):
+
+- **Todo modelo con recurso en el panel tiene política** en `app/Policies/`.
+  `canAccess()` solo no basta. Lo exige `tests/Feature/SeguridadPanelTest.php`.
+- **El alcance por comercio se exige al escribir, en el servidor**, no solo
+  al listar: la política o la Action recibe el `comercio_id` de lo que se
+  guarda. Un selector de comercio o de sede va filtrado por el alcance del
+  usuario, y un campo bloqueado se descarta también en la página.
+- **Una sede no cambia de comercio** y nada con historia se borra desde el
+  panel: se desactiva.
+- **Ninguna credencial conocida fuera de local y de las pruebas.** Lo que
+  se siembra en staging o en demostración toma su contraseña del entorno
+  (`SEMILLA_CLAVE`).
+- **Contraseñas con `Password::defaults()`** en todo formulario.
+- **Proxies de confianza por `TRUSTED_PROXIES`**, nunca `*` por defecto.
+  Los topes por IP dependen de eso.
+- **Todo tope que protege dinero (SMS, correos) tiene además un tope
+  global** que no depende de la IP.
+- **Toda respuesta pasa por `SecurityHeaders`.** No se quita de una ruta
+  para "hacer que funcione" un marco o un script de otro sitio.
+- **Todo lo que se encola tiene quién lo procese en cada entorno** donde se
+  despliega (en el hosting compartido, la tarea `cola-por-cron`).
+
 ### Interfaz
 
 - Antes de tocar cualquier vista, usar la skill `club-ar-ui`

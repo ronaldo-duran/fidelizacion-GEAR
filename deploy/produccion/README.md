@@ -94,6 +94,9 @@ En el servidor compartido, por SSH:
    php artisan key:generate
    # Editar: APP_ENV=production, APP_DEBUG=false, APP_URL, DB_* (MySQL de Hostinger),
    # QUEUE_CONNECTION=database, CACHE_STORE=database (o file), correo Brevo, etc.
+   # TRUSTED_PROXIES: vacío si el servidor recibe las conexiones directo. Si hay un
+   # proxy o un CDN delante, su IP o su rango (ver docs/seguridad/auditoria-2026-11.md).
+   # SEMILLA_CLAVE: solo si se siembran usuarios (staging o demostración), mínimo 10 caracteres.
    ```
 
 5. **Permisos y symlink:**

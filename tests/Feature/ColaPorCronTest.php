@@ -8,15 +8,15 @@ use Illuminate\Console\Scheduling\Schedule;
 // Cola procesada por el cron en el hosting compartido (E1-03, regla 1): sin worker
 // permanente, el scheduler vacía la cola de la base de datos cada minuto.
 
-function colaPorCron(): ?Event
-{
-    return collect(app(Schedule::class)->events())
+beforeEach(function (): void {
+    // Se lee al llamarlo: cada prueba cambia la conexión de la cola antes de buscar la tarea.
+    $this->colaPorCron = static fn (): ?Event => collect(app(Schedule::class)->events())
         ->first(static fn (Event $event): bool => $event->description === 'cola-por-cron');
-}
+});
 
 it('works the database queue every minute without overlapping', function (): void {
     config(['queue.default' => 'database']);
-    $event = colaPorCron();
+    $event = ($this->colaPorCron)();
 
     expect($event)->not->toBeNull()
         ->and($event?->expression)->toBe('* * * * *')
@@ -32,7 +32,7 @@ it('stops before the next minute and before a job is retried', function (): void
     $maxTime = config('queue.cron_worker.max_time_seconds');
     $retryAfter = config('queue.connections.database.retry_after');
 
-    expect(colaPorCron()?->command)->toContain("--max-time={$maxTime}")
+    expect(($this->colaPorCron)()?->command)->toContain("--max-time={$maxTime}")
         ->and($maxTime)->toBeInt()->toBeLessThan(60)
         ->and($maxTime)->toBeLessThan($retryAfter);
 });
@@ -40,5 +40,5 @@ it('stops before the next minute and before a job is retried', function (): void
 it('leaves the queue to Horizon when it runs on Redis', function (): void {
     config(['queue.default' => 'redis']);
 
-    expect(colaPorCron()?->filtersPass(app()))->toBeFalse();
+    expect(($this->colaPorCron)()?->filtersPass(app()))->toBeFalse();
 });

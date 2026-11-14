@@ -1,0 +1,61 @@
+{
+    "_note": "Scenarios for E9-02 (interactive API docs). The portal shows docs/api/openapi.yaml (E9-01) with Scalar and only runs where API_PORTAL=true, on a server with sample data.",
+    "settings": {
+        "portal_path": "/desarrolladores",
+        "openapi_path": "/desarrolladores/openapi.yaml",
+        "source_file": "docs/api/openapi.yaml",
+        "flag": { "env": "API_PORTAL", "config": "api.portal", "default": false },
+        "banner": "Ambiente de pruebas con datos ficticios. Pide tu credencial de pruebas al administrador del grupo.",
+        "api_prefix": "/api/v1",
+        "operations": 7
+    },
+    "cases": [
+        {
+            "criterion": "the portal is off by default",
+            "portal": null,
+            "requests": [
+                { "path": "/desarrolladores", "status": 404 },
+                { "path": "/desarrolladores/openapi.yaml", "status": 404 }
+            ]
+        },
+        {
+            "criterion": "the portal is off when the flag is false",
+            "portal": false,
+            "requests": [
+                { "path": "/desarrolladores", "status": 404 },
+                { "path": "/desarrolladores/openapi.yaml", "status": 404 }
+            ]
+        },
+        {
+            "criterion": "the portal shows the reference and the banner when it is on",
+            "portal": true,
+            "requests": [
+                { "path": "/desarrolladores", "status": 200, "contains_banner": true, "security_headers": true },
+                { "path": "/desarrolladores/openapi.yaml", "status": 200, "content_type": "application/yaml" }
+            ]
+        }
+    ],
+    "servers_replacement": {
+        "app_url": "https://staging.club.test",
+        "expected_servers": [{ "url": "https://staging.club.test/api/v1" }],
+        "rest_unchanged": true
+    },
+    "examples_required": {
+        "every_operation": ["success response example"],
+        "with_request_body": ["request example"],
+        "post": ["Idempotency-Key header with a UUID example"]
+    },
+    "scalar_config": {
+        "_source": "rule 5 of the spec: nothing goes to third parties",
+        "withDefaultFonts": false,
+        "proxyUrl": null,
+        "hideClientButton": true,
+        "no_cdn": true
+    },
+    "sample_documents": {
+        "_source": "DatosDeMuestraSeeder (SEMBRAR_DATOS_DE_MUESTRA=true); picked in the code PR",
+        "registered_with_benefits": null,
+        "not_registered": null,
+        "with_annulled_purchase": null
+    }
+}

@@ -1,0 +1,345 @@
+{
+    "_note": "Scenarios for E4-03 (bulk purchase upload). Today is 2026-11-11 10:00 in America/Bogota. Merchants, branches and rules are the ones in compras-escenarios.json (merchant 1 with active branch 11 and inactive branch 12, merchant 2 with branch 21). Each line is the file row as text, before normalization; `line` is the row number in the file (row 1 is the header). Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-11 10:00:00",
+    "limits": {
+        "max_lines": {
+            "value": 5000,
+            "_assumption": true,
+            "_source": "issue #29: tested with a 5.000-line file"
+        },
+        "max_file_kb": {
+            "value": 2048,
+            "_assumption": true,
+            "_source": "decision 6 of the spec"
+        },
+        "max_days_back": {
+            "value": 30,
+            "_assumption": true,
+            "_source": "decision 1 of the spec: same as the ledger reversal window"
+        },
+        "max_amount": {
+            "value": 999999999999,
+            "_assumption": true,
+            "_source": "decision 6 of the spec: the same cap as the public API"
+        },
+        "confirm_within_hours": {
+            "value": 24,
+            "_assumption": true,
+            "_source": "decision 6 of the spec"
+        },
+        "batch_size": {
+            "value": 500,
+            "_source": "decision 6 of the spec: lines per queue job, technical"
+        }
+    },
+    "headers": ["tipo_documento", "documento", "fecha", "hora", "monto", "referencia", "sede"],
+    "comercio_id": 1,
+    "customers": [
+        { "tipo_documento": "CC", "documento": "1012346789" },
+        { "tipo_documento": "PPT", "documento": "AB123456" }
+    ],
+    "existing_purchases": [
+        {
+            "comercio_id": 1,
+            "referencia_externa": "fac-0900",
+            "tipo_documento_cliente": "CC",
+            "documento_cliente": "1012346789",
+            "monto": 50000,
+            "_reason": "loaded before: the same line again is ya_registrada, other data is a conflict"
+        },
+        {
+            "comercio_id": 2,
+            "referencia_externa": "fac-0901",
+            "tipo_documento_cliente": "CC",
+            "documento_cliente": "1012346789",
+            "monto": 50000,
+            "_reason": "the same reference in another merchant does not count (E4-01)"
+        }
+    ],
+    "file_errors": [
+        {
+            "key": "wrong_headers",
+            "headers": ["documento", "fecha", "monto", "referencia", "sede"],
+            "message": "Faltan las columnas tipo_documento y hora."
+        },
+        {
+            "key": "extra_header",
+            "headers": ["tipo_documento", "documento", "fecha", "hora", "monto", "referencia", "sede", "cajero"],
+            "message": "Sobra la columna cajero."
+        },
+        { "key": "no_lines", "lines": 0, "message": "El archivo no tiene compras." },
+        { "key": "too_many_lines", "lines": 5001, "message": "El archivo tiene más de 5.000 compras." },
+        { "key": "too_big", "kb": 2049, "message": "El archivo pesa más de 2 MB." }
+    ],
+    "lines": [
+        {
+            "key": "ready",
+            "line": 2,
+            "row": ["CC", "1012346789", "2026-11-10", "13:45", "85000", "FAC-1001", "11"],
+            "estado": "lista",
+            "normalized": {
+                "tipo_documento": "CC",
+                "documento": "1012346789",
+                "fecha_compra": "2026-11-10 13:45:00",
+                "monto_cop": 85000,
+                "referencia_externa": "fac-1001",
+                "sede_id": 11
+            }
+        },
+        {
+            "key": "pending",
+            "line": 3,
+            "row": ["CC", "79555111", "2026-11-10", "", "40000", "fac-1002", "11"],
+            "estado": "pendiente",
+            "normalized": { "fecha_compra": "2026-11-10 00:00:00" },
+            "_reason": "no customer with that document: the purchase stays pending (E4-01 rule 5); no time means 00:00 (decision 2)"
+        },
+        {
+            "key": "same_number_other_type",
+            "line": 4,
+            "row": ["CE", "1012346789", "2026-11-10", "", "40000", "fac-1003", "11"],
+            "estado": "pendiente",
+            "_reason": "CE 1012346789 is not the customer CC 1012346789 (hard rule 3.10)"
+        },
+        {
+            "key": "document_with_letters",
+            "line": 5,
+            "row": ["ppt", " ab 123456 ", "2026-11-09", "", "$85.000", "fac-1004", "11"],
+            "estado": "lista",
+            "normalized": { "tipo_documento": "PPT", "documento": "AB123456", "monto_cop": 85000 }
+        },
+        {
+            "key": "already_loaded",
+            "line": 6,
+            "row": ["CC", "1012346789", "2026-11-01", "", "50000", "FAC-0900", "11"],
+            "estado": "ya_registrada"
+        },
+        {
+            "key": "reference_of_another_merchant",
+            "line": 7,
+            "row": ["CC", "1012346789", "2026-11-01", "", "50000", "fac-0901", "11"],
+            "estado": "lista"
+        },
+        {
+            "key": "reference_conflict",
+            "line": 8,
+            "row": ["CC", "1012346789", "2026-11-01", "", "60000", "fac-0900", "11"],
+            "estado": "error",
+            "errors": [
+                { "columna": "referencia", "mensaje": "La referencia fac-0900 ya existe con otro cliente o monto." }
+            ]
+        },
+        {
+            "key": "reference_repeated_in_file",
+            "line": 9,
+            "row": ["CC", "1012346789", "2026-11-10", "", "30000", "fac 1001", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "referencia", "mensaje": "La referencia fac-1001 ya está en la línea 2." }],
+            "_reason": "normalized it is fac-1001, the same as line 2"
+        },
+        {
+            "key": "missing_type",
+            "line": 10,
+            "row": ["", "1012346789", "2026-11-10", "", "30000", "fac-1010", "11"],
+            "estado": "error",
+            "errors": [
+                { "columna": "tipo_documento", "mensaje": "Escribe el tipo de documento: CC, CE, PPT, PA o DEX." }
+            ],
+            "_reason": "decision 5: never CC by default"
+        },
+        {
+            "key": "unknown_type",
+            "line": 11,
+            "row": ["TI", "1012346789", "2026-11-10", "", "30000", "fac-1011", "11"],
+            "estado": "error",
+            "errors": [
+                { "columna": "tipo_documento", "mensaje": "Escribe el tipo de documento: CC, CE, PPT, PA o DEX." }
+            ]
+        },
+        {
+            "key": "missing_document",
+            "line": 12,
+            "row": ["CC", "  ", "2026-11-10", "", "30000", "fac-1012", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "documento", "mensaje": "Falta el número de documento." }]
+        },
+        {
+            "key": "amount_with_decimals",
+            "line": 13,
+            "row": ["CC", "1012346789", "2026-11-10", "", "85000.50", "fac-1013", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser en pesos enteros, sin decimales." }]
+        },
+        {
+            "key": "amount_with_comma",
+            "line": 14,
+            "row": ["CC", "1012346789", "2026-11-10", "", "85,000", "fac-1014", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser en pesos enteros, sin decimales." }]
+        },
+        {
+            "key": "amount_bad_grouping",
+            "line": 15,
+            "row": ["CC", "1012346789", "2026-11-10", "", "85.00", "fac-1015", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser en pesos enteros, sin decimales." }],
+            "_reason": "dots only as thousands separators in groups of three"
+        },
+        {
+            "key": "amount_zero",
+            "line": 16,
+            "row": ["CC", "1012346789", "2026-11-10", "", "0", "fac-1016", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser mayor que cero." }]
+        },
+        {
+            "key": "amount_negative",
+            "line": 17,
+            "row": ["CC", "1012346789", "2026-11-10", "", "-5000", "fac-1017", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser en pesos enteros, sin decimales." }]
+        },
+        {
+            "key": "amount_over_cap",
+            "line": 18,
+            "row": ["CC", "1012346789", "2026-11-10", "", "1000000000000", "fac-1018", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto supera el máximo permitido." }]
+        },
+        {
+            "key": "date_bad_format",
+            "line": 19,
+            "row": ["CC", "1012346789", "10/11/2026", "", "30000", "fac-1019", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "fecha", "mensaje": "Escribe la fecha como AAAA-MM-DD." }]
+        },
+        {
+            "key": "date_future",
+            "line": 20,
+            "row": ["CC", "1012346789", "2026-11-12", "", "30000", "fac-1020", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "fecha", "mensaje": "La fecha no puede ser futura." }]
+        },
+        {
+            "key": "time_later_today",
+            "line": 21,
+            "row": ["CC", "1012346789", "2026-11-11", "18:00", "30000", "fac-1021", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "hora", "mensaje": "La fecha y hora no pueden ser futuras." }]
+        },
+        {
+            "key": "today_without_time",
+            "line": 22,
+            "row": ["CC", "1012346789", "2026-11-11", "", "30000", "fac-1022", "11"],
+            "estado": "lista",
+            "normalized": { "fecha_compra": "2026-11-11 00:00:00" }
+        },
+        {
+            "key": "oldest_allowed_day",
+            "line": 23,
+            "row": ["CC", "1012346789", "2026-10-12", "", "30000", "fac-1023", "11"],
+            "estado": "lista",
+            "_reason": "30 days back from 2026-11-11"
+        },
+        {
+            "key": "date_too_old",
+            "line": 24,
+            "row": ["CC", "1012346789", "2026-10-11", "", "30000", "fac-1024", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "fecha", "mensaje": "Solo se cargan compras de los últimos 30 días." }]
+        },
+        {
+            "key": "time_bad_format",
+            "line": 25,
+            "row": ["CC", "1012346789", "2026-11-10", "7:42 p. m.", "30000", "fac-1025", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "hora", "mensaje": "Escribe la hora como HH:MM, de 00:00 a 23:59." }]
+        },
+        {
+            "key": "missing_reference",
+            "line": 26,
+            "row": ["CC", "1012346789", "2026-11-10", "", "30000", "", "11"],
+            "estado": "error",
+            "errors": [{ "columna": "referencia", "mensaje": "Falta la referencia de la compra." }]
+        },
+        {
+            "key": "inactive_branch",
+            "line": 27,
+            "row": ["CC", "1012346789", "2026-11-10", "", "30000", "fac-1027", "12"],
+            "estado": "error",
+            "errors": [{ "columna": "sede", "mensaje": "La sede 12 no está activa o no es de este comercio." }]
+        },
+        {
+            "key": "branch_of_another_merchant",
+            "line": 28,
+            "row": ["CC", "1012346789", "2026-11-10", "", "30000", "fac-1028", "21"],
+            "estado": "error",
+            "errors": [{ "columna": "sede", "mensaje": "La sede 21 no está activa o no es de este comercio." }]
+        },
+        {
+            "key": "several_errors",
+            "line": 29,
+            "row": ["", "1012346789", "2026-11-12", "", "0", "fac-1029", "99"],
+            "estado": "error",
+            "errors": [
+                { "columna": "tipo_documento", "mensaje": "Escribe el tipo de documento: CC, CE, PPT, PA o DEX." },
+                { "columna": "fecha", "mensaje": "La fecha no puede ser futura." },
+                { "columna": "monto", "mensaje": "El monto debe ser mayor que cero." },
+                { "columna": "sede", "mensaje": "La sede 99 no está activa o no es de este comercio." }
+            ]
+        }
+    ],
+    "excel_cells": [
+        {
+            "key": "native_date_and_integer",
+            "cells": { "fecha": { "date": "2026-11-10" }, "monto": { "number": 85000.0 } },
+            "estado": "lista",
+            "_reason": "Excel stores numbers as floats: an integral value is accepted"
+        },
+        {
+            "key": "number_with_decimals",
+            "cells": { "monto": { "number": 85000.5 } },
+            "estado": "error",
+            "errors": [{ "columna": "monto", "mensaje": "El monto debe ser en pesos enteros, sin decimales." }]
+        }
+    ],
+    "processing": [
+        {
+            "key": "credited",
+            "from": "ready",
+            "resultado": "acreditada",
+            "puntos_otorgados": 85,
+            "_reason": "1 point per $1.000 with the rule in force on 2026-11-10"
+        },
+        { "key": "pending", "from": "pending", "resultado": "pendiente", "puntos_otorgados": null },
+        {
+            "key": "same_file_again",
+            "from": "ready",
+            "_setup": "the line was processed by an earlier upload",
+            "estado": "ya_registrada",
+            "resultado": null,
+            "_reason": "it is not processed: the balance does not change"
+        },
+        {
+            "key": "loaded_concurrently",
+            "from": "ready",
+            "_setup": "another upload with the same reference registered it after this preview",
+            "resultado": "repetida",
+            "puntos_otorgados": null
+        },
+        {
+            "key": "branch_deactivated_after_preview",
+            "from": "ready",
+            "_setup": "branch 11 is deactivated between the preview and the processing",
+            "resultado": "error",
+            "mensaje_resultado": "La sede no está activa o no es de este comercio."
+        },
+        {
+            "key": "conflict_after_preview",
+            "from": "ready",
+            "_setup": "another upload registered fac-1001 with another amount after this preview",
+            "resultado": "conflicto",
+            "puntos_otorgados": null
+        }
+    ]
+}

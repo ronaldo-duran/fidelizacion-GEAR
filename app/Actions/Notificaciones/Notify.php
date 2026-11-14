@@ -11,6 +11,7 @@ use App\Jobs\SendEnvioCorreo;
 use App\Models\Cliente;
 use App\Models\EnvioNotificacion;
 use App\Models\PlantillaNotificacion;
+use App\Models\PreferenciaAviso;
 use App\Models\SupresionCorreo;
 use App\Notificaciones\RenderPlantilla;
 use Carbon\CarbonImmutable;
@@ -98,6 +99,11 @@ class Notify
 
         if ($email === null) {
             return self::omitido(EnvioNotificacion::SIN_CORREO);
+        }
+
+        // El cliente apagó este correo en su perfil (E8-05, regla 10); el aviso en la app sí se crea.
+        if (PreferenciaAviso::correoApagado($cliente->id, $evento)) {
+            return self::omitido(EnvioNotificacion::PREFERENCIA_CLIENTE);
         }
 
         return SupresionCorreo::motivoPara($email)?->bloquea($evento) === true

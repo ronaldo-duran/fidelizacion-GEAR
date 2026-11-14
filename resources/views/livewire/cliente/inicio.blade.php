@@ -51,11 +51,5 @@
             </span>
             <x-heroicon-o-chevron-right class="size-5 shrink-0 text-ink-2" />
         </a>
-
-        {{-- TODO(E8-05): "Cerrar sesión" pasa al perfil cuando exista. --}}
-        <form method="POST" action="{{ route('cliente.salir') }}">
-            @csrf
-            <x-button type="submit" variant="secundario">Cerrar sesión</x-button>
-        </form>
     </main>
 </div>

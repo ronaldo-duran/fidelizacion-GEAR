@@ -29,12 +29,28 @@ final class FormatoColombiano
      */
     public static function fecha(DateTimeInterface $dia): string
     {
+        return $dia->format('j') . ' de ' . self::mes($dia);
+    }
+
+    /**
+     * "septiembre": el nombre del mes en minúscula.
+     */
+    public static function mes(DateTimeInterface $dia): string
+    {
         $meses = [
             'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
         ];
 
-        return $dia->format('j') . ' de ' . $meses[(int) $dia->format('n') - 1];
+        return $meses[(int) $dia->format('n') - 1];
+    }
+
+    /**
+     * "27 sep": día y mes abreviado, para las filas del historial.
+     */
+    public static function fechaCorta(DateTimeInterface $dia): string
+    {
+        return $dia->format('j') . ' ' . mb_substr(self::mes($dia), 0, 3);
     }
 
     /**

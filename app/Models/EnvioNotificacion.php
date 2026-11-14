@@ -41,6 +41,8 @@ class EnvioNotificacion extends Model
 
     public const PLANTILLA_INACTIVA = 'plantilla_inactiva';
 
+    public const PREFERENCIA_CLIENTE = 'preferencia_cliente';
+
     protected $table = 'envios_notificacion';
 
     /** @var list<string> */

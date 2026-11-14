@@ -95,6 +95,14 @@ class RedeemBeneficio
             throw new AuthorizationException('El beneficio no es de este comercio.');
         }
 
+        // Dos intentos con la misma referencia esperan este bloqueo; el segundo
+        // devuelve la redención del primero en lugar de verla como "ya usado".
+        $repetida = $this->repetida($entrega->referencia, $cajero);
+
+        if ($repetida !== null) {
+            return $repetida;
+        }
+
         $soporte = $this->soporte($beneficio, $entrega->soporte);
         $this->validateMonto($beneficio, $entrega->montoCuenta);
 
@@ -219,8 +227,8 @@ class RedeemBeneficio
      */
     private function authorize(User $cajero): void
     {
-        if (! $cajero->puedeEntrarALaCaja()) {
-            throw new AuthorizationException('Solo un cajero activo con sede entrega beneficios.');
+        if (! $cajero->puedeEntregarBeneficios()) {
+            throw new AuthorizationException('Este usuario no puede entregar beneficios.');
         }
 
         $sede = $cajero->sede;

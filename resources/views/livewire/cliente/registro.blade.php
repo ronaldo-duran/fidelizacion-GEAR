@@ -45,9 +45,14 @@
 
         <div class="flex flex-col gap-1.5">
             <x-checkbox wire:model.live="form.autorizacion">
-                {{-- TODO(cliente): el enlace apunta a la política de datos cuando exista (E10-03). --}}
+                {{-- La misma dirección del perfil (E8-05, regla 11); vacía mientras el cliente no entregue el texto. --}}
+                @php $politica = \App\Clientes\PerfilCliente::politicaDatos(); @endphp
                 Autorizo el tratamiento de mis datos personales según la
-                <a href="#" class="font-bold text-brand underline">política de datos</a>
+                @if ($politica !== '')
+                    <a href="{{ $politica }}" target="_blank" rel="noopener" class="font-bold text-brand underline">política de datos</a>
+                @else
+                    <span class="font-bold">política de datos</span>
+                @endif
                 del Grupo Aponte Rivera.
             </x-checkbox>
             @error('form.autorizacion') <p class="text-sm text-danger" role="alert">{{ $message }}</p> @enderror

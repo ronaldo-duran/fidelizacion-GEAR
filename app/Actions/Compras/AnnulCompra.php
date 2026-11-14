@@ -47,6 +47,15 @@ class AnnulCompra
         }
 
         return DB::transaction(function () use ($user, $transaccion, $motivo): Transaccion {
+            // Bloquea antes de leer: en MySQL una lectura simple fija la foto y se revertiría dos veces.
+            $query = Transaccion::query()->whereKey($transaccion->id);
+            $query->getQuery()->lockForUpdate();
+            $transaccion = $query->firstOrFail();
+
+            if ($transaccion->estado === EstadoTransaccion::Anulada) {
+                throw ValidationException::withMessages(['transaccion' => 'Esta compra ya fue anulada.']);
+            }
+
             if ($this->hasPoints($transaccion)) {
                 ($this->reverse)($user, $transaccion->id, $motivo);
             }

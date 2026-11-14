@@ -1,6 +1,6 @@
 @props(['nivel' => null])
 
-{{-- Encabezado del cliente: logo a la izquierda; avisos y perfil a la derecha. Con `nivel`, el logo toma los colores del bloque del nivel (inicio). --}}
+{{-- Encabezado del cliente: logo a la izquierda; avisos y enlace al perfil (E8-05) a la derecha. Con `nivel`, el logo toma los colores del bloque del nivel (inicio). --}}
 @php
     $cliente = auth('cliente')->user();
     $noLeidos = $cliente === null ? 0 : app(\App\Notificaciones\AvisosDelCliente::class)->noLeidos((int) $cliente->getAuthIdentifier());
@@ -20,8 +20,10 @@
                 @endif
             </a>
         @endif
-        <button type="button" class="flex size-11 items-center justify-center rounded-full" aria-label="Perfil">
-            <x-heroicon-o-user-circle class="size-7" />
-        </button>
+        @if ($cliente !== null)
+            <a href="{{ route('cliente.perfil') }}" class="flex size-11 items-center justify-center rounded-full" aria-label="Mi perfil">
+                <x-heroicon-o-user-circle class="size-7" />
+            </a>
+        @endif
     </div>
 </header>

@@ -35,20 +35,40 @@
         "GET /api/v1/compras/{referencia_externa}": "compras:registrar",
         "POST /api/v1/compras/{referencia_externa}/anulacion": "compras:anular",
         "GET /api/v1/codigos/{codigo}": "beneficios:redimir",
-        "POST /api/v1/redenciones": "beneficios:redimir"
+        "POST /api/v1/redenciones": "beneficios:redimir",
+        "POST /api/v1/redenciones by document": "beneficios:redimir and beneficios:redimir_documento"
     },
     "credentials": [
         {
             "key": "pos-rancho",
             "comercio_id": 1,
             "sede_id": 11,
-            "abilities": ["clientes:leer", "compras:registrar", "compras:anular", "beneficios:redimir"]
+            "abilities": [
+                "clientes:leer",
+                "compras:registrar",
+                "compras:anular",
+                "beneficios:redimir",
+                "beneficios:redimir_documento"
+            ]
         },
         {
             "key": "pos-heladeria",
             "comercio_id": 2,
             "sede_id": 21,
-            "abilities": ["clientes:leer", "compras:registrar", "compras:anular", "beneficios:redimir"]
+            "abilities": [
+                "clientes:leer",
+                "compras:registrar",
+                "compras:anular",
+                "beneficios:redimir",
+                "beneficios:redimir_documento"
+            ]
+        },
+        {
+            "key": "pos-rancho-solo-codigo",
+            "_description": "Delivers by code only: the merchant did not turn on the delivery by document.",
+            "comercio_id": 1,
+            "sede_id": 11,
+            "abilities": ["beneficios:redimir"]
         },
         {
             "key": "pos-rancho-solo-compras",

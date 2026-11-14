@@ -6,15 +6,15 @@ referencia completa, con cada campo, error y ejemplo, está en
 
 ## Qué se puede hacer
 
-| Operación                                             | Para qué                                          | Permiso              |
-| ----------------------------------------------------- | ------------------------------------------------- | -------------------- |
-| `GET /clientes?tipo_documento=&documento=`            | Saber si alguien es cliente y su nivel            | `clientes:leer`      |
-| `GET /clientes/beneficios?tipo_documento=&documento=` | Los beneficios del comercio para ese cliente      | `clientes:leer`      |
-| `POST /compras`                                       | Registrar una compra; el cliente suma sus puntos  | `compras:registrar`  |
-| `GET /compras/{referencia_externa}`                   | Consultar una compra                              | `compras:registrar`  |
-| `POST /compras/{referencia_externa}/anulacion`        | Anular una compra (devolución)                    | `compras:anular`     |
-| `GET /codigos/{codigo}`                               | Validar el código de un beneficio sin gastarlo    | `beneficios:redimir` |
-| `POST /redenciones`                                   | Entregar un beneficio, por código o por documento | `beneficios:redimir` |
+| Operación                                             | Para qué                                          | Permiso                                                               |
+| ----------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+| `GET /clientes?tipo_documento=&documento=`            | Saber si alguien es cliente y su nivel            | `clientes:leer`                                                       |
+| `GET /clientes/beneficios?tipo_documento=&documento=` | Los beneficios del comercio para ese cliente      | `clientes:leer`                                                       |
+| `POST /compras`                                       | Registrar una compra; el cliente suma sus puntos  | `compras:registrar`                                                   |
+| `GET /compras/{referencia_externa}`                   | Consultar una compra                              | `compras:registrar`                                                   |
+| `POST /compras/{referencia_externa}/anulacion`        | Anular una compra (devolución)                    | `compras:anular`                                                      |
+| `GET /codigos/{codigo}`                               | Validar el código de un beneficio sin gastarlo    | `beneficios:redimir`                                                  |
+| `POST /redenciones`                                   | Entregar un beneficio, por código o por documento | `beneficios:redimir` y, por documento, `beneficios:redimir_documento` |
 
 Todas las rutas cuelgan de `https://{dominio}/api/v1` y responden JSON.
 
@@ -93,7 +93,15 @@ nada.
    soporte, se envía `soporte` (número de contrato o de factura).
 
 Sin código, se puede entregar por documento con `tipo_documento`, `documento`
-y `beneficio_id` (de `GET /clientes/beneficios`).
+y `beneficio_id` (de `GET /clientes/beneficios`). Esta vía:
+
+- Necesita además el permiso `beneficios:redimir_documento`. El comercio lo
+  activa a propósito en la credencial; sin él, la respuesta es 403
+  `sin_permiso`.
+- Es para que el cajero **lea** el número del QR o de la cédula digital que
+  el cliente presenta en ese momento. **Nunca un número dictado.** Sin código,
+  la presencia del cliente es el único control, y verificarla es
+  responsabilidad del comercio.
 
 ## Errores
 

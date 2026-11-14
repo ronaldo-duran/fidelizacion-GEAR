@@ -31,15 +31,15 @@ Todas cuelgan de `/api/v1` y responden JSON. Cada una exige un alcance
 (regla 3). Los nombres de los campos son los mismos de las columnas de la
 base (dominio en español).
 
-| #   | Método y ruta                                         | Alcance              | Qué hace                                                                                | Action que reutiliza                            |
-| --- | ----------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1   | `GET /clientes?tipo_documento=&documento=`            | `clientes:leer`      | Dice si el documento es cliente del programa y su nivel efectivo.                       | `FindCliente` (E4-02)                           |
-| 2   | `GET /clientes/beneficios?tipo_documento=&documento=` | `clientes:leer`      | Los beneficios del comercio para ese cliente, con su estado y su valor para el nivel.   | `FindCliente` + `BeneficiosParaCliente` (E5-01) |
-| 3   | `POST /compras`                                       | `compras:registrar`  | Registra una compra y otorga los puntos, con el ascenso en la misma petición.           | `RegisterCompra` (E4-01)                        |
-| 4   | `GET /compras/{referencia_externa}`                   | `compras:registrar`  | Consulta una compra del comercio: estado y puntos otorgados.                            | lectura de `transacciones`                      |
-| 5   | `POST /compras/{referencia_externa}/anulacion`        | `compras:anular`     | Anula una compra con su reversa, dentro del plazo.                                      | `AnnulCompra` (E4-01)                           |
-| 6   | `GET /codigos/{codigo}`                               | `beneficios:redimir` | Valida el código de un beneficio sin gastarlo: válido, ya usado o no válido.            | `CheckBeneficioCredencial` (E5-02)              |
-| 7   | `POST /redenciones`                                   | `beneficios:redimir` | Confirma la entrega de un beneficio, por código o por documento, con su valor otorgado. | `RedeemBeneficio` (E5-02)                       |
+| #   | Método y ruta                                         | Alcance              | Qué hace                                                                                                                                                     | Action que reutiliza                            |
+| --- | ----------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| 1   | `GET /clientes?tipo_documento=&documento=`            | `clientes:leer`      | Dice si el documento es cliente del programa y su nivel efectivo.                                                                                            | `FindCliente` (E4-02)                           |
+| 2   | `GET /clientes/beneficios?tipo_documento=&documento=` | `clientes:leer`      | Los beneficios del comercio para ese cliente, con su estado y su valor para el nivel.                                                                        | `FindCliente` + `BeneficiosParaCliente` (E5-01) |
+| 3   | `POST /compras`                                       | `compras:registrar`  | Registra una compra y otorga los puntos, con el ascenso en la misma petición.                                                                                | `RegisterCompra` (E4-01)                        |
+| 4   | `GET /compras/{referencia_externa}`                   | `compras:registrar`  | Consulta una compra del comercio: estado y puntos otorgados.                                                                                                 | lectura de `transacciones`                      |
+| 5   | `POST /compras/{referencia_externa}/anulacion`        | `compras:anular`     | Anula una compra con su reversa, dentro del plazo.                                                                                                           | `AnnulCompra` (E4-01)                           |
+| 6   | `GET /codigos/{codigo}`                               | `beneficios:redimir` | Valida el código de un beneficio sin gastarlo: válido, ya usado o no válido.                                                                                 | `CheckBeneficioCredencial` (E5-02)              |
+| 7   | `POST /redenciones`                                   | `beneficios:redimir` | Confirma la entrega de un beneficio, por código o por documento, con su valor otorgado. Por documento exige además `beneficios:redimir_documento` (regla 3). | `RedeemBeneficio` (E5-02)                       |
 
 Los cuerpos y las respuestas exactas quedan en `docs/api/openapi.yaml`
 (regla 13); los casos con números, en el fixture.
@@ -58,9 +58,17 @@ Los cuerpos y las respuestas exactas quedan en `docs/api/openapi.yaml`
      la caja.
    - Solo se ven y se entregan los beneficios del comercio.
 3. **Alcances.** Cada credencial lleva uno o más alcances: `clientes:leer`,
-   `compras:registrar`, `compras:anular` y `beneficios:redimir`. Sin el
-   alcance de la operación responde 403. Una credencial nueva no trae
-   ninguno marcado: el administrador elige.
+   `compras:registrar`, `compras:anular`, `beneficios:redimir` y
+   `beneficios:redimir_documento`. Sin el alcance de la operación responde 403. Una credencial nueva no trae ninguno marcado: el administrador elige.
+   - **Entrega por documento** (decisión 10): además de
+     `beneficios:redimir`, exige `beneficios:redimir_documento`, para que el
+     comercio la active a propósito. Sin él responde 403 y no escribe nada;
+     la entrega por código sigue igual.
+   - La vía por documento es para que el cajero **lea** el número del QR o
+     de la cédula digital que el cliente presenta en ese momento, nunca un
+     número dictado. La presencia del cliente sigue siendo el control (regla
+     dura 3.12) y verificarla es responsabilidad del comercio. La guía del
+     POS y el OpenAPI lo dicen igual.
 4. **Credenciales desde el panel.** El administrador del grupo, en
    cualquier comercio, y el administrador de comercio, en el suyo:
    - **Crear:** nombre (por ejemplo "POS caja 1"), sede y alcances. El
@@ -380,6 +388,12 @@ Propuestas por el implementador el 2026-11-06.
 9. **Los campos y los códigos de error van en español**, como las columnas
    de la base y el dominio. El proveedor del POS es colombiano y el
    contrato coincide con la documentación.
+10. **La entrega por documento se queda, con su propio alcance**
+    (decidido por Ronaldo en la revisión del #131, 2026-11-11). Es la misma
+    vía que la caja tiene desde E5-02 ("Buscar por documento"). Como no hay
+    un código que pruebe que el cliente está presente, va en
+    `beneficios:redimir_documento`, aparte de `beneficios:redimir`, y la
+    documentación deja claro que el documento se lee del cliente presente.
 
 ## Reglas duras de CLAUDE.md que aplican
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use App\Api\EntregaApi;
+use App\Enums\AlcanceApi;
 use App\Http\Middleware\RequireIdempotencyKey;
 
 /**
@@ -12,9 +13,22 @@ use App\Http\Middleware\RequireIdempotencyKey;
  * muestra el cliente, o por su documento y el beneficio. El monto de la
  * cuenta (para un porcentaje) y el soporte los exige la entrega según el
  * beneficio.
+ *
+ * La entrega por documento exige, además de `beneficios:redimir`, el alcance
+ * `beneficios:redimir_documento`: el cajero lee el documento que el cliente
+ * presenta en ese momento (el QR o la cédula digital), nunca un número
+ * dictado, y verificar su presencia es responsabilidad del comercio.
  */
 class RedimirBeneficioRequest extends ApiRequest
 {
+    public function authorize(): bool
+    {
+        $codigo = $this->input('codigo');
+
+        return (is_string($codigo) && $codigo !== '')
+            || $this->credencial()->tokenCan(AlcanceApi::BeneficiosRedimirDocumento->value);
+    }
+
     /**
      * @return array<string, list<mixed>>
      */

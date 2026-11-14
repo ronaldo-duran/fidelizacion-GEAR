@@ -51,3 +51,22 @@ Schedule::command('horizon:snapshot')
     ->everyFiveMinutes()
     ->onOneServer()
     ->when(static fn (): bool => config('queue.default') === 'redis');
+
+// Sin worker permanente (hosting compartido, E1-03 regla 1): el cron vacía la cola de la
+// base de datos cada minuto. Va al final para que las demás tareas del minuto se encolen antes.
+$maxTime = config('queue.cron_worker.max_time_seconds');
+
+Schedule::command('queue:work', [
+    'database',
+    '--queue=' . implode(',', [
+        NightlyJob::queueName(),
+        is_string(config('notificaciones.cola')) ? config('notificaciones.cola') : 'notificaciones',
+        'default',
+    ]),
+    '--stop-when-empty',
+    '--max-time=' . (is_int($maxTime) ? $maxTime : 50),
+])
+    ->name('cola-por-cron')
+    ->everyMinute()
+    ->withoutOverlapping(2)
+    ->when(static fn (): bool => config('queue.default') === 'database');

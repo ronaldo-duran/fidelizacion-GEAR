@@ -113,6 +113,11 @@ En el servidor compartido, por SSH:
    * * * * * cd <DEPLOY_PATH> && php artisan schedule:run >> /dev/null 2>&1
    ```
 
+   Ese mismo cron procesa la cola: con `QUEUE_CONNECTION=database`, el
+   scheduler corre cada minuto `queue:work --stop-when-empty` sobre las colas
+   `nocturno`, `notificaciones` y `default` (tarea `cola-por-cron`). Sin el
+   cron, ni los procesos nocturnos ni los correos salen.
+
 Hecho esto, cada tag `v*` en el repo fuente actualiza el servidor solo.
 
 > **Alternativa sin git en el servidor:** si el hosting no permite `git`, se puede

@@ -3,17 +3,19 @@
 /*
  * Un proceso de la prueba de concurrencia de la API (E9-01): arranca la app
  * contra la base de prueba, espera el instante de salida que le pasan para
- * que los diez procesos choquen, y registra la compra o la anula con las
- * Actions reales. Imprime una línea JSON con el resultado: 201 si hizo la
- * operación y 200 si fue una repetición.
+ * que los diez procesos choquen, y registra la compra, la anula o entrega el
+ * beneficio con las Actions reales. Imprime una línea JSON con el resultado:
+ * 201 si hizo la operación y 200 si fue una repetición.
  *
- * Uso: php api-concurrencia.php {compra|anulacion} {user_id} {payload_json} {salida_unix_ms}
+ * Uso: php api-concurrencia.php {compra|anulacion|redencion} {user_id} {payload_json} {salida_unix_ms}
  */
 
 declare(strict_types=1);
 
 use App\Actions\Api\AnnulCompraApi;
+use App\Actions\Api\RedeemBeneficioApi;
 use App\Actions\Compras\RegisterCompra;
+use App\Api\EntregaApi;
 use App\Compras\NuevaCompra;
 use App\Enums\CanalCompra;
 use App\Enums\TipoDocumento;
@@ -32,10 +34,18 @@ $user = User::query()->findOrFail((int) $userId);
 usleep(max(0, (int) $salida - (int) floor(microtime(true) * 1000)) * 1000);
 
 try {
-    if ($modo === 'anulacion') {
-        $repetido = app(AnnulCompraApi::class)($user, $datos['referencia_externa'], $datos['motivo'])->repetido;
-    } else {
-        $repetido = app(RegisterCompra::class)($user, new NuevaCompra(
+    $repetido = match ($modo) {
+        'anulacion' => app(AnnulCompraApi::class)($user, $datos['referencia_externa'], $datos['motivo'])->repetido,
+        'redencion' => app(RedeemBeneficioApi::class)($user, new EntregaApi(
+            $datos['codigo'] ?? null,
+            isset($datos['tipo_documento']) ? TipoDocumento::from($datos['tipo_documento']) : null,
+            $datos['documento'] ?? null,
+            $datos['beneficio_id'] ?? null,
+            null,
+            null,
+            $datos['idempotency_key'],
+        ))->repetido,
+        default => app(RegisterCompra::class)($user, new NuevaCompra(
             (int) $user->comercio_id,
             $user->sede_id,
             TipoDocumento::from($datos['tipo_documento']),
@@ -44,8 +54,8 @@ try {
             $datos['referencia_externa'],
             CanalCompra::Api,
             $datos['idempotency_key'],
-        ))->repetida;
-    }
+        ))->repetida,
+    };
 
     echo json_encode(['estado' => $repetido ? 200 : 201]), PHP_EOL;
 } catch (Throwable $error) {

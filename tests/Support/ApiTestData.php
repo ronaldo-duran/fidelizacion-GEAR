@@ -8,6 +8,7 @@ use App\Actions\Credenciales\IssueCredencial;
 use App\Actions\CredencialesApi\CreateCredencialApi;
 use App\Actions\CredencialesApi\RevokeCredencialApi;
 use App\Actions\CredencialesApi\RotateCredencialApi;
+use App\Credenciales\CredencialEmitida;
 use App\Enums\AlcanceApi;
 use App\Enums\PropositoCredencial;
 use App\Models\Beneficio;
@@ -227,12 +228,20 @@ final class ApiTestData
      */
     public static function codigo(Cliente $cliente, Beneficio $beneficio): string
     {
+        return self::credencialQr($cliente, $beneficio)->credencial->codigo_corto;
+    }
+
+    /**
+     * The benefit code the customer shows: the signed QR token and its short code (E4-04).
+     */
+    public static function credencialQr(Cliente $cliente, Beneficio $beneficio): CredencialEmitida
+    {
         return app(IssueCredencial::class)(
             $cliente,
             PropositoCredencial::Beneficio,
             $beneficio->id,
             $beneficio->comercio_id,
-        )->credencial->codigo_corto;
+        );
     }
 
     /**

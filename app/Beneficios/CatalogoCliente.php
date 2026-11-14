@@ -14,7 +14,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * El catálogo de beneficios del cliente (E8-04, reglas 3 a 6). Solo lee
+ * El catálogo de beneficios del cliente (E8-04, reglas 3 a 6 y 11). Solo lee
  * el estado que calcula `BeneficiosParaCliente` (E5-01) y le pone sus textos:
  * ninguna vista ni componente vuelve a calcular nada.
  */
@@ -66,6 +66,27 @@ class CatalogoCliente
             $secciones['disponibles'],
             $secciones['por_ahora_no'],
             $secciones['bloqueados'],
+        );
+    }
+
+    /**
+     * Los disponibles de hoy sin el beneficio que se está viendo, hasta el
+     * máximo de `config/catalogo.php` (regla 11).
+     *
+     * @return list<FilaCatalogo>
+     */
+    public function otrosParaHoy(Cliente $cliente, int $sinBeneficioId, ?CarbonImmutable $dia = null): array
+    {
+        $dia = ($dia ?? CarbonImmutable::now())->startOfDay();
+        $max = config('catalogo.otros_para_hoy_max');
+        $otros = array_values(array_filter(
+            $this->beneficios->disponibles($cliente, $dia),
+            static fn (BeneficioParaCliente $item): bool => $item->beneficio->id !== $sinBeneficioId,
+        ));
+
+        return array_map(
+            static fn (BeneficioParaCliente $item): FilaCatalogo => new FilaCatalogo($item, self::meta($item, $dia)),
+            array_slice($otros, 0, is_int($max) ? $max : count($otros)),
         );
     }
 

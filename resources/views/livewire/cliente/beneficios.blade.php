@@ -32,6 +32,7 @@
                             :comercio="$f->comercio()"
                             :beneficio="$f->nombre()"
                             :meta="$f->meta"
+                            :href="route('cliente.beneficio', $f->beneficioId())"
                         />
                     @endforeach
                 </section>
@@ -46,6 +47,7 @@
                             :comercio="$f->comercio()"
                             :beneficio="$f->nombre()"
                             :meta="$f->meta"
+                            :href="route('cliente.beneficio', $f->beneficioId())"
                         />
                     @endforeach
                 </section>
@@ -62,6 +64,7 @@
                             :comercio="$f->comercio()"
                             :beneficio="$f->nombre()"
                             :meta="$f->meta"
+                            :href="route('cliente.beneficio', $f->beneficioId())"
                         />
                     @endforeach
                 </section>

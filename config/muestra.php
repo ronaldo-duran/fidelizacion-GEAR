@@ -11,4 +11,9 @@ declare(strict_types=1);
 
 return [
     'sembrar' => (bool) env('SEMBRAR_DATOS_DE_MUESTRA', false),
+
+    // La contraseña de los tres usuarios sembrados. En local y en las pruebas, si falta, es
+    // `password`. En cualquier otro entorno (staging, demostración) es obligatoria: un servidor
+    // alcanzable desde internet nunca queda con una contraseña conocida.
+    'clave_usuarios' => env('SEMILLA_CLAVE'),
 ];

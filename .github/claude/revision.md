@@ -35,7 +35,12 @@ ciclomática, nombres cortos, mensajes de commit, versión. Tampoco gustos perso
 2. **Seguridad.** Autorización y alcance por comercio (un admin de comercio o un cajero nunca ve ni toca datos de otro
    comercio; IDOR); policies ausentes; asignación masiva; SQL crudo con interpolación; `{!! !!}` con datos del
    usuario; endpoints públicos sin límite de peticiones; webhooks sin verificar firma; secretos en el código; datos
-   personales en logs o respuestas (Ley 1581); validación ausente o hecha en el controlador.
+   personales en logs o respuestas (Ley 1581); validación ausente o hecha en el controlador. Además, las reglas de
+   `CLAUDE.md` §7 (Seguridad): un recurso nuevo del panel sin política; un alcance que solo filtra la lista y no la
+   escritura (¿puede un administrador de comercio crear, editar o mover un registro hacia otro comercio mandando otro
+   `comercio_id`?); selectores de comercio o sede sin filtrar; contraseñas sin `Password::defaults()`; credenciales
+   fijas en seeders; un tope solo por IP para algo que cuesta dinero; rutas que se saltan `SecurityHeaders`; jobs
+   nuevos en una cola que nadie procesa.
 3. **Correctitud y concurrencia.** Condiciones de carrera (doble registro de compra o de redención), escrituras que
    tocan puntos fuera de `DB::transaction()`, casos borde, fechas y zona horaria (`America/Bogota`), dinero en
    enteros. Código que solo funciona en un motor: funciones u operadores nativos de PostgreSQL (`->>`, `@>`,

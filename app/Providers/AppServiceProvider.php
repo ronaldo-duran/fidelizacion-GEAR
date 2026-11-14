@@ -13,10 +13,12 @@ use App\Sms\SmsSender;
 use App\Support\FormatoColombiano;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
@@ -41,6 +43,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->endurecer();
+
         // Las acciones de la caja también pasan por el middleware: un cajero desactivado no registra más.
         Livewire::addPersistentMiddleware([EnsureCajero::class]);
 
@@ -74,6 +78,25 @@ class AppServiceProvider extends ServiceProvider
             'hora',
             static fn (string $expression): string => "<?php echo {$formato}::hora({$expression}); ?>",
         );
+    }
+
+    /**
+     * Ajustes de seguridad que no dependen de quién despliegue (auditoría
+     * 2026-11, docs/seguridad/auditoria-2026-11.md).
+     */
+    private function endurecer(): void
+    {
+        // Hallazgo 3: solo se confía en los proxies configurados; ninguno por defecto.
+        $proxies = config('app.trusted_proxies');
+        TrustProxies::at(is_array($proxies) ? array_values(array_filter($proxies, is_string(...))) : []);
+
+        // Hallazgo 5: contraseñas del panel y de la caja.
+        Password::defaults(static fn (): Password => Password::min(10)->letters()->numbers());
+
+        // Hallazgo 6: producción nunca muestra la página de depuración, aunque APP_DEBUG quede encendida.
+        if (app()->isProduction() && config('app.debug') === true) {
+            config(['app.debug' => false]);
+        }
     }
 
     /**

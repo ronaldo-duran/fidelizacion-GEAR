@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 /**
@@ -67,6 +68,15 @@ class CredencialApiResource extends Resource
         }
 
         return $query;
+    }
+
+    /**
+     * El modelo es User, pero la política de usuarios es solo del grupo: este listado
+     * tiene su propia habilidad en UserPolicy (auditoría 2026-11, hallazgo 1).
+     */
+    public static function canViewAny(): bool
+    {
+        return Gate::allows('viewAnyCredencialApi', User::class);
     }
 
     public static function canCreate(): bool

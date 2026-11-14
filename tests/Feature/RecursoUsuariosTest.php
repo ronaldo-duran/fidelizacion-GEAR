@@ -56,7 +56,7 @@ it('crea un usuario normalizando el correo y cifrando la contraseña', function 
             'rol' => RolUsuario::Cajero->value,
             'comercio_id' => $comercio->id,
             'sede_id' => $sede->id,
-            'password' => 'secreto-largo',
+            'password' => 'secreto-largo-2026',
             'activo' => true,
         ])
         ->call('create')
@@ -65,8 +65,8 @@ it('crea un usuario normalizando el correo y cifrando la contraseña', function 
     $creado = User::query()->where('name', 'Nuevo Cajero')->sole();
 
     expect($creado->email)->toBe('cajero.nuevo@clubaponterivera.co')
-        ->and($creado->password)->not->toBe('secreto-largo')
-        ->and(Hash::check('secreto-largo', $creado->password))->toBeTrue();
+        ->and($creado->password)->not->toBe('secreto-largo-2026')
+        ->and(Hash::check('secreto-largo-2026', $creado->password))->toBeTrue();
 });
 
 it('al editar deja la contraseña en blanco sin cambiarla', function (): void {
@@ -101,7 +101,7 @@ it('elige el comercio y la sede de una lista y rechaza una sede de otro comercio
             'rol' => RolUsuario::Cajero->value,
             'comercio_id' => $comercio->id,
             'sede_id' => $sedeAjena->id,
-            'password' => 'secreto-largo',
+            'password' => 'secreto-largo-2026',
         ])
         ->call('create')
         ->assertHasFormErrors(['sede_id']);
@@ -112,7 +112,7 @@ it('elige el comercio y la sede de una lista y rechaza una sede de otro comercio
             'email' => 'cajero.otro@clubaponterivera.co',
             'rol' => RolUsuario::Cajero->value,
             'comercio_id' => 999999,
-            'password' => 'secreto-largo',
+            'password' => 'secreto-largo-2026',
         ])
         ->call('create')
         ->assertHasFormErrors(['comercio_id', 'sede_id']);
@@ -167,7 +167,7 @@ it('vuelve a la lista después de crear o guardar, y "crear otro" deja el formul
         'rol' => RolUsuario::Cajero->value,
         'comercio_id' => $comercio->id,
         'sede_id' => $sede->id,
-        'password' => 'secreto-largo',
+        'password' => 'secreto-largo-2026',
     ];
 
     Livewire::test(CreateUser::class)

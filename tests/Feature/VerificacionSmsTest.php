@@ -50,6 +50,10 @@ it('uses the array driver in tests and keeps the config equal to the fixture', f
         ->toBe($this->fixture['sending']['max_per_phone_per_hour']['value'])
         ->and(config('verificacion.max_per_ip_per_hour'))
         ->toBe($this->fixture['sending']['max_per_ip_per_hour']['value'])
+        ->and(config('verificacion.max_per_day_global'))
+        ->toBe($this->fixture['sending']['max_per_day_global']['value'])
+        ->and(config('verificacion.day_global_alert_percent'))
+        ->toBe($this->fixture['sending']['day_global_alert_percent']['value'])
         ->and(config('verificacion.message'))->toBe($this->fixture['message_template']);
 });
 

@@ -13,6 +13,11 @@
             "value": 1000,
             "_assumption": true,
             "_source": "security audit 2026-11, finding 3: caps the SMS cost of one day whoever asks"
+        },
+        "day_global_alert_percent": {
+            "value": 80,
+            "_assumption": true,
+            "_source": "review of the audit PR: warn before the daily cap stops the service"
         }
     },
     "message_template": "Tu código del Club Aponte Rivera es {code}. Vence en {minutes} minutos. No lo compartas.",

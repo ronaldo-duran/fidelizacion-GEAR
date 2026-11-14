@@ -14,6 +14,7 @@ use App\Panel\BusquedaClientes;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Facades\Filament;
 use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -110,6 +111,39 @@ it('caps the SMS of one day whoever asks for them', function (): void {
     }
 
     expect($resultados)->toBe(['sent', 'sent', 'sent', 'rejected']);
+});
+
+it('warns once when the SMS of the day reach the alert threshold', function (): void {
+    config([
+        'verificacion.max_per_day_global' => 5,
+        'verificacion.day_global_alert_percent' => 80,
+        'verificacion.max_per_ip_per_hour' => 100,
+    ]);
+    Log::spy();
+
+    foreach (range(1, 5) as $i) {
+        app(SendVerificationCode::class)(PropositoVerificacion::Registro, "300000000{$i}", "10.0.0.{$i}");
+    }
+
+    Log::shouldHaveReceived('warning')
+        ->with('Los SMS de verificación llegaron al umbral de aviso del tope global.', ['enviados' => 4, 'tope' => 5])
+        ->once();
+});
+
+it('warns in production when a proxy talks to the app without TRUSTED_PROXIES', function (): void {
+    $headers = ['X-Forwarded-For' => '203.0.113.50'];
+    Log::spy();
+
+    $this->get('/up', $headers);
+    Log::shouldNotHaveReceived('warning');
+
+    $this->app->detectEnvironment(static fn (): string => 'production');
+    $this->get('/up', $headers);
+    $this->get('/up', $headers);
+
+    Log::shouldHaveReceived('warning')
+        ->with('Llegan encabezados de un proxy y TRUSTED_PROXIES está vacío.', Mockery::type('array'))
+        ->once();
 });
 
 it('does not treat LIKE wildcards as a search for everyone', function (): void {

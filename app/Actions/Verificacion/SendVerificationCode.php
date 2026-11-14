@@ -9,6 +9,7 @@ use App\Models\CodigoVerificacion;
 use App\Sms\SmsSender;
 use App\Verificacion\CodigoHasher;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -22,6 +23,9 @@ use Throwable;
  */
 class SendVerificationCode
 {
+    /** El tope de todos los SMS de un día (auditoría 2026-11, hallazgo 3). */
+    private const GLOBAL_KEY = 'sms-dia';
+
     private readonly SmsSender $sms;
 
     private readonly CodigoHasher $hasher;
@@ -84,9 +88,32 @@ class SendVerificationCode
     private function countRequest(string $celular, ?string $ip): void
     {
         foreach ($this->limiters($celular, $ip) as $key => [$max, $decay, $message]) {
-            if (RateLimiter::hit($key, $decay) > $max) {
+            $hits = RateLimiter::hit($key, $decay);
+
+            if ($hits > $max) {
                 throw ValidationException::withMessages(['celular' => $message]);
             }
+
+            if ($key === self::GLOBAL_KEY) {
+                self::warnNearGlobalCap($hits, $max);
+            }
+        }
+    }
+
+    /**
+     * Un solo aviso por ventana, en la petición que cruza el porcentaje: el tope global se
+     * puede agotar a propósito y deja sin registro a los clientes reales hasta que pase la
+     * ventana (24 horas móviles desde el primer SMS, no el día calendario).
+     */
+    private static function warnNearGlobalCap(int $hits, int $max): void
+    {
+        $umbral = (int) ceil($max * self::setting('day_global_alert_percent') / 100);
+
+        if ($umbral > 0 && $hits === $umbral) {
+            Log::warning('Los SMS de verificación llegaron al umbral de aviso del tope global.', [
+                'enviados' => $hits,
+                'tope' => $max,
+            ]);
         }
     }
 
@@ -117,7 +144,7 @@ class SendVerificationCode
         }
 
         // Va de último: una petición que ya frenó otro tope no gasta el cupo del día.
-        $limiters['sms-dia'] = [
+        $limiters[self::GLOBAL_KEY] = [
             self::setting('max_per_day_global'),
             86400,
             'No pudimos enviar el código en este momento. Intenta más tarde.',

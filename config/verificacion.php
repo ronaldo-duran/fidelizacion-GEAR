@@ -18,5 +18,8 @@ return [
     // reparte las peticiones entre muchos celulares e IP (auditoría 2026-11, hallazgo 3).
     // TODO(cliente): supuesto del fixture (sending.max_per_day_global), pendiente de confirmar.
     'max_per_day_global' => 1000,
+    // Al llegar a este porcentaje del tope del día queda un aviso en el log, antes de que corte
+    // el servicio (revisión del PR de la auditoría). TODO(cliente): supuesto del fixture.
+    'day_global_alert_percent' => 80,
     'message' => 'Tu código del Club Aponte Rivera es {code}. Vence en {minutes} minutos. No lo compartas.',
 ];

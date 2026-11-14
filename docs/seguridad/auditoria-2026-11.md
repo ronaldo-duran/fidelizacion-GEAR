@@ -130,6 +130,11 @@ petición y se salta todos los topes por IP:
   (`verificacion.max_per_day_global`, supuesto de 1.000,
   `TODO(cliente)`), que limita el costo aunque alguien reparta las
   peticiones entre muchas IP reales.
+- Avisos en el log, agregados en la revisión del PR: uno cuando producción
+  recibe `X-Forwarded-For` y `TRUSTED_PROXIES` está vacío (como mucho uno
+  al día, `WarnUntrustedProxy`), y otro cuando los SMS del día llegan al
+  80 % del tope global (`verificacion.day_global_alert_percent`, supuesto,
+  `TODO(cliente)`).
 
 **Acción manual pendiente.** Al desplegar, revisar qué IP ve la aplicación.
 Si el servidor está detrás de un proxy o un CDN (Coolify en el VPS, o el
@@ -233,7 +238,9 @@ entorno donde se despliega, y una alerta si deja de procesarse (E1-03).
   de cuatro dígitos (E8-02).
 - **El documento no se verifica** contra una fuente oficial (E8-02).
 - **El tope diario de SMS** puede dejar sin código a clientes reales si un
-  ataque lo agota. Se prefiere eso a un costo sin techo.
+  ataque lo agota. Se prefiere eso a un costo sin techo. La ventana es de
+  24 horas móviles desde el primer SMS, no el día calendario, y el aviso
+  del 80 % deja verlo venir.
 
 ## Observaciones sin arreglo en este PR
 

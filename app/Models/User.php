@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * @property string $name
@@ -33,6 +34,9 @@ use Illuminate\Notifications\Notifiable;
 #[ObservedBy(AuditoriaObserver::class)]
 class User extends Authenticatable implements FilamentUser
 {
+    /** @use HasApiTokens<\Laravel\Sanctum\PersonalAccessToken> */
+    use HasApiTokens;
+
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
@@ -55,6 +59,19 @@ class User extends Authenticatable implements FilamentUser
     public function puedeEntrarALaCaja(): bool
     {
         return $this->activo && $this->rol === RolUsuario::Cajero && $this->sede_id !== null;
+    }
+
+    public function esIntegracion(): bool
+    {
+        return $this->rol === RolUsuario::Integracion;
+    }
+
+    /**
+     * @return BelongsTo<Comercio, $this>
+     */
+    public function comercio(): BelongsTo
+    {
+        return $this->belongsTo(Comercio::class);
     }
 
     /**

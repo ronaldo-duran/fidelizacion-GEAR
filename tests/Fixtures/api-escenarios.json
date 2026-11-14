@@ -67,6 +67,14 @@
             "comercio_id": 5,
             "sede_id": 51,
             "abilities": ["compras:registrar"]
+        },
+        {
+            "key": "pos-rancho-desactivada",
+            "_description": "Integration user deactivated another way (not through Revoke): its token still exists.",
+            "comercio_id": 1,
+            "sede_id": 11,
+            "abilities": ["compras:registrar"],
+            "activo": false
         }
     ],
     "customers": [
@@ -154,6 +162,13 @@
             "request": "GET /api/v1/compras/fac-0001",
             "expected_status": 403,
             "expected_codigo": "comercio_inactivo"
+        },
+        {
+            "_description": "A live token of an inactive integration user: Sanctum does not check users.activo, the API middleware does.",
+            "credential": "pos-rancho-desactivada",
+            "request": "GET /api/v1/compras/fac-0001",
+            "expected_status": 403,
+            "expected_codigo": "sin_permiso"
         }
     ],
     "idempotency": [
@@ -326,6 +341,18 @@
             "idempotency_key": "9b6f0c1e-2d4a-4c8b-8e1f-7a3d5c2b1e90",
             "delivery": "by_document",
             "expected_redenciones": 1,
+            "expected_status_counts": { "201": 1, "200": 9 }
+        },
+        {
+            "_description": "Ten simultaneous annulments of the same purchase, each with its own Idempotency-Key: one reversal; the API answers 200 to all and nine of them carry Idempotent-Replayed (counted here as 200; the one that annulled as 201).",
+            "credential": "pos-rancho",
+            "parallel_requests": 10,
+            "setup": { "referencia_externa": "fac-2002", "monto": 45000, "customer": "andres" },
+            "body": { "motivo": "Devolución en caja" },
+            "expected_reversas": 1,
+            "expected_reversa_puntos": -45,
+            "expected_saldo": 470,
+            "expected_estado": "anulada",
             "expected_status_counts": { "201": 1, "200": 9 }
         }
     ],

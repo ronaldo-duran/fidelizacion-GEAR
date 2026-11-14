@@ -1,0 +1,255 @@
+{
+    "_note": "Scenarios for E10-03 (security and personal data, Ley 1581 de 2012). Today is 2026-11-11 10:00 in America/Bogota. Throttles that already exist repeat the numbers of their own config and fixture; this file is the single list a test walks to check that every secret input has a cap. Values the client has not confirmed carry \"_assumption\": true.",
+    "today": "2026-11-11 10:00:00",
+    "settings": {
+        "hsts_max_age": { "value": 31536000, "_source": "business rule 8: one year" },
+        "cliente_session_days": { "value": 90, "_assumption": true, "_source": "decision 8 of the spec" },
+        "panel_remember_days": { "value": 14, "_assumption": true, "_source": "decision 8 of the spec" },
+        "cajero_remember_hours": { "value": 12, "_assumption": true, "_source": "business rule 10: one shift" },
+        "panel_idle_minutes": { "value": 120, "_source": "SESSION_LIFETIME in .env.example" },
+        "log_days": { "value": 14, "_assumption": true, "_source": "business rule 17" },
+        "suppressed_document_prefix": "SUP-",
+        "suppressed_document_random_length": 12,
+        "suppressed_name": "Cliente suprimido",
+        "suppressed_body": "[suprimido]"
+    },
+    "legal": {
+        "autorizacion": {
+            "current": "borrador-2026-11",
+            "versiones_vigentes": ["borrador-2026-10", "borrador-2026-11"],
+            "_reason": "borrador-2026-10 is the version E8-02 already stores; the new draft only adds the minimum content, so the old one stays valid"
+        },
+        "politica": { "current": "borrador-2026-11" },
+        "draft_banner": "Borrador pendiente de revisión legal",
+        "routes": {
+            "politica": "/politica-de-datos",
+            "politica_version": "/politica-de-datos/{version}",
+            "autorizacion": "/autorizacion-de-datos",
+            "autorizacion_version": "/autorizacion-de-datos/{version}"
+        },
+        "acceptance_cases": [
+            {
+                "key": "current_version",
+                "last_accepted": "borrador-2026-11",
+                "must_accept": false
+            },
+            {
+                "key": "older_but_still_valid",
+                "last_accepted": "borrador-2026-10",
+                "must_accept": false
+            },
+            {
+                "key": "version_removed_from_valid_list",
+                "last_accepted": "borrador-2026-09",
+                "must_accept": true,
+                "allowed_routes": ["cliente.perfil", "cliente.datos", "cliente.autorizacion", "cliente.salir"]
+            }
+        ]
+    },
+    "throttles": [
+        {
+            "key": "cliente_login_document",
+            "max": 5,
+            "window_minutes": 15,
+            "exists": true,
+            "_source": "config/registro.php login_max_attempts and login_lockout_minutes (E8-02)"
+        },
+        {
+            "key": "cliente_login_ip_failures",
+            "max": 20,
+            "window_minutes": 15,
+            "exists": true,
+            "_source": "config/registro.php login_max_attempts_per_ip (E8-02)"
+        },
+        {
+            "key": "cajero_login_email",
+            "max": 5,
+            "window_minutes": 15,
+            "exists": true,
+            "_source": "config/cajero.php (E4-02)"
+        },
+        {
+            "key": "cajero_login_ip_failures",
+            "max": 20,
+            "window_minutes": 15,
+            "exists": true,
+            "_source": "config/cajero.php (E4-02)"
+        },
+        {
+            "key": "sms_code_attempts",
+            "max": 5,
+            "exists": true,
+            "_source": "config/verificacion.php max_attempts (E8-06)"
+        },
+        {
+            "key": "sms_per_phone_per_hour",
+            "max": 3,
+            "window_minutes": 60,
+            "exists": true,
+            "_source": "config/verificacion.php (E8-06)"
+        },
+        {
+            "key": "short_benefit_codes",
+            "max": 5,
+            "window_minutes": 1,
+            "exists": true,
+            "_source": "config/credenciales.php max_failed_short_codes_per_minute (E4-04)"
+        },
+        {
+            "key": "panel_login_email",
+            "max": { "value": 5, "_assumption": true },
+            "window_minutes": { "value": 15, "_assumption": true },
+            "exists": false,
+            "message": "Demasiados intentos. Intenta de nuevo en 15 minutos.",
+            "_source": "business rule 12: the same lock as the cashier"
+        },
+        {
+            "key": "panel_login_ip_failures",
+            "max": { "value": 20, "_assumption": true },
+            "window_minutes": { "value": 15, "_assumption": true },
+            "exists": false,
+            "message": "Demasiados intentos. Intenta de nuevo en 15 minutos."
+        },
+        {
+            "key": "cliente_pin_confirmation",
+            "max": { "value": 5, "_assumption": true },
+            "window_minutes": { "value": 15, "_assumption": true },
+            "exists": false,
+            "message": "Demasiados intentos con el PIN. Intenta de nuevo en 15 minutos.",
+            "_reason": "the PIN that confirms closing other sessions, the data download and the suppression"
+        },
+        {
+            "key": "cliente_data_download",
+            "max": { "value": 5, "_assumption": true },
+            "window_minutes": { "value": 60, "_assumption": true },
+            "exists": false,
+            "message": "Ya descargaste tus datos varias veces. Intenta de nuevo en una hora."
+        }
+    ],
+    "customer": {
+        "_note": "One customer with data in every table of business rule 14. Each value is unique so the test can search for it in every text column of the database.",
+        "tipo_documento": "CC",
+        "documento": "1098765432",
+        "nombre_completo": "Valentina Ortiz Cárdenas",
+        "celular": "3157778899",
+        "email": "valentina.ortiz@correo.co",
+        "fecha_nacimiento": "1992-04-17",
+        "saldo_puntos": 640,
+        "nivel_por_puntos": "plata",
+        "nivel_efectivo": "plata",
+        "autorizaciones": [{ "version_texto": "borrador-2026-10", "ip": "181.50.10.20", "canal": "pwa" }],
+        "transacciones": [
+            { "referencia_externa": "fac-7001", "monto": 85000, "estado": "acreditada" },
+            {
+                "referencia_externa": "fac-7002",
+                "monto": 40000,
+                "estado": "pendiente",
+                "_reason": "pending purchase of her document before she registered at another merchant"
+            }
+        ],
+        "movimientos": [
+            { "tipo": "acumulacion", "puntos": 85 },
+            { "tipo": "promocion", "puntos": 50 }
+        ],
+        "redenciones": [{ "valor_otorgado_cop": 8500, "soporte": "fac-7001" }],
+        "membresia": { "plan": "Diamante mensual", "vigente_hasta": "2026-12-01" },
+        "notificacion_pago": {
+            "payload": {
+                "transaction": {
+                    "reference": "MEM-0001",
+                    "amount_in_cents": 4990000,
+                    "status": "APPROVED",
+                    "customer_email": "valentina.ortiz@correo.co",
+                    "customer_data": {
+                        "full_name": "Valentina Ortiz Cárdenas",
+                        "phone_number": "+573157778899",
+                        "legal_id": "1098765432"
+                    }
+                }
+            }
+        },
+        "evento_calificado": { "soporte_path": "eventos/contrato-valentina.pdf" },
+        "envio_notificacion": {
+            "destinatario": "valentina.ortiz@correo.co",
+            "cuerpo": "Hola, Valentina. Subiste a Plata."
+        },
+        "supresion_correo": { "email": "valentina.ortiz@correo.co", "motivo": "rebote" },
+        "codigo_verificacion": { "celular": "3157778899" },
+        "registro_pendiente": { "celular": "3157778899", "documento": "1098765432" }
+    },
+    "after_suppression": {
+        "clientes": {
+            "nombre_completo": "Cliente suprimido",
+            "documento_pattern": "^SUP-[A-Z0-9]{12}$",
+            "tipo_documento": "unchanged",
+            "celular": null,
+            "celular_hash": null,
+            "email": null,
+            "email_hash": null,
+            "fecha_nacimiento": null,
+            "saldo_puntos": "unchanged",
+            "nivel_efectivo": "unchanged",
+            "suprimido_at": "today"
+        },
+        "transacciones": {
+            "documento_cliente": "same as clientes.documento",
+            "monto": "unchanged",
+            "estado": "unchanged"
+        },
+        "movimientos_puntos": "unchanged",
+        "redenciones": "unchanged",
+        "cambios_nivel": "unchanged",
+        "autorizaciones_datos": "unchanged",
+        "registros_pendientes": "deleted",
+        "codigos_verificacion": "deleted",
+        "supresiones_correo": "deleted",
+        "envios_notificacion": { "destinatario": null, "cuerpo": "[suprimido]", "evento": "unchanged" },
+        "notificaciones_pago": {
+            "removed_payload_paths": [
+                "transaction.customer_email",
+                "transaction.customer_data.full_name",
+                "transaction.customer_data.phone_number",
+                "transaction.customer_data.legal_id"
+            ],
+            "kept_payload_paths": ["transaction.reference", "transaction.amount_in_cents", "transaction.status"]
+        },
+        "eventos_calificados": { "soporte_path": null, "file": "deleted" },
+        "solicitudes_datos": { "tipo": "supresion", "count": 1 },
+        "events": { "ClienteSuprimido": 1 },
+        "search_values": [
+            "1098765432",
+            "Valentina Ortiz Cárdenas",
+            "3157778899",
+            "valentina.ortiz@correo.co",
+            "1992-04-17",
+            "contrato-valentina"
+        ],
+        "_reason": "none of search_values may appear in any text column of any table afterwards"
+    },
+    "export": {
+        "file_name": "mis-datos-club-aponte-rivera.xlsx",
+        "sheets": [
+            {
+                "name": "Mis datos",
+                "columns": [
+                    "Tipo de documento",
+                    "Documento",
+                    "Nombre",
+                    "Celular",
+                    "Correo",
+                    "Fecha de nacimiento",
+                    "Nivel",
+                    "Nivel desde",
+                    "Puntos que cuentan hoy"
+                ]
+            },
+            { "name": "Autorizaciones", "columns": ["Versión", "Aceptada", "IP", "Canal"] },
+            { "name": "Compras", "columns": ["Fecha", "Comercio", "Sede", "Monto", "Referencia", "Estado"] },
+            { "name": "Puntos", "columns": ["Fecha", "Tipo", "Comercio", "Puntos", "Dejan de contar"] },
+            { "name": "Beneficios usados", "columns": ["Fecha", "Comercio", "Beneficio", "Valor"] },
+            { "name": "Membresías", "columns": ["Plan", "Desde", "Hasta", "Valor pagado"] },
+            { "name": "Avisos enviados", "columns": ["Fecha", "Aviso", "Canal", "Estado"] }
+        ],
+        "_reason": "points are status (hard rule 3.1): the sheet says 'Puntos que cuentan hoy', never a balance to spend"
+    }
+}

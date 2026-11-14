@@ -16,6 +16,7 @@
             wire:key="hoy-{{ $item->beneficio->id }}"
             :comercio="$item->beneficio->comercio?->razon_social"
             :titulo="$item->beneficio->nombre"
+            :href="route('cliente.beneficio', $item->beneficio->id)"
         />
     @empty
         <x-empty-state

@@ -13,4 +13,7 @@ return [
     'clock_skew_seconds' => 5,
     'identify_prefix' => 'AR',
     'max_failed_short_codes_per_minute' => 5,
+    // Códigos de beneficio que un cliente puede pedir por minuto en la PWA (E8-04): el
+    // triple de la rotación normal. TODO(cliente): supuesto del fixture.
+    'max_benefit_codes_per_minute' => 6,
 ];

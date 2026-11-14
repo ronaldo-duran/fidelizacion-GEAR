@@ -8,7 +8,12 @@
     "short_code": {
         "format": "^[A-Z]{2,3}-[0-9]{4}$",
         "identify_prefix": "AR",
-        "max_failed_attempts_per_minute": { "value": 5, "_assumption": true }
+        "max_failed_attempts_per_minute": { "value": 5, "_assumption": true },
+        "max_benefit_codes_per_minute": {
+            "value": 6,
+            "_assumption": true,
+            "_reason": "Three times the normal rotation (every 20 s), so a customer cannot fill the merchant's short codes by renewing in a loop."
+        }
     },
     "purposes": ["identificar", "beneficio"],
     "cases": [

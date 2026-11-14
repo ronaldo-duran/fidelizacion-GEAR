@@ -62,6 +62,12 @@ export const completarRegistro = async (page, cliente) => {
     await enElInicio(page, cliente);
 };
 
+// Cierra la sesión del cliente desde su perfil (E8-05): el ícono del encabezado lleva ahí.
+export const cerrarSesion = async (page) => {
+    await page.getByRole('link', { name: 'Mi perfil' }).click();
+    await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+};
+
 // El inicio del cliente (E8-03): saludo con el primer nombre y el nivel como título.
 export const enElInicio = async (page, cliente) => {
     await expect(page.getByText(`${cliente.nombre.split(' ')[0]}, eres`)).toBeVisible();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureCajero;
+use App\Models\User;
 use App\Sms\ArraySmsSender;
 use App\Sms\LogSmsSender;
 use App\Sms\ProveedorSmsSender;
@@ -18,6 +19,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Sanctum\PersonalAccessToken;
 use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
@@ -51,6 +53,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(
             'webhooks',
             static fn (Request $request): Limit => Limit::perMinute(120)->by((string) $request->ip()),
+        );
+
+        // API pública (E9-01, regla 12): un tope general y uno más bajo para consultar documentos.
+        RateLimiter::for('api', static fn (Request $request): Limit => self::topeApi($request, 'requests_per_minute'));
+        RateLimiter::for(
+            'api-consultas',
+            static fn (Request $request): Limit => self::topeApi($request, 'customer_lookups_per_minute'),
         );
 
         $formato = '\\' . FormatoColombiano::class;
@@ -88,5 +97,18 @@ class AppServiceProvider extends ServiceProvider
         if (app()->isProduction() && config('app.debug') === true) {
             config(['app.debug' => false]);
         }
+    }
+
+    /**
+     * El tope de la API por token: rotar una credencial le da al token nuevo su propia cuenta.
+     */
+    private static function topeApi(Request $request, string $clave): Limit
+    {
+        $tope = config("api.{$clave}");
+        $user = $request->user();
+        $token = $user instanceof User ? $user->currentAccessToken() : null;
+        $llave = $token instanceof PersonalAccessToken ? "token:{$token->id}" : 'ip:' . $request->ip();
+
+        return Limit::perMinute(is_int($tope) ? $tope : 0)->by("{$clave}:{$llave}");
     }
 }

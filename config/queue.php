@@ -128,4 +128,21 @@ return [
         'table' => 'failed_jobs',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Cola procesada por el cron (E1-03, regla 1)
+    |--------------------------------------------------------------------------
+    |
+    | En el hosting compartido no hay un worker permanente: con la cola en la
+    | base de datos, el scheduler corre `queue:work --stop-when-empty` cada
+    | minuto. `max_time` queda por debajo del minuto del cron, y por debajo de
+    | `retry_after` de la conexión. El valor sale del fixture
+    | tests/Fixtures/produccion-escenarios.json. Con Redis lo hace Horizon.
+    |
+    */
+
+    'cron_worker' => [
+        'max_time_seconds' => 50,
+    ],
+
 ];

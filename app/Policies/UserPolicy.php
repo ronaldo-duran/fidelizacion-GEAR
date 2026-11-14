@@ -18,6 +18,16 @@ class UserPolicy
         return $user->activo && $user->esAdministradorDelGrupo();
     }
 
+    /**
+     * Las credenciales de la API (E9-01) también son usuarios, pero el administrador de
+     * comercio ve las de su comercio: el recurso filtra la consulta y las Actions exigen
+     * el alcance al rotar o revocar.
+     */
+    public function viewAnyCredencialApi(User $user): bool
+    {
+        return $user->activo && ($user->esAdministradorDelGrupo() || $user->esAdministradorDeComercio());
+    }
+
     public function view(User $user): bool
     {
         return $this->viewAny($user);

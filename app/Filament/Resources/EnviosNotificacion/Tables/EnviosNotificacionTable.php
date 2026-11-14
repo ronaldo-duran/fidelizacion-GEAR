@@ -19,6 +19,7 @@ class EnviosNotificacionTable
         EnvioNotificacion::SIN_CORREO => 'Sin correo',
         EnvioNotificacion::SUPRIMIDO => 'Correo suprimido',
         EnvioNotificacion::PLANTILLA_INACTIVA => 'Plantilla inactiva',
+        EnvioNotificacion::PREFERENCIA_CLIENTE => 'El cliente lo apagó',
     ];
 
     public static function configure(Table $table): Table

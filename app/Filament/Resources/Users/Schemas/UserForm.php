@@ -41,7 +41,7 @@ class UserForm
                     ->unique(ignoreRecord: true),
                 Select::make('rol')
                     ->label('Rol')
-                    ->options(RolUsuario::class)
+                    ->options(RolUsuario::asignables())
                     ->default(RolUsuario::Cajero->value)
                     ->required()
                     ->live(),
